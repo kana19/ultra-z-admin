@@ -1,0 +1,12 @@
+{
+  "name": "ウルトラZAIMUくんレオ 運営ポータル",
+  "short_name": "UZ Admin",
+  "description": "株式会社ターゲット社 専用 レオ・アストラユーザー管理ポータル（PC専用）",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "minimal-ui",
+  "orientation": "landscape",
+  "theme_color": "#0B1842",
+  "background_color": "#0B1842"
+}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1280">
+  <meta name="robots" content="noindex, nofollow">
+  <title>ウルトラZAIMUくんレオ 運営ポータル ／ ダッシュボード</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/base.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header__brand">
+      <div class="app-header__brand-mark" aria-hidden="true">UZ</div>
+      <h1 class="app-header__title">ウルトラZAIMUくんレオ 運営ポータル</h1>
+      <span class="app-header__sub">TARGET ADMIN PORTAL</span>
+    </div>
+    <div class="app-header__user">
+      <span class="app-header__user-name" id="header-user">管理者</span>
+      <button class="app-header__logout" id="logout-btn" type="button">ログアウト</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <h2 class="page-title">ダッシュボード</h2>
+    <p class="page-subtitle">レオ・アストラユーザー管理コンソール</p>
+
+    <section class="card" aria-labelledby="users-card-title">
+      <div class="card__header">
+        <h3 class="card__title" id="users-card-title">レオ・アストラユーザー一覧</h3>
+        <span class="card__badge">第5段階で実装</span>
+      </div>
+      <div class="placeholder">
+        <p class="placeholder__title">ユーザー一覧（第5段階で実装）</p>
+        <p class="placeholder__desc">
+          マスタスプレッドシート（ultra-z-master）から clientId 一覧を取得し、ここに一覧表示します。<br>
+          現在は骨組みのみ。マスタGAS デプロイ完了後に本実装に着手します。
+        </p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="env-card-title">
+      <div class="card__header">
+        <h3 class="card__title" id="env-card-title">接続情報</h3>
+        <span class="card__badge">DEBUG</span>
+      </div>
+      <div class="kv-grid">
+        <div class="kv-grid__item">
+          <span class="kv-grid__label">MASTER SSID</span>
+          <span class="kv-grid__value" id="env-ssid">—</span>
+        </div>
+        <div class="kv-grid__item">
+          <span class="kv-grid__label">MASTER GAS URL</span>
+          <span class="kv-grid__value" id="env-gas">未設定</span>
+        </div>
+        <div class="kv-grid__item">
+          <span class="kv-grid__label">セッション有効期限</span>
+          <span class="kv-grid__value" id="env-expire">—</span>
+        </div>
+        <div class="kv-grid__item">
+          <span class="kv-grid__label">ビルド段階</span>
+          <span class="kv-grid__value">第4段階（骨組み）</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    &copy; TARGET Inc. ／ ultra-z-admin
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    // ダッシュボード画面エントリ：セッション無ければ index.html へ
+    AdminAuth.bootstrapDashboardPage();
+
+    // DEBUG表示
+    document.getElementById('env-ssid').textContent = AdminApp.MASTER_SSID || '—';
+    document.getElementById('env-gas').textContent = AdminApp.MASTER_GAS_URL || '未設定（第4段階完了後にデプロイURLを埋め込む）';
+    document.getElementById('env-expire').textContent = AdminAuth.getSessionExpireText();
+
+    // ログアウトボタン
+    document.getElementById('logout-btn').addEventListener('click', function () {
+      AdminAuth.logout();
+    });
+  </script>
+</body>
+</html>

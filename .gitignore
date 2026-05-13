@@ -1,0 +1,16 @@
+# Claude Code 作業用ディレクトリ（コミット対象外）
+.claude/
+
+# OS / エディタの一時ファイル
+.DS_Store
+Thumbs.db
+
+# Node 関連（将来ビルドツールを導入した場合の予防）
+node_modules/
+
+# ログ
+*.log
+
+# 環境変数ファイル（資格情報・GASデプロイURL等の流出防止）
+.env
+.env.*

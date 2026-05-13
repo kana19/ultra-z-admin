@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1280">
+  <meta name="robots" content="noindex, nofollow">
+  <title>ウルトラZAIMUくんレオ 運営ポータル ／ ログイン</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/base.css">
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-card" aria-labelledby="login-title">
+      <header class="login-card__brand">
+        <div class="login-card__crest" aria-hidden="true">UZ</div>
+        <h1 class="login-card__title" id="login-title">ウルトラZAIMUくんレオ</h1>
+        <p class="login-card__subtitle">TARGET ADMIN PORTAL</p>
+      </header>
+
+      <div id="login-alert" class="alert alert--error" hidden></div>
+
+      <form id="login-form" autocomplete="off" novalidate>
+        <div class="form-row">
+          <label class="form-row__label" for="login-pin">マスタPIN（4桁）</label>
+          <input
+            class="form-row__input"
+            id="login-pin"
+            name="pin"
+            type="password"
+            inputmode="numeric"
+            pattern="[0-9]{4}"
+            maxlength="4"
+            placeholder="••••"
+            autocomplete="off"
+            required>
+        </div>
+
+        <button class="btn btn--primary" type="submit" id="login-submit">
+          ログイン
+        </button>
+      </form>
+
+      <p class="login-card__hint">
+        本ポータルは株式会社ターゲット社の運営担当者専用です。<br>
+        マスタPINはセッション有効期限 8 時間で再ログインが必要です。
+      </p>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    // ログイン画面エントリ：既にセッション有効ならダッシュボードへ
+    AdminAuth.bootstrapLoginPage();
+  </script>
+</body>
+</html>
