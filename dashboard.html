@@ -7,6 +7,56 @@
   <title>ウルトラZAIMUくんレオ 運営ポータル ／ ダッシュボード</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="css/base.css">
+  <style>
+    /* DEBUG用：本番運用時に削除検討 */
+    .conn-test {
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px dashed var(--color-border);
+    }
+    .conn-test__header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .conn-test__title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-space);
+      margin: 0;
+      letter-spacing: 0.06em;
+    }
+    .conn-test__hint {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      letter-spacing: 0.06em;
+    }
+    .conn-test__actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .conn-test__actions .btn { padding: 8px 16px; font-size: 13px; }
+    .conn-test__result {
+      margin: 0;
+      padding: 12px 14px;
+      background: #0B1842;
+      color: #E6CB8A;
+      border-radius: var(--radius);
+      font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 320px;
+      overflow: auto;
+    }
+    .conn-test__result--error {
+      background: #2A0A0A;
+      color: #F4B6B6;
+    }
+  </style>
 </head>
 <body>
   <header class="app-header">
@@ -59,8 +109,21 @@
         </div>
         <div class="kv-grid__item">
           <span class="kv-grid__label">ビルド段階</span>
-          <span class="kv-grid__value">第4段階（骨組み）</span>
+          <span class="kv-grid__value">第4.5段階（GAS接続確立済み）</span>
         </div>
+      </div>
+
+      <!-- DEBUG用：本番運用時に削除検討 -->
+      <div class="conn-test">
+        <div class="conn-test__header">
+          <h4 class="conn-test__title">接続テスト</h4>
+          <span class="conn-test__hint">マスタGAS（doGet / doPost ping）疎通確認</span>
+        </div>
+        <div class="conn-test__actions">
+          <button class="btn btn--ghost" id="ping-get-btn" type="button">GETで疎通</button>
+          <button class="btn btn--ghost" id="ping-post-btn" type="button">POSTで疎通</button>
+        </div>
+        <pre class="conn-test__result" id="ping-result" hidden></pre>
       </div>
     </section>
   </main>
@@ -84,6 +147,49 @@
     document.getElementById('logout-btn').addEventListener('click', function () {
       AdminAuth.logout();
     });
+
+    // ---- 接続テスト（DEBUG用：本番運用時に削除検討） ----
+    (function () {
+      var resultEl = document.getElementById('ping-result');
+
+      function showResult(label, payload, isError) {
+        resultEl.hidden = false;
+        resultEl.classList.toggle('conn-test__result--error', !!isError);
+        var body;
+        if (typeof payload === 'string') {
+          body = payload;
+        } else {
+          try { body = JSON.stringify(payload, null, 2); }
+          catch (_e) { body = String(payload); }
+        }
+        resultEl.textContent = '[' + label + ' ' + AdminApp.formatDateTime(AdminApp.nowMs()) + ']\n' + body;
+      }
+
+      function runPing(label, fn) {
+        showResult(label, '実行中…', false);
+        fn().then(function (res) {
+          if (res && res.ok === false) {
+            showResult(label + ' / GAS応答エラー', res, true);
+          } else {
+            showResult(label + ' / 成功', res, false);
+          }
+        }).catch(function (err) {
+          var msg = (err && err.message) ? err.message : String(err);
+          // fetch自体の失敗（ネットワーク到達不能）は TypeError になりがち
+          if (err && err.name === 'TypeError') {
+            msg = 'マスタGASに到達できません（ネットワークまたはCORS）：' + msg;
+          }
+          showResult(label + ' / 失敗', msg, true);
+        });
+      }
+
+      document.getElementById('ping-get-btn').addEventListener('click', function () {
+        runPing('GET', AdminApp.pingMasterGasGet);
+      });
+      document.getElementById('ping-post-btn').addEventListener('click', function () {
+        runPing('POST', AdminApp.pingMasterGasPost);
+      });
+    })();
   </script>
 </body>
 </html>
