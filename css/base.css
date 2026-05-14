@@ -363,3 +363,155 @@ a:hover { text-decoration: underline; }
   padding: 20px 16px;
   letter-spacing: 0.08em;
 }
+
+/* ============================================================
+ * ユーザー一覧テーブル（第5-C段階）
+ * ============================================================ */
+
+.card-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.clients-count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.clients-loading,
+.clients-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+.clients-empty {
+  padding: 48px 20px;
+  background: #FAFBFE;
+}
+
+.clients-empty p {
+  margin: 0;
+}
+
+.clients-empty__hint {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.clients-error {
+  margin-top: 12px;
+  padding: 16px 20px;
+  background-color: rgba(220, 53, 69, 0.06);
+  color: #8B1A22;
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.clients-error p {
+  margin: 0 0 10px 0;
+}
+
+.clients-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.clients-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.clients-table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  background-color: rgba(11, 24, 66, 0.04);
+  border-bottom: 2px solid var(--color-border);
+  font-weight: 600;
+  color: var(--color-space);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.clients-table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.clients-table tbody tr:hover {
+  background-color: rgba(11, 24, 66, 0.02);
+}
+
+.td-clientId {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  color: var(--color-space);
+}
+
+.td-num,
+.td-fee {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.td-grade {
+  font-weight: 500;
+  text-align: center;
+}
+
+.td-grade--アストラ {
+  background-color: rgba(11, 24, 66, 0.08);
+}
+
+.td-grade--レオ {
+  background-color: rgba(212, 175, 55, 0.15);
+  font-weight: 700;
+  color: #8B6914;
+}
+
+.td-grade--unknown {
+  color: #8B1A22;
+}
+
+.td-status--active {
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+.td-status--suspended {
+  color: #C77520;
+}
+
+.td-status--terminated {
+  color: var(--color-text-muted);
+}
+
+.btn-secondary {
+  padding: 6px 14px;
+  background-color: var(--color-bg);
+  color: var(--color-space);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(11, 24, 66, 0.04);
+}
+
+.btn-secondary:active {
+  transform: translateY(1px);
+}

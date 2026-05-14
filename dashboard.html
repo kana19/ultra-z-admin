@@ -83,14 +83,40 @@
     <section class="card" aria-labelledby="users-card-title">
       <div class="card__header">
         <h3 class="card__title" id="users-card-title">レオ・アストラユーザー一覧</h3>
-        <span class="card__badge">第5段階で実装</span>
+        <div class="card-header__actions">
+          <span class="clients-count" id="clients-count" hidden>0件</span>
+          <button type="button" class="btn-secondary" id="clients-refresh-btn">再読み込み</button>
+        </div>
       </div>
-      <div class="placeholder">
-        <p class="placeholder__title">ユーザー一覧（第5段階で実装）</p>
-        <p class="placeholder__desc">
-          マスタスプレッドシート（ultra-z-master）から clientId 一覧を取得し、ここに一覧表示します。<br>
-          現在は骨組みのみ。マスタGAS デプロイ完了後に本実装に着手します。
-        </p>
+
+      <!-- ローディング表示 -->
+      <div class="clients-loading" id="clients-loading">読み込み中…</div>
+
+      <!-- エラー表示 -->
+      <div class="clients-error" id="clients-error" hidden></div>
+
+      <!-- 空状態表示 -->
+      <div class="clients-empty" id="clients-empty" hidden>
+        <p>レオ・アストラユーザーがまだ登録されていません。</p>
+        <p class="clients-empty__hint">「新規ユーザー登録」ボタンから追加してください（第7段階で実装予定）。</p>
+      </div>
+
+      <!-- 実テーブル -->
+      <div class="clients-table-wrap" id="clients-table-wrap" hidden>
+        <table class="clients-table">
+          <thead>
+            <tr>
+              <th>clientId</th>
+              <th>店舗名</th>
+              <th>グレード</th>
+              <th>タイムカード</th>
+              <th>契約状態</th>
+              <th>月額</th>
+              <th>契約開始</th>
+            </tr>
+          </thead>
+          <tbody id="clients-tbody"></tbody>
+        </table>
       </div>
     </section>
 
@@ -122,7 +148,7 @@
         </div>
         <div class="kv-grid__item">
           <span class="kv-grid__label">ビルド段階</span>
-          <span class="kv-grid__value">第5-B段階（GAS認証統合済み）</span>
+          <span class="kv-grid__value">第5-C段階（ユーザー一覧表示）</span>
         </div>
       </div>
 
@@ -220,6 +246,159 @@
       document.getElementById('ping-post-btn').addEventListener('click', function () {
         runPing('POST', AdminApp.pingMasterGasPost);
       });
+    })();
+
+    // ============================================================
+    // 第5-C：ユーザー一覧（clients）の読込・描画
+    // ============================================================
+
+    // network_error のみ自動1回リトライ
+    async function fetchClientsListWithRetry(pin) {
+      var first = await AdminApp.fetchClientsList(pin);
+      if (first.ok === true) return first;
+      if (first.error !== 'network_error') return first;
+
+      console.warn('[clients] first attempt failed (network_error), retrying in 1s...');
+      await new Promise(function (r) { setTimeout(r, 1000); });
+
+      var second = await AdminApp.fetchClientsList(pin);
+      if (second.ok === true) return second;
+
+      return Object.assign({}, second, { _retryAttempted: true });
+    }
+
+    function escapeHTML(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function statusLabel(status) {
+      switch (status) {
+        case 'active':     return '稼働中';
+        case 'suspended':  return '停止中';
+        case 'terminated': return '終了';
+        default:           return status || '-';
+      }
+    }
+
+    function formatFee(fee) {
+      if (fee == null || fee === '') return '-';
+      var num = Number(fee);
+      if (isNaN(num)) return String(fee);
+      return '¥' + num.toLocaleString('ja-JP');
+    }
+
+    function renderClientsTable(clients) {
+      var tbody = document.getElementById('clients-tbody');
+      var rows = clients.map(function (c) {
+        var grade = c.grade || 'unknown';
+        var status = c.contractStatus || '';
+        return [
+          '<tr>',
+            '<td class="td-clientId">' + escapeHTML(c.clientId) + '</td>',
+            '<td>' + escapeHTML(c.storeName) + '</td>',
+            '<td class="td-grade td-grade--' + escapeHTML(grade) + '">' + escapeHTML(grade) + '</td>',
+            '<td class="td-num">' + (c.timecardCount != null && c.timecardCount !== '' ? escapeHTML(c.timecardCount) : '-') + '</td>',
+            '<td class="td-status td-status--' + escapeHTML(status) + '">' + escapeHTML(statusLabel(status)) + '</td>',
+            '<td class="td-fee">' + escapeHTML(formatFee(c.monthlyFee)) + '</td>',
+            '<td>' + escapeHTML(c.contractStart) + '</td>',
+          '</tr>'
+        ].join('');
+      });
+      tbody.innerHTML = rows.join('');
+    }
+
+    function showClientsError(res) {
+      var el = document.getElementById('clients-error');
+      var msg = 'ユーザー一覧の取得に失敗しました。';
+      if (res.error === 'network_error') {
+        msg = 'マスタGASに到達できません。ネットワーク接続を確認してください。';
+      } else if (res.error) {
+        msg = 'エラー: ' + res.error;
+      }
+      if (res._retryAttempted) {
+        msg += '（自動再試行も失敗しました）';
+      }
+      el.innerHTML =
+        '<p>' + escapeHTML(msg) + '</p>' +
+        '<button type="button" class="btn-secondary" id="clients-retry-btn">もう一度試す</button>';
+      el.hidden = false;
+      document.getElementById('clients-retry-btn').addEventListener('click', loadClients);
+    }
+
+    async function loadClients() {
+      var elLoading   = document.getElementById('clients-loading');
+      var elError     = document.getElementById('clients-error');
+      var elEmpty     = document.getElementById('clients-empty');
+      var elTableWrap = document.getElementById('clients-table-wrap');
+      var elCount     = document.getElementById('clients-count');
+
+      // 全hide → loading表示
+      elError.hidden = true;
+      elEmpty.hidden = true;
+      elTableWrap.hidden = true;
+      elCount.hidden = true;
+      elLoading.hidden = false;
+
+      // セッションから pin 取得（無ければ強制ログアウト）
+      var session = AdminAuth.getSession();
+      if (!session || !session.pin) {
+        AdminAuth.clearSession();
+        location.replace('index.html');
+        return;
+      }
+
+      var res = await fetchClientsListWithRetry(session.pin);
+
+      elLoading.hidden = true;
+
+      // セッション失効系のエラーは強制ログアウト
+      if (!res.ok && (
+            res.error === 'pin mismatch' ||
+            res.error === 'account locked' ||
+            res.error === 'initial setup required' ||
+            (res.error === 'auth failed') ||
+            (res.detail && (
+              res.detail.error === 'pin mismatch' ||
+              res.detail.error === 'account locked' ||
+              res.detail.error === 'initial setup required'
+            ))
+          )) {
+        AdminAuth.clearSession();
+        location.replace('index.html');
+        return;
+      }
+
+      if (!res.ok) {
+        showClientsError(res);
+        return;
+      }
+
+      if (!res.clients || res.clients.length === 0) {
+        elEmpty.hidden = false;
+        return;
+      }
+
+      renderClientsTable(res.clients);
+      elTableWrap.hidden = false;
+      elCount.textContent = res.clients.length + '件';
+      elCount.hidden = false;
+    }
+
+    // 再読み込みボタン
+    document.getElementById('clients-refresh-btn').addEventListener('click', loadClients);
+
+    // 初回読込（セッションは bootstrapDashboardPage が既にチェック済みだが念のため再確認）
+    (async function () {
+      if (!AdminAuth.isSessionValid()) {
+        location.replace('index.html');
+        return;
+      }
+      await loadClients();
     })();
   </script>
 </body>

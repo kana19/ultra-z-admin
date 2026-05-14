@@ -251,11 +251,18 @@
   }
 
   // ---- 公開 --------------------------------------------------
+  // 第5-C：getSession / isSessionValid / clearSession を公開
+  //   - getSession      : readSession のエイリアス（呼び出し側のAPIを直感的に）
+  //   - isSessionValid  : isAuthenticated のエイリアス
+  //   - clearSession    : セッション失効・認証エラー時の強制ログアウト用
   global.AdminAuth = {
     login: login,
     logout: logout,
     isAuthenticated: isAuthenticated,
+    isSessionValid: isAuthenticated,
     readSession: readSession,
+    getSession: readSession,
+    clearSession: clearSession,
     getSessionExpireText: getSessionExpireText,
     bootstrapLoginPage: bootstrapLoginPage,
     bootstrapDashboardPage: bootstrapDashboardPage

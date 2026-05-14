@@ -18,7 +18,7 @@
   // マスタスプレッドシートID（k@tgx.jp 所有・第2段階で構築済み）
   var MASTER_SSID = '1g6-6u9YOrgKHZrJByW9mAfuvTlSVWchx_VV8-O9MJ5Q';
 
-  var APP_VERSION = '0.5.0'; // 第5-B段階：GAS認証統合済み
+  var APP_VERSION = '0.5.5'; // 第5-C段階：ユーザー一覧表示
   var SESSION_KEY = 'ultra-z-admin.session';
   var SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8時間
 
@@ -121,6 +121,32 @@
       });
   }
 
+  // ---- listClients ラッパー（第5-C） -------------------------
+  /**
+   * マスタGAS から target_admin 認証下で clients 一覧を取得する。
+   *
+   * @param {string} pin - sessionStorage 内のpinをそのまま渡す
+   * @returns {Promise<Object>}
+   *   成功:        { ok: true, clients: [...] }
+   *   応答失敗:    { ok: false, error, ... }
+   *   通信エラー:  { ok: false, error: 'network_error', _message, _raw }
+   */
+  async function fetchClientsList(pin) {
+    try {
+      return await callMasterGas('listClients', {
+        pin: pin,
+        accountType: 'target_admin'
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        error: 'network_error',
+        _message: 'マスタGASに到達できません',
+        _raw: err
+      };
+    }
+  }
+
   // ---- 公開 --------------------------------------------------
   global.AdminApp = {
     MASTER_GAS_URL: MASTER_GAS_URL,
@@ -133,6 +159,7 @@
     formatDateTime: formatDateTime,
     callMasterGas: callMasterGas,
     pingMasterGasGet: pingMasterGasGet,
-    pingMasterGasPost: pingMasterGasPost
+    pingMasterGasPost: pingMasterGasPost,
+    fetchClientsList: fetchClientsList
   };
 })(window);
