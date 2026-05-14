@@ -56,6 +56,11 @@
       background: #2A0A0A;
       color: #F4B6B6;
     }
+    /* 第5-B：GAS Version 取得失敗時の赤色強調 */
+    .debug-error {
+      color: var(--color-danger);
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -104,12 +109,20 @@
           <span class="kv-grid__value" id="env-gas">未設定</span>
         </div>
         <div class="kv-grid__item">
+          <span class="kv-grid__label">Frontend Version</span>
+          <span class="kv-grid__value" id="env-frontend-version">—</span>
+        </div>
+        <div class="kv-grid__item">
+          <span class="kv-grid__label">GAS Version</span>
+          <span class="kv-grid__value" id="env-gas-version">確認中…</span>
+        </div>
+        <div class="kv-grid__item">
           <span class="kv-grid__label">セッション有効期限</span>
           <span class="kv-grid__value" id="env-expire">—</span>
         </div>
         <div class="kv-grid__item">
           <span class="kv-grid__label">ビルド段階</span>
-          <span class="kv-grid__value">第4.5段階（GAS接続確立済み）</span>
+          <span class="kv-grid__value">第5-B段階（GAS認証統合済み）</span>
         </div>
       </div>
 
@@ -140,8 +153,26 @@
 
     // DEBUG表示
     document.getElementById('env-ssid').textContent = AdminApp.MASTER_SSID || '—';
-    document.getElementById('env-gas').textContent = AdminApp.MASTER_GAS_URL || '未設定（第4段階完了後にデプロイURLを埋め込む）';
+    document.getElementById('env-gas').textContent = AdminApp.MASTER_GAS_URL || '未設定';
+    document.getElementById('env-frontend-version').textContent = AdminApp.APP_VERSION || '—';
     document.getElementById('env-expire').textContent = AdminAuth.getSessionExpireText();
+
+    // 第5-B：GAS Version を dashboard 読込時に doGet で取得して表示
+    (function () {
+      var el = document.getElementById('env-gas-version');
+      AdminApp.pingMasterGasGet().then(function (data) {
+        if (data && data.version) {
+          el.textContent = 'v' + data.version;
+          el.classList.remove('debug-error');
+        } else {
+          el.textContent = '応答異常';
+          el.classList.add('debug-error');
+        }
+      }).catch(function () {
+        el.textContent = '取得失敗';
+        el.classList.add('debug-error');
+      });
+    })();
 
     // ログアウトボタン
     document.getElementById('logout-btn').addEventListener('click', function () {

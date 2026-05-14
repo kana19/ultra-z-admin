@@ -7,6 +7,32 @@
   <title>ウルトラZAIMUくんレオ 運営ポータル ／ ログイン</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="css/base.css">
+  <style>
+    /* 第5-B：ログイン画面 3段階フィードバックバナー */
+    .login-feedback {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .login-feedback--info {
+      background-color: rgba(11, 24, 66, 0.06);
+      color: var(--color-space);
+      border: 1px solid rgba(11, 24, 66, 0.15);
+    }
+    .login-feedback--warning {
+      background-color: rgba(212, 175, 55, 0.12);
+      color: #8B6914;
+      border: 1px solid rgba(212, 175, 55, 0.4);
+    }
+    .login-feedback--danger {
+      background-color: rgba(220, 53, 69, 0.10);
+      color: #8B1A22;
+      border: 1px solid rgba(220, 53, 69, 0.3);
+      font-weight: 600;
+    }
+  </style>
 </head>
 <body>
   <main class="login-shell">
@@ -17,23 +43,23 @@
         <p class="login-card__subtitle">TARGET ADMIN PORTAL</p>
       </header>
 
-      <div id="login-alert" class="alert alert--error" hidden></div>
-
       <form id="login-form" autocomplete="off" novalidate>
         <div class="form-row">
-          <label class="form-row__label" for="login-pin">マスタPIN（4桁）</label>
+          <label class="form-row__label" for="login-pin">マスタPIN（4〜8桁）</label>
           <input
             class="form-row__input"
             id="login-pin"
             name="pin"
             type="password"
             inputmode="numeric"
-            pattern="[0-9]{4}"
-            maxlength="4"
+            pattern="[0-9]{4,8}"
+            maxlength="8"
             placeholder="••••"
             autocomplete="off"
             required>
         </div>
+
+        <div class="login-feedback" id="login-feedback" hidden></div>
 
         <button class="btn btn--primary" type="submit" id="login-submit">
           ログイン

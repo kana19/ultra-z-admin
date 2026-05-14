@@ -18,7 +18,7 @@
   // マスタスプレッドシートID（k@tgx.jp 所有・第2段階で構築済み）
   var MASTER_SSID = '1g6-6u9YOrgKHZrJByW9mAfuvTlSVWchx_VV8-O9MJ5Q';
 
-  var APP_VERSION = '0.4.5'; // 第4.5段階：マスタGAS接続確立
+  var APP_VERSION = '0.5.0'; // 第5-B段階：GAS認証統合済み
   var SESSION_KEY = 'ultra-z-admin.session';
   var SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8時間
 
@@ -40,44 +40,35 @@
   }
 
   // ---- マスタGAS呼び出しラッパー -----------------------------
+  // 第5-B変更：ネスト構造 {action, payload, ts} → フラット構造 {action, ...extra, ts}
+  // 理由：マスタGAS v0.3 doPost は params.pin / params.accountType を直接参照するため、
+  //       payload にネストすると params.pin = undefined になり認証が必ず失敗する。
+  //
   // 使い方：
-  //   AdminApp.callMasterGas('ping', { echo: 'hello' })
-  //     .then(function (res) { ... })
-  //     .catch(function (err) { ... });
+  //   AdminApp.callMasterGas('verifyAdminPin', { pin: '1234', accountType: 'target_admin' })
+  //     .then(function (res) { ... });
   //
-  // 第2段階のマスタGAS `doPost` は { action: 'ping', echo: ... } を受け取り、
-  // { ok: true, echo: ... } のような JSON を返す想定。
+  // 送信される body：
+  //   {"action":"verifyAdminPin","ts":"2026-05-14T...","pin":"1234","accountType":"target_admin"}
   //
-  // MASTER_GAS_URL が空文字の間は明示的に reject する。
-  // （モック挙動はあくまで認証層で完結させ、ここではダミーを返さない）
-  function callMasterGas(action, payload) {
+  // CORSメモ：Content-Type は意図的に未指定。指定するとプリフライト(OPTIONS)が発火し、
+  //          GAS Webアプリ側に OPTIONS ハンドラがないため失敗する。
+  async function callMasterGas(action, extra) {
     if (!MASTER_GAS_URL) {
-      return Promise.reject(new Error('MASTER_GAS_URL 未設定（GASデプロイ後に js/app.js に埋め込みが必要）'));
+      throw new Error('MASTER_GAS_URL is not configured');
     }
-    var body = JSON.stringify({
-      action: action,
-      payload: payload || {},
-      ts: nowMs()
-    });
-    return fetch(MASTER_GAS_URL, {
+    var body = Object.assign(
+      { action: action, ts: new Date().toISOString() },
+      extra || {}
+    );
+    var res = await fetch(MASTER_GAS_URL, {
       method: 'POST',
-      // GAS Web Apps は preflight を避けるため text/plain で投げるのが定石
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: body
-    })
-      .then(function (res) {
-        if (!res.ok) {
-          throw new Error('GAS HTTP ' + res.status);
-        }
-        return res.text();
-      })
-      .then(function (txt) {
-        var parsed = safeJsonParse(txt);
-        if (parsed === null) {
-          throw new Error('GAS応答が不正なJSON：' + txt.slice(0, 200));
-        }
-        return parsed;
-      });
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+    }
+    return await res.json();
   }
 
   // ---- 疎通確認関数（DEBUG用：本番運用時に削除検討） ----------
