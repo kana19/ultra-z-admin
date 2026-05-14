@@ -14,3 +14,10 @@ node_modules/
 # 環境変数ファイル（資格情報・GASデプロイURL等の流出防止）
 .env
 .env.*
+
+# GAS（Apps Script）コード受け渡し用ディレクトリ
+# Apps Scriptエディタに貼付する原稿置き場であり、リポジトリ管理対象外
+gas/
+
+# Claude Code 段階別プロンプト原稿（運用ログ・コミット対象外）
+claude_code_prompt_phase*.md
