@@ -1,334 +1,407 @@
-/* ============================================================
- * ultra-z-admin / 第6段階 ユーザー編集画面 専用スタイル
- *   base.css のデザイントークン（--color-space 等）を再利用。
- *   PC専用想定（min-width 1280px / @media 不使用）。
- * ============================================================ */
+/* css/edit.css - 第6段階 単一スクロール9セクション用
+ * タブ構造は使わない。すべてのセクションを縦に並べ、最下部の sticky 操作バーで
+ * 全項目を一括保存/破棄する。PC専用前提（min-width 1280px）。
+ */
 
-/* ---- ページヘッダー ---------------------------------------- */
-.edit-page-header {
+/* ============ ヘッダー ============ */
+.edit-header {
   display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 32px;
+  background: var(--uz-deep-space, #0B1842);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.back-link {
+  color: #fff;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  transition: background 0.2s;
+}
+.back-link:hover { background: rgba(255,255,255,0.2); text-decoration: none; }
+.edit-header-main { flex: 1; display: flex; align-items: center; gap: 16px; }
+.store-name { font-size: 20px; font-weight: 700; margin: 0; }
+.client-id { font-family: 'Courier New', monospace; font-size: 14px; opacity: 0.7; }
+.grade-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.grade-badge--アストラ { background: #e0e0e0; color: #555; }
+.grade-badge--レオ { background: #f4d36c; color: #5a4400; font-weight: 700; }
+.grade-badge--unknown { background: #ffcccc; color: #c00; }
+
+/* ============ メイン ============ */
+.edit-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 32px 120px 32px;
+}
+.edit-section {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: #f7f7fa;
+  border-bottom: 1px solid #e5e5e5;
+}
+.section-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.dirty-indicator {
+  font-size: 13px;
+  color: #d97706;
+  font-weight: 600;
+}
+.section-body { padding: 24px; }
+.section-description {
+  margin: -8px 0 16px 0;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* ============ フォーム ============ */
+.form-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
   align-items: center;
   gap: 16px;
   margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--color-border);
 }
-
-.back-button {
-  background: transparent;
-  color: var(--color-space);
-  border: 1px solid var(--color-border);
-  padding: 6px 14px;
-  border-radius: var(--radius);
-  cursor: pointer;
+.form-row label {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+.form-row input[type="text"],
+.form-row input[type="email"],
+.form-row input[type="tel"],
+.form-row input[type="date"],
+.form-row input[type="time"],
+.form-row input[type="number"],
+.form-row select {
+  width: 100%;
+  max-width: 400px;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
   font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  transition: background-color 0.15s;
+  box-sizing: border-box;
 }
-.back-button:hover { background: rgba(11, 24, 66, 0.04); }
-.back-button:active { transform: translateY(1px); }
-
-.edit-page-title {
-  margin: 0;
-  flex: 1;
-  font-size: 18px;
+.form-row input:focus, .form-row select:focus {
+  outline: none;
+  border-color: var(--uz-deep-space, #0B1842);
+  box-shadow: 0 0 0 2px rgba(11, 24, 66, 0.1);
 }
-
-.edit-client-id {
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  font-size: 12px;
-  color: var(--color-text-muted);
-  margin-left: 4px;
-  letter-spacing: 0;
-}
-
-.muted { color: var(--color-text-muted); }
-
-.version-badge {
-  background: var(--color-accent);
-  color: var(--color-space-deep);
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-.edit-bootstrap-error {
-  margin: 12px 0;
-  padding: 14px 18px;
-  background-color: rgba(220, 53, 69, 0.06);
-  color: #8B1A22;
-  border: 1px solid rgba(220, 53, 69, 0.3);
-  border-radius: var(--radius);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-/* ---- タブナビゲーション ------------------------------------ */
-.edit-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 0;
-  border-bottom: 2px solid var(--color-space);
-  background: var(--color-bg-card);
-  padding: 0 4px;
-}
-
-.edit-tab {
-  background: transparent;
-  border: 1px solid transparent;
-  border-bottom: none;
-  padding: 10px 24px;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  border-top-left-radius: var(--radius);
-  border-top-right-radius: var(--radius);
-  transition: background-color 0.15s, color 0.15s;
-  position: relative;
-  top: 1px;
-}
-
-.edit-tab:hover:not(:disabled):not(.active) {
-  background-color: rgba(11, 24, 66, 0.04);
-  color: var(--color-space);
-}
-
-.edit-tab.active {
-  background: var(--color-space);
-  color: #fff;
-  border-color: var(--color-space);
-}
-
-.edit-tab:disabled {
+.form-row input.readonly, .readonly-text {
+  background: #f5f5f5;
+  color: #666;
   cursor: not-allowed;
-  color: #B0B6C5;
-  opacity: 0.6;
 }
-
-/* ---- タブパネル -------------------------------------------- */
-.tab-panel {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-top: none;
-  padding: 24px;
-  border-bottom-left-radius: var(--radius-lg);
-  border-bottom-right-radius: var(--radius-lg);
-  margin-bottom: 20px;
-}
-.tab-panel[hidden] { display: none; }
-
-/* ---- セクションブロック ------------------------------------ */
-.section-block {
-  margin-bottom: 28px;
-  padding-bottom: 24px;
-  border-bottom: 1px dashed var(--color-border);
-}
-.section-block:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
-
-.section-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-space);
-  margin: 0 0 6px;
-  letter-spacing: 0.04em;
-}
-
-.section-help {
+.form-row .required { color: #c00; }
+.form-note {
+  grid-column: 2;
   font-size: 12px;
-  color: var(--color-text-muted);
-  margin: 0 0 14px;
-  line-height: 1.6;
+  color: #888;
+  margin: 4px 0 0 0;
+}
+.business-hours {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.business-hours input[type="time"] { width: 120px; }
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  margin-left: 8px;
+  font-weight: 400;
+}
+.color-text-input {
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  width: 100px !important;
+}
+.form-row input[type="color"] {
+  width: 60px;
+  height: 36px;
+  padding: 2px;
+  cursor: pointer;
 }
 
-.placeholder-section {
-  background: #F7F9FD;
-  padding: 16px 20px;
-  border-radius: var(--radius);
-  border: 1px dashed var(--color-border);
+/* ============ グレード表示（§2） ============ */
+.grade-display {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 14px;
 }
-
-.placeholder-section .section-title { margin: 0 0 4px; }
-
-.placeholder-text {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  margin: 0;
-}
-
-/* ---- スタッフテーブル -------------------------------------- */
-.loading-text {
-  text-align: center;
-  padding: 24px 12px;
-  color: var(--color-text-muted);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius);
+.grade-display--アストラ { background: #e0e0e0; color: #555; }
+.grade-display--レオ { background: #f4d36c; color: #5a4400; }
+.grade-display--unknown { background: #ffcccc; color: #c00; }
+.warning-box {
+  grid-column: 1 / -1;
+  padding: 12px 16px;
+  background: #fff3cd;
+  border-left: 4px solid #f0ad4e;
+  border-radius: 4px;
+  color: #856404;
   font-size: 13px;
 }
+.warning-box p { margin: 0; }
 
-.error-text {
-  margin: 12px 0;
-  padding: 14px 18px;
-  background-color: rgba(220, 53, 69, 0.06);
-  color: #8B1A22;
-  border: 1px solid rgba(220, 53, 69, 0.3);
-  border-radius: var(--radius);
-  font-size: 13px;
-  line-height: 1.6;
+/* ============ ロゴ・アイコン（§3） ============ */
+.asset-uploader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
-.error-text p { margin: 0 0 8px; }
-.error-text p:last-of-type { margin-bottom: 10px; }
+.asset-preview {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fafafa;
+  object-fit: contain;
+}
+.asset-preview--logo { width: 240px; height: 60px; }
+.asset-preview--icon { width: 64px; height: 64px; }
 
-.staff-table-wrap {
-  margin-top: 4px;
-  overflow-x: auto;
+/* ============ 機能ON/OFF（§4） ============ */
+.feature-group { margin-bottom: 24px; }
+.feature-group:last-child { margin-bottom: 0; }
+.feature-group h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin: 0 0 8px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #eee;
+}
+.feature-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.feature-toggle:hover { background: #f7f7fa; }
+.feature-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+.toggle-label { font-size: 14px; color: #333; }
+.toggle-label code {
+  font-size: 12px;
+  color: #888;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+  font-family: 'Courier New', monospace;
 }
 
-.staff-table {
+/* ============ テーブル（§5,6,9） ============ */
+.data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  margin-bottom: 12px;
 }
-
-.staff-table thead th {
+.data-table th, .data-table td {
+  padding: 10px 12px;
   text-align: left;
-  padding: 10px 12px;
-  background-color: rgba(11, 24, 66, 0.04);
-  border-bottom: 2px solid var(--color-border);
-  font-weight: 600;
-  color: var(--color-space);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-}
-
-.staff-th-wage { text-align: right; }
-.staff-th-act  { text-align: center; width: 90px; }
-
-.staff-table tbody td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
   vertical-align: middle;
 }
-
-.staff-table tbody tr:hover {
-  background-color: rgba(11, 24, 66, 0.02);
-}
-
-.staff-cell-id {
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  font-size: 12px;
-  color: var(--color-space);
-  width: 80px;
-}
-
-.staff-cell-wage {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.staff-cell-act {
-  text-align: center;
-}
-
-.staff-empty {
-  text-align: center;
-  color: var(--color-text-muted);
-  padding: 28px 12px !important;
-  font-size: 13px;
-}
-
-.staff-actions {
-  margin-top: 16px;
-  display: flex;
-  gap: 10px;
-}
-
-/* ---- スタッフ編集モーダル（フォーム） ---------------------- */
-.modal-content--staff {
-  min-width: 720px;
-  max-width: 880px;
-  max-height: calc(100vh - 80px);
-  overflow-y: auto;
-}
-
-.staff-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px 20px;
-  margin-bottom: 8px;
-}
-
-.staff-form-row {
-  display: flex;
-  flex-direction: column;
-}
-
-.staff-form-row--wide {
-  grid-column: 1 / -1;
-}
-
-.staff-form-label {
-  font-size: 12px;
+.data-table thead th {
+  background: #f7f7fa;
   font-weight: 600;
-  color: var(--color-text-muted);
-  letter-spacing: 0.04em;
-  margin-bottom: 4px;
-}
-
-.staff-form-label .required {
-  color: var(--color-danger);
-  margin-left: 2px;
-}
-
-.staff-form-input {
-  padding: 8px 10px;
+  color: #555;
   font-size: 13px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: #FBFCFE;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
 }
-
-.staff-form-input:focus {
-  border-color: var(--color-space);
-  box-shadow: 0 0 0 3px rgba(11, 24, 66, 0.12);
-  background: #fff;
-}
-
-.staff-form-input[readonly] {
-  background: #EEF1F8;
-  color: var(--color-text-muted);
-  cursor: not-allowed;
-}
-
-.staff-form-textarea {
-  resize: vertical;
-  min-height: 60px;
+.data-table input[type="text"], .data-table select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 13px;
+  box-sizing: border-box;
   font-family: inherit;
 }
-
-.staff-form-help {
-  margin: 4px 0 0;
-  font-size: 11px;
-  color: var(--color-text-muted);
-  line-height: 1.5;
+.btn-icon-delete {
+  background: transparent;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 14px;
 }
-
-.staff-form-error {
-  margin-top: 12px;
-  padding: 10px 14px;
-  background-color: rgba(220, 53, 69, 0.08);
-  color: #8B1A22;
-  border: 1px solid rgba(220, 53, 69, 0.3);
-  border-radius: var(--radius);
+.btn-icon-delete:hover { background: #fee; border-color: #fcc; }
+.toggle-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.empty-row { text-align: center; color: #999; padding: 24px !important; }
+.log-detail {
   font-size: 12px;
-  line-height: 1.5;
+  color: #555;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  word-break: break-all;
+  font-family: 'Courier New', monospace;
+  display: inline-block;
+  max-width: 100%;
 }
+
+/* ============ 認証アクション行（§8） ============ */
+.auth-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid #eee;
+  gap: 24px;
+}
+.auth-action-row:last-child { border-bottom: none; }
+.auth-action-row h3 { margin: 0 0 4px 0; font-size: 15px; }
+.auth-action-row .form-note { margin: 0; grid-column: auto; }
+
+/* ============ 最下部操作バー ============ */
+.edit-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 32px;
+  background: #fff;
+  border-top: 1px solid #e5e5e5;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+  z-index: 50;
+}
+.footer-status {
+  margin-right: auto;
+  font-size: 13px;
+  color: #d97706;
+  font-weight: 600;
+}
+
+/* ============ ボタン（edit.html 用ローカル定義・base.css 優先のためここでは詳細を控えめに）
+ * base.css に既に .btn-primary / .btn-secondary / .btn-danger が定義されているため、
+ * 二重定義は避けて、edit.css 固有の状態だけ補完する。
+ * ============ */
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ============ モーダル ============ */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal[hidden] { display: none; }
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+.modal-dialog {
+  position: relative;
+  background: #fff;
+  border-radius: 8px;
+  padding: 28px 32px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+.modal-dialog h3 { margin: 0 0 12px 0; font-size: 18px; }
+.modal-dialog p { margin: 0 0 16px 0; color: #444; line-height: 1.5; }
+.modal-dialog input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  font-family: inherit;
+}
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+/* ============ トースト ============ */
+.toast {
+  position: fixed;
+  top: 80px;
+  right: 32px;
+  z-index: 300;
+  padding: 14px 24px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  max-width: 400px;
+}
+.toast[hidden] { display: none; }
+.toast--info { background: #2980b9; }
+.toast--success { background: #27ae60; }
+.toast--error { background: #c0392b; }
+
+/* ============ ローディング・エラー ============ */
+.loading-state, .error-state {
+  max-width: 600px;
+  margin: 80px auto;
+  padding: 32px;
+  text-align: center;
+  font-size: 16px;
+  color: #666;
+}
+.error-state {
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  color: #c00;
+}
+.error-state button { margin-top: 16px; }
+
+/* ============ PC専用前提（min-width 1280px） ============ */
+html, body { min-width: 1280px; }

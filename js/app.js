@@ -292,8 +292,61 @@
     fetchClientsList: fetchClientsList,
     fetchClient: fetchClient,
     fetchClientWithRetry: fetchClientWithRetry,
+    // 注：fetchUserStaffList / fetchUserStaffListWithRetry / updateUserStaffList は
+    // v0.4.0 で誤実装された staffList 系の残骸。v0.4.1 ではマスタGAS から該当 action
+    // が削除されており、呼び出すと unknown action が返る。新規コードからは使用しない。
+    // 既存呼出側がいないため削除可だが、§3-6 の「既存関数は触らない」方針に従い残置。
     fetchUserStaffList: fetchUserStaffList,
     fetchUserStaffListWithRetry: fetchUserStaffListWithRetry,
     updateUserStaffList: updateUserStaffList
+  };
+
+  // ============================================================
+  // 第6段階：window.uzAdmin ブリッジ
+  //   原稿 §2-3 / §2-4 で参照される `window.uzAdmin.*` API を、既存の
+  //   AdminApp / AdminAuth から橋渡しして公開する。edit.js / app.js 増分機能の
+  //   呼び出し簡略化用。
+  //
+  //   - callMasterGas(action, extra) → AdminApp.callMasterGas
+  //   - handleAuthError(res)         → AdminApp.handleAuthError
+  //   - getSession()                  → AdminAuth.getSession（null の場合は
+  //                                     {authenticated:false} を返す）
+  //   - clearSession()               → AdminAuth.clearSession
+  //   - validateAssetFile(file, mb)  → §2-4 の新規ヘルパー
+  // ============================================================
+  global.uzAdmin = global.uzAdmin || {};
+  global.uzAdmin.callMasterGas = function (action, extra) {
+    return callMasterGas(action, extra);
+  };
+  global.uzAdmin.handleAuthError = function (res) {
+    return handleAuthError(res);
+  };
+  global.uzAdmin.getSession = function () {
+    var auth = global.AdminAuth;
+    if (!auth || !auth.getSession) return { authenticated: false };
+    var s = auth.getSession();
+    return s || { authenticated: false };
+  };
+  global.uzAdmin.clearSession = function () {
+    var auth = global.AdminAuth;
+    if (auth && auth.clearSession) auth.clearSession();
+    else try { sessionStorage.removeItem(SESSION_KEY); } catch (_e) { /* ignore */ }
+  };
+
+  // §2-4：アップロード対象ファイルの簡易バリデーション
+  //   - PNG / JPEG のみ許可
+  //   - maxSizeMB（既定 5MB）以下のサイズチェック
+  global.uzAdmin.validateAssetFile = function (file, maxSizeMB) {
+    if (!file) return { ok: false, message: 'ファイルが選択されていません' };
+    var allowedTypes = ['image/png', 'image/jpeg'];
+    if (allowedTypes.indexOf(file.type) < 0) {
+      return { ok: false, message: 'PNG または JPEG のみアップロード可能です' };
+    }
+    var mb = maxSizeMB || 5;
+    var maxBytes = mb * 1024 * 1024;
+    if (file.size > maxBytes) {
+      return { ok: false, message: 'ファイルサイズは ' + mb + 'MB 以下にしてください' };
+    }
+    return { ok: true };
   };
 })(window);
