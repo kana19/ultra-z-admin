@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1280">
+  <meta name="robots" content="noindex, nofollow">
+  <title>ユーザー編集 - ウルトラZAIMUくんレオ 運営ポータル</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/edit.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header__brand">
+      <div class="app-header__brand-mark" aria-hidden="true">UZ</div>
+      <h1 class="app-header__title">ウルトラZAIMUくんレオ 運営ポータル</h1>
+      <span class="app-header__sub">TARGET ADMIN PORTAL</span>
+    </div>
+    <div class="app-header__user">
+      <span class="app-header__user-name" id="header-user">管理者</span>
+      <button class="app-header__logout" id="logout-btn" type="button">ログアウト</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- 戻る導線＋ページタイトル＋バージョンバッジ -->
+    <div class="edit-page-header">
+      <button class="back-button" id="back-button" type="button">← ユーザー一覧へ</button>
+      <h2 class="page-title edit-page-title">
+        ユーザー編集：<span id="edit-store-name">読み込み中…</span>
+        <span class="edit-client-id muted" id="edit-client-id"></span>
+      </h2>
+      <div class="version-badge">第6段階 / v0.6.0</div>
+    </div>
+
+    <!-- ロード／エラー（初期取得失敗時） -->
+    <div class="edit-bootstrap-error" id="edit-bootstrap-error" hidden></div>
+
+    <!-- タブナビゲーション（6タブ枠） -->
+    <nav class="edit-tabs" role="tablist" aria-label="ユーザー編集タブ">
+      <button class="edit-tab" data-tab="basic" disabled type="button">基本情報</button>
+      <button class="edit-tab active" data-tab="operation" type="button">運用情報</button>
+      <button class="edit-tab" data-tab="auth" disabled type="button">認証</button>
+      <button class="edit-tab" data-tab="contract" disabled type="button">契約</button>
+      <button class="edit-tab" data-tab="payment" disabled type="button">入金</button>
+      <button class="edit-tab" data-tab="history" disabled type="button">履歴</button>
+    </nav>
+
+    <!-- 各タブパネル -->
+    <!-- 運用情報タブ（実装対象） -->
+    <section class="tab-panel active" id="tab-operation" role="tabpanel">
+
+      <!-- スタッフマスタ（実装） -->
+      <div class="section-block">
+        <h3 class="section-title">スタッフマスタ</h3>
+        <p class="section-help">タイムカード打刻PWAで使用されるスタッフ情報を編集します。保存はスタッフ1人ずつ行います。</p>
+
+        <div id="staff-loading" class="loading-text">読み込み中…</div>
+        <div id="staff-error" class="error-text" hidden></div>
+
+        <div class="staff-table-wrap" id="staff-table-wrap" hidden>
+          <table class="staff-table" id="staff-table">
+            <thead>
+              <tr>
+                <th class="staff-th-id">ID</th>
+                <th class="staff-th-name">名前</th>
+                <th class="staff-th-emp">雇用区分</th>
+                <th class="staff-th-wage">時給</th>
+                <th class="staff-th-with">源泉</th>
+                <th class="staff-th-act">操作</th>
+              </tr>
+            </thead>
+            <tbody id="staff-tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="staff-actions" id="staff-actions" hidden>
+          <button class="btn-primary" id="staff-add-btn" type="button">＋ スタッフを追加</button>
+          <button class="btn-secondary" id="staff-reload-btn" type="button">再読み込み</button>
+        </div>
+      </div>
+
+      <!-- 以下プレースホルダ（第7段階以降） -->
+      <div class="section-block placeholder-section">
+        <h3 class="section-title">サービスマスタ</h3>
+        <p class="placeholder-text">第7段階以降で実装予定</p>
+      </div>
+      <div class="section-block placeholder-section">
+        <h3 class="section-title">科目マスタ</h3>
+        <p class="placeholder-text">第7段階以降で実装予定</p>
+      </div>
+      <div class="section-block placeholder-section">
+        <h3 class="section-title">取引先</h3>
+        <p class="placeholder-text">第7段階以降で実装予定</p>
+      </div>
+      <div class="section-block placeholder-section">
+        <h3 class="section-title">店舗情報</h3>
+        <p class="placeholder-text">第7段階以降で実装予定</p>
+      </div>
+      <div class="section-block placeholder-section">
+        <h3 class="section-title">ロゴ</h3>
+        <p class="placeholder-text">第7段階以降で実装予定</p>
+      </div>
+    </section>
+
+    <!-- 他5タブのプレースホルダ -->
+    <section class="tab-panel" id="tab-basic" role="tabpanel" hidden>
+      <div class="section-block placeholder-section">
+        <p class="placeholder-text">基本情報タブ - 第7段階以降で実装予定</p>
+      </div>
+    </section>
+    <section class="tab-panel" id="tab-auth" role="tabpanel" hidden>
+      <div class="section-block placeholder-section">
+        <p class="placeholder-text">認証タブ - 第8段階以降で実装予定</p>
+      </div>
+    </section>
+    <section class="tab-panel" id="tab-contract" role="tabpanel" hidden>
+      <div class="section-block placeholder-section">
+        <p class="placeholder-text">契約タブ - 第9段階以降で実装予定</p>
+      </div>
+    </section>
+    <section class="tab-panel" id="tab-payment" role="tabpanel" hidden>
+      <div class="section-block placeholder-section">
+        <p class="placeholder-text">入金タブ - 第10段階以降で実装予定</p>
+      </div>
+    </section>
+    <section class="tab-panel" id="tab-history" role="tabpanel" hidden>
+      <div class="section-block placeholder-section">
+        <p class="placeholder-text">履歴タブ - 第11段階以降で実装予定</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    &copy; TARGET Inc. ／ ultra-z-admin
+  </footer>
+
+  <!-- スタッフ編集モーダル -->
+  <div class="modal-overlay" id="staff-edit-modal" hidden role="dialog" aria-modal="true" aria-labelledby="staff-modal-title">
+    <div class="modal-content modal-content--staff">
+      <h3 class="modal-title" id="staff-modal-title">スタッフ編集</h3>
+
+      <form id="staff-edit-form" autocomplete="off" novalidate>
+        <div class="staff-form-grid">
+          <div class="staff-form-row">
+            <label class="staff-form-label" for="sf-id">ID</label>
+            <input type="text" class="staff-form-input" id="sf-id" readonly>
+            <p class="staff-form-help">新規追加時は自動採番（s001 〜 s999、ゼロ埋め3桁）。</p>
+          </div>
+
+          <div class="staff-form-row">
+            <label class="staff-form-label" for="sf-name">名前<span class="required">*</span></label>
+            <input type="text" class="staff-form-input" id="sf-name" required maxlength="60">
+          </div>
+
+          <div class="staff-form-row">
+            <label class="staff-form-label" for="sf-employmentType">雇用区分<span class="required">*</span></label>
+            <select class="staff-form-input" id="sf-employmentType" required>
+              <option value="employed_full">常勤雇用（社員）</option>
+              <option value="employed_temp">臨時アルバイト</option>
+              <option value="contractor">委託・外注</option>
+            </select>
+          </div>
+
+          <div class="staff-form-row">
+            <label class="staff-form-label" for="sf-passwordRaw">パスワード（平文入力）</label>
+            <input type="password" class="staff-form-input" id="sf-passwordRaw" autocomplete="new-password">
+            <p class="staff-form-help">空欄なら既存パスワードを維持。入力すると SHA-256 でハッシュ化して保存します。</p>
+          </div>
+
+          <div class="staff-form-row">
+            <label class="staff-form-label" for="sf-hourlyWage">時給（円）</label>
+            <input type="number" class="staff-form-input" id="sf-hourlyWage" min="0" step="1">
+          </div>
+
+          <div class="staff-form-row">
+            <label class="staff-form-label" for="sf-dailyWage">日給（円）</label>
+            <input type="number" class="staff-form-input" id="sf-dailyWage" min="0" step="1">
+          </div>
+
+          <div class="staff-form-row">
+            <label class="staff-form-label" for="sf-monthlyWage">月給（円）</label>
+            <input type="number" class="staff-form-input" id="sf-monthlyWage" min="0" step="1">
+          </div>
+
+          <div class="staff-form-row">
+            <label class="staff-form-label" for="sf-commissionRate">歩合率（%）</label>
+            <input type="number" class="staff-form-input" id="sf-commissionRate" min="0" max="100" step="0.1">
+          </div>
+
+          <div class="staff-form-row">
+            <label class="staff-form-label" for="sf-withholdingMode">源泉<span class="required">*</span></label>
+            <select class="staff-form-input" id="sf-withholdingMode" required>
+              <option value="off">なし（off）</option>
+              <option value="hostess">ホステス源泉</option>
+              <option value="standard">標準源泉</option>
+            </select>
+          </div>
+
+          <div class="staff-form-row">
+            <label class="staff-form-label" for="sf-costCategory">科目<span class="required">*</span></label>
+            <select class="staff-form-input" id="sf-costCategory" required>
+              <option value="20">20（給与）</option>
+              <option value="21">21（雑給）</option>
+              <option value="25">25（外注費）</option>
+            </select>
+          </div>
+
+          <div class="staff-form-row staff-form-row--wide">
+            <label class="staff-form-label" for="sf-managerMemo">経営メモ</label>
+            <textarea class="staff-form-input staff-form-textarea" id="sf-managerMemo" rows="3" maxlength="400"></textarea>
+          </div>
+        </div>
+
+        <div class="staff-form-error" id="staff-form-error" hidden></div>
+      </form>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" id="staff-modal-cancel" type="button">キャンセル</button>
+        <button class="btn-primary" id="staff-modal-save" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 確認モーダル（汎用・第6段階では未呼出。第8段階以降の破壊的操作向けに事前定義） -->
+  <div class="modal-overlay" id="confirm-modal" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+    <div class="modal-content">
+      <h3 class="modal-title" id="confirm-modal-title">確認</h3>
+      <p class="modal-body" id="confirm-modal-body"></p>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="confirm-modal-cancel" type="button">キャンセル</button>
+        <button class="btn-danger" id="confirm-modal-ok" type="button">実行</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/edit.js"></script>
+</body>
+</html>

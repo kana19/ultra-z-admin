@@ -515,3 +515,121 @@ a:hover { text-decoration: underline; }
 .btn-secondary:active {
   transform: translateY(1px);
 }
+
+.btn-secondary:disabled {
+  background-color: #EAECEF;
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+ * 第6段階：汎用ボタン・モーダル
+ *   - btn-primary  : 保存系（モーダル等）。既存 .btn--primary とは別系統
+ *   - btn-danger   : 破壊的操作（将来の削除・解約等。第6段階では未使用だが共通定義）
+ *   - btn-edit     : 一覧の操作列リンク（dashboard.html clients-table）
+ *   - modal-*      : edit.html のスタッフ編集モーダル＋汎用 confirm モーダル
+ * ============================================================ */
+
+.btn-primary {
+  display: inline-block;
+  padding: 8px 20px;
+  background: var(--color-space);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background-color 0.15s;
+}
+
+.btn-primary:hover { background: var(--color-space-light); }
+.btn-primary:active { transform: translateY(1px); }
+.btn-primary:disabled { background: #8A93AE; cursor: not-allowed; }
+
+.btn-danger {
+  display: inline-block;
+  padding: 8px 20px;
+  background: var(--color-danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background-color 0.15s;
+}
+
+.btn-danger:hover { background: #8B2929; }
+.btn-danger:active { transform: translateY(1px); }
+.btn-danger:disabled { background: #B8A0A0; cursor: not-allowed; }
+
+.btn-edit {
+  display: inline-block;
+  padding: 4px 14px;
+  background: var(--color-space);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: background-color 0.15s;
+}
+
+.btn-edit:hover { background: var(--color-space-light); text-decoration: none; }
+.btn-edit:active { transform: translateY(1px); }
+
+.td-action {
+  text-align: center;
+}
+
+/* ---- モーダル共通 -------------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 24, 66, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-overlay[hidden] { display: none; }
+
+.modal-content {
+  background: #fff;
+  padding: 28px 32px 24px;
+  border-radius: var(--radius-lg);
+  min-width: 520px;
+  max-width: 760px;
+  box-shadow: var(--shadow-card-strong);
+  border-top: 4px solid var(--color-accent);
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-space);
+  margin: 0 0 16px;
+  letter-spacing: 0.04em;
+}
+
+.modal-body {
+  margin: 0 0 20px;
+  line-height: 1.6;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
