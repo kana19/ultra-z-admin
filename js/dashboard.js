@@ -1,11 +1,13 @@
 /* ============================================================
  * ultra-z-admin / ダッシュボード（ユーザー一覧）スクリプト
- * 第6段階：dashboard.html のインライン<script>から抽出
+ * 第7段階 小段階7-C：マスタ件数枠（clients K/L列）の一覧表示対応
  *   - 第5-C で確立した6シナリオ（空状態／再読み込み／アストラ／レオ／
  *     セッション失効遷移／認証エラー遷移）の挙動を完全維持
  *   - 認証エラー判定を AdminApp.handleAuthError 経由に集約
  *     （新action の code 形式・旧 listClients の error/detail.error 形式の両対応）
  *   - clients-table に「操作」列を追加し、各行に edit.html への遷移リンクを配置
+ *   - 7-C：clients-table に「マスタ枠（S/C）」列追加
+ *     serviceMasterQuota / costOptionalQuota を表示・拡張枠（5超）は薄黄色強調
  *
  * 依存：app.js → auth.js → dashboard.js の順で読み込むこと（HTML側で保証）。
  * ============================================================ */
@@ -143,6 +145,18 @@
       var grade = c.grade || 'unknown';
       var status = c.contractStatus || '';
       var safeId = escapeHTML(c.clientId);
+      // 7-C：マスタ件数枠（運営内部管理）
+      //  - サーバー側で空欄は5に補完済（_normalizeQuota_）だが念のためフロント側でもガード
+      //  - 基本枠（5）超過は td-quota--expanded で薄黄色強調
+      var smq = (c.serviceMasterQuota != null && c.serviceMasterQuota !== '')
+        ? Number(c.serviceMasterQuota) : 5;
+      var coq = (c.costOptionalQuota != null && c.costOptionalQuota !== '')
+        ? Number(c.costOptionalQuota) : 5;
+      var quotaExpanded = (smq > 5 || coq > 5);
+      var quotaCellClass = 'td-quota' + (quotaExpanded ? ' td-quota--expanded' : '');
+      var quotaCell = '<td class="' + quotaCellClass + '" title="売上品目マスタ ' + smq + ' 件 / コストマスタ任意枠 ' + coq + ' 件">'
+        + escapeHTML(smq) + '<span class="quota-sep">/</span>' + escapeHTML(coq)
+        + '</td>';
       return [
         '<tr>',
           '<td class="td-clientId">' + safeId + '</td>',
@@ -152,6 +166,7 @@
           '<td class="td-status td-status--' + escapeHTML(status) + '">' + escapeHTML(statusLabel(status)) + '</td>',
           '<td class="td-fee">' + escapeHTML(formatFee(c.monthlyFee)) + '</td>',
           '<td>' + escapeHTML(c.contractStart) + '</td>',
+          quotaCell,
           '<td class="td-action"><a href="edit.html?clientId=' + encodeURIComponent(c.clientId) + '" class="btn-edit">編集</a></td>',
         '</tr>'
       ].join('');

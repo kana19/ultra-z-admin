@@ -61,6 +61,27 @@
       color: var(--color-danger);
       font-weight: 700;
     }
+    /* 7-C：clients テーブル「マスタ枠」列のスタイル */
+    .th-sub {
+      display: block;
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      letter-spacing: 0.08em;
+      margin-top: 2px;
+    }
+    .td-quota {
+      text-align: center;
+      font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .td-quota .quota-sep { color: var(--color-text-muted); margin: 0 4px; }
+    /* 基本枠（5以下）は通常表示・拡張枠ありは薄い金色背景で強調 */
+    .td-quota--expanded {
+      background: #fdf4dc;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -99,7 +120,7 @@
       <!-- 空状態表示 -->
       <div class="clients-empty" id="clients-empty" hidden>
         <p>レオ・アストラユーザーがまだ登録されていません。</p>
-        <p class="clients-empty__hint">「新規ユーザー登録」ボタンから追加してください（第7段階で実装予定）。</p>
+        <p class="clients-empty__hint">「+ 新規追加」ボタンから登録ウィザードを開始してください。</p>
       </div>
 
       <!-- 実テーブル -->
@@ -114,6 +135,7 @@
               <th>契約状態</th>
               <th>月額</th>
               <th>契約開始</th>
+              <th title="売上品目マスタ / コストマスタ任意枠の付与枠数">マスタ枠<br><span class="th-sub">S / C</span></th>
               <th>操作</th>
             </tr>
           </thead>
@@ -150,7 +172,7 @@
         </div>
         <div class="kv-grid__item">
           <span class="kv-grid__label">ビルド段階</span>
-          <span class="kv-grid__value">第7段階 小段階7-B（新規登録ウィザード Step 1〜6・実装中）</span>
+          <span class="kv-grid__value">第7段階 小段階7-C（マスタ件数枠・clients 12列化）</span>
         </div>
       </div>
 
