@@ -227,6 +227,14 @@
     var refreshBtn = document.getElementById('clients-refresh-btn');
     if (refreshBtn) refreshBtn.addEventListener('click', loadClients);
 
+    // 第7段階 小段階7-B：「+ 新規追加」ボタン → register.html へ遷移
+    var registerBtn = document.getElementById('btn-register-new');
+    if (registerBtn) {
+      registerBtn.addEventListener('click', function () {
+        location.href = 'register.html';
+      });
+    }
+
     // 初回読込（bootstrapDashboardPage で済んでいるが念のため再確認）
     (async function () {
       if (!AdminAuth.isSessionValid()) {

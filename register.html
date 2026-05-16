@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1280">
+  <meta name="robots" content="noindex, nofollow">
+  <title>新規登録ウィザード - ウルトラZAIMU 運営ポータル</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/register.css">
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="register-header">
+    <a href="dashboard.html" class="back-link">‹ ユーザー一覧へ</a>
+    <h1 class="register-title">新規登録ウィザード</h1>
+    <span class="register-stage-badge">第7段階 / 小段階7-B</span>
+  </header>
+
+  <!-- ステッパー -->
+  <nav class="stepper" aria-label="登録ステップ">
+    <ol id="stepper-list" class="stepper-list">
+      <li class="step-item" data-step="1"><span class="step-circle">1</span><span class="step-label">基本情報</span></li>
+      <li class="step-item" data-step="2"><span class="step-circle">2</span><span class="step-label">TC数</span></li>
+      <li class="step-item" data-step="3"><span class="step-circle">3</span><span class="step-label">マスタ</span></li>
+      <li class="step-item" data-step="4"><span class="step-circle">4</span><span class="step-label">ロゴ</span></li>
+      <li class="step-item" data-step="5"><span class="step-circle">5</span><span class="step-label">PIN</span></li>
+      <li class="step-item" data-step="6"><span class="step-circle">6</span><span class="step-label">確認</span></li>
+      <li class="step-item" data-step="7"><span class="step-circle">7</span><span class="step-label">実行</span></li>
+    </ol>
+  </nav>
+
+  <!-- メインフォーム本体 -->
+  <main class="register-main">
+
+    <!-- ===================== Step 1：基本情報 ===================== -->
+    <section class="step-panel" data-panel="1">
+      <h2 class="step-heading">Step 1：基本情報</h2>
+      <p class="step-help">契約者・店舗・契約の基本情報を入力します。マスタGAS の clients シート / ユーザーSS settings に投入される項目です。</p>
+
+      <div class="form-row">
+        <label>契約者名（事業者名）<span class="required">*</span></label>
+        <input type="text" id="f1-contractor-name" maxlength="100">
+      </div>
+      <div class="form-row">
+        <label>代表者名 <span class="required">*</span></label>
+        <input type="text" id="f1-representative-name" maxlength="50">
+      </div>
+      <div class="form-row">
+        <label>住所 <span class="required">*</span></label>
+        <input type="text" id="f1-address" maxlength="200">
+      </div>
+      <div class="form-row">
+        <label>電話番号 <span class="required">*</span></label>
+        <input type="tel" id="f1-phone" maxlength="20" placeholder="例：03-1234-5678">
+        <p class="form-note">数字とハイフンのみ</p>
+      </div>
+      <div class="form-row">
+        <label>メールアドレス <span class="required">*</span></label>
+        <input type="email" id="f1-email" maxlength="100">
+      </div>
+      <div class="form-row">
+        <label>店舗名 <span class="required">*</span></label>
+        <input type="text" id="f1-store-name" maxlength="50">
+        <p class="form-note">屋号・呼称・店舗名のいずれでも可（PWA タイトル等で使用）</p>
+      </div>
+      <div class="form-row">
+        <label>営業時間</label>
+        <div class="business-hours">
+          <input type="time" id="f1-business-open" value="18:00">
+          <span>〜</span>
+          <input type="time" id="f1-business-close" value="02:00">
+          <label class="checkbox-inline">
+            <input type="checkbox" id="f1-close-next-day" checked> 翌日跨ぎ
+          </label>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>契約開始日 <span class="required">*</span></label>
+        <input type="date" id="f1-contract-start">
+      </div>
+      <div class="form-row">
+        <label>契約期間 <span class="required">*</span></label>
+        <select id="f1-contract-duration">
+          <option value="1">1年</option>
+          <option value="2">2年</option>
+          <option value="3">3年</option>
+          <option value="custom">カスタム（終了日を直接指定）</option>
+        </select>
+      </div>
+      <div class="form-row" id="f1-contract-end-row">
+        <label>契約終了日</label>
+        <input type="date" id="f1-contract-end" readonly class="readonly">
+        <p class="form-note">期間選択から自動算出（カスタム時のみ直接編集可）</p>
+      </div>
+      <div class="form-row">
+        <label>月額（円）<span class="required">*</span></label>
+        <input type="number" id="f1-monthly-fee" min="0" step="1" value="4980">
+      </div>
+
+      <div class="step-error" id="step1-error" hidden></div>
+    </section>
+
+    <!-- ===================== Step 2：タイムカード数 ===================== -->
+    <section class="step-panel" data-panel="2" hidden>
+      <h2 class="step-heading">Step 2：タイムカード数</h2>
+      <p class="step-help">タイムカード数によりグレード（アストラ／レオ）が自動派生します。0=アストラ、5以上=レオ。</p>
+
+      <div class="timecard-options">
+        <label class="timecard-option">
+          <input type="radio" name="f2-timecard" value="0">
+          <span class="timecard-option-label">0 <span class="timecard-option-sub">タイムカード非搭載</span></span>
+        </label>
+        <label class="timecard-option">
+          <input type="radio" name="f2-timecard" value="5" checked>
+          <span class="timecard-option-label">5 <span class="timecard-option-sub">レオ・標準</span></span>
+        </label>
+        <label class="timecard-option">
+          <input type="radio" name="f2-timecard" value="10">
+          <span class="timecard-option-label">10 <span class="timecard-option-sub">レオ・10名</span></span>
+        </label>
+        <label class="timecard-option">
+          <input type="radio" name="f2-timecard" value="15">
+          <span class="timecard-option-label">15 <span class="timecard-option-sub">レオ・15名</span></span>
+        </label>
+        <label class="timecard-option">
+          <input type="radio" name="f2-timecard" value="20">
+          <span class="timecard-option-label">20 <span class="timecard-option-sub">レオ・20名</span></span>
+        </label>
+      </div>
+
+      <div class="grade-derivation" id="f2-grade-display">
+        <span class="grade-derivation-badge">レオ判定</span>
+        <span class="grade-derivation-desc">PC版4項目構造（タイムカード・売上・コスト・出勤）</span>
+      </div>
+
+      <div class="step-error" id="step2-error" hidden></div>
+    </section>
+
+    <!-- ===================== Step 3：サービス・科目マスタ ===================== -->
+    <section class="step-panel" data-panel="3" hidden>
+      <h2 class="step-heading">Step 3：サービス・科目マスタ</h2>
+      <p class="step-help">ユーザーが日次入力で使うサービス名と、青色申告書互換の科目マスタを初期化します。後から運営ポータルでも編集可。</p>
+
+      <h3 class="sub-heading">サービスマスタ</h3>
+      <p class="step-help">空のままでも登録可。後でユーザー側スマホからも追加できます。</p>
+      <table class="data-table" id="register-service-table">
+        <thead>
+          <tr>
+            <th style="width: 60%;">サービス名</th>
+            <th style="width: 20%;">税率</th>
+            <th style="width: 20%;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="register-service-tbody"></tbody>
+      </table>
+      <button type="button" id="btn-add-service" class="btn-secondary">＋ サービスを追加</button>
+
+      <h3 class="sub-heading">科目マスタ（青色申告デフォルト 25 件）</h3>
+      <p class="step-help">固定科目（コード8〜25,31）は名称変更不可・税率のみ編集可。任意枠（コード26〜30）は名称も編集可。smartphoneVisible はスマホコスト入力画面での表示有無。</p>
+      <table class="data-table" id="register-cost-table">
+        <thead>
+          <tr>
+            <th style="width: 10%;">コード</th>
+            <th style="width: 35%;">科目名</th>
+            <th style="width: 15%;">税率</th>
+            <th style="width: 15%;">区分</th>
+            <th style="width: 25%;">スマホ表示</th>
+          </tr>
+        </thead>
+        <tbody id="register-cost-tbody"></tbody>
+      </table>
+
+      <div class="step-error" id="step3-error" hidden></div>
+    </section>
+
+    <!-- ===================== Step 4：ロゴ・テーマ ===================== -->
+    <section class="step-panel" data-panel="4" hidden>
+      <h2 class="step-heading">Step 4：ロゴ・テーマ</h2>
+      <p class="step-help">店舗ロゴ・ホーム画面アイコン・色を設定します。本Stepでは選択のみで実アップロードは Step 7（自動処理）で実施します。</p>
+
+      <div class="form-row">
+        <label>店舗ロゴ（240×60px 推奨）</label>
+        <div class="asset-picker">
+          <img id="preview-logo" class="asset-preview asset-preview--logo" alt="ロゴプレビュー">
+          <input type="file" id="f4-logo-file" accept="image/png,image/jpeg" hidden>
+          <button type="button" class="btn-secondary" id="btn-pick-logo">画像を選択</button>
+          <span class="asset-filename" id="f4-logo-filename">未選択</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>ホーム画面アイコン 192×192</label>
+        <div class="asset-picker">
+          <img id="preview-icon-192" class="asset-preview asset-preview--icon" alt="icon-192 プレビュー">
+          <input type="file" id="f4-icon192-file" accept="image/png,image/jpeg" hidden>
+          <button type="button" class="btn-secondary" id="btn-pick-icon-192">画像を選択</button>
+          <span class="asset-filename" id="f4-icon192-filename">未選択</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>ホーム画面アイコン 512×512</label>
+        <div class="asset-picker">
+          <img id="preview-icon-512" class="asset-preview asset-preview--icon" alt="icon-512 プレビュー">
+          <input type="file" id="f4-icon512-file" accept="image/png,image/jpeg" hidden>
+          <button type="button" class="btn-secondary" id="btn-pick-icon-512">画像を選択</button>
+          <span class="asset-filename" id="f4-icon512-filename">未選択</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>ロゴ背景色</label>
+        <input type="color" id="f4-logo-bg-color" value="#FFFFFF">
+        <input type="text" id="f4-logo-bg-color-text" maxlength="7" value="#FFFFFF" pattern="^#[0-9A-Fa-f]{6}$" class="color-text-input">
+      </div>
+
+      <div class="form-row">
+        <label>テーマカラー</label>
+        <div class="theme-color-row">
+          <div class="theme-presets" id="theme-presets">
+            <button type="button" class="theme-preset" data-color="#0B1842" title="宇宙色"></button>
+            <button type="button" class="theme-preset" data-color="#1B5E20" title="深緑"></button>
+            <button type="button" class="theme-preset" data-color="#B71C1C" title="深紅"></button>
+            <button type="button" class="theme-preset" data-color="#4A148C" title="深紫"></button>
+            <button type="button" class="theme-preset" data-color="#5D4037" title="深茶"></button>
+          </div>
+          <input type="color" id="f4-theme-color" value="#0B1842">
+          <input type="text" id="f4-theme-color-text" maxlength="7" value="#0B1842" pattern="^#[0-9A-Fa-f]{6}$" class="color-text-input">
+        </div>
+      </div>
+
+      <div class="step-error" id="step4-error" hidden></div>
+    </section>
+
+    <!-- ===================== Step 5：初期PIN ===================== -->
+    <section class="step-panel" data-panel="5" hidden>
+      <h2 class="step-heading">Step 5：初期PIN</h2>
+      <p class="step-help">オーナーログイン用の初期PIN を設定します。4〜8桁の数字。納品時にお客様へお渡しします。</p>
+
+      <div class="pin-mode">
+        <label class="radio-inline">
+          <input type="radio" name="f5-pin-mode" value="auto" checked> 自動生成（推奨・8桁）
+        </label>
+        <label class="radio-inline">
+          <input type="radio" name="f5-pin-mode" value="manual"> 手動指定
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label>PIN</label>
+        <input type="text" id="f5-pin" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" readonly class="readonly">
+        <button type="button" id="btn-regenerate-pin" class="btn-secondary">再生成</button>
+      </div>
+
+      <div class="pin-warning" id="f5-pin-warning" hidden></div>
+
+      <div class="step-error" id="step5-error" hidden></div>
+    </section>
+
+    <!-- ===================== Step 6：確認 ===================== -->
+    <section class="step-panel" data-panel="6" hidden>
+      <h2 class="step-heading">Step 6：確認</h2>
+      <p class="step-help">入力内容を確認し、問題なければ「登録実行」へ進んでください。Step 7 自動処理は次フェーズ実装予定のため、本フェーズでは押下不可です。</p>
+
+      <div id="summary-container" class="summary-container"><!-- buildSummary() で動的生成 --></div>
+
+      <div class="step-error" id="step6-error" hidden></div>
+    </section>
+
+    <!-- ===================== Step 7：実行（プレースホルダ） ===================== -->
+    <section class="step-panel" data-panel="7" hidden>
+      <h2 class="step-heading">Step 7：登録実行</h2>
+      <div class="phase-placeholder">
+        <p>Step 7 自動処理は <strong>次フェーズ 7-C</strong> で実装予定です。</p>
+        <p>本フェーズでは Step 1〜6 までの入力UI のみ動作確認します。</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 下部 sticky ナビゲーション -->
+  <div class="register-footer">
+    <button type="button" id="btn-back" class="btn-secondary" disabled>戻る</button>
+    <span class="footer-step-info" id="footer-step-info">Step 1 / 7</span>
+    <button type="button" id="btn-next" class="btn-primary">次へ</button>
+    <button type="button" id="btn-execute" class="btn-primary" hidden disabled title="Step 7 自動処理は次フェーズで実装予定">登録実行（次フェーズ実装予定）</button>
+  </div>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/register.js"></script>
+</body>
+</html>

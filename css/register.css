@@ -1,0 +1,533 @@
+/* css/register.css - 第7段階 小段階7-B 新規登録ウィザード用
+ * PC専用前提（min-width 1280px）。タブ構造は使わず、Step 1〜7 を縦遷移する。
+ * edit.html と統一感のあるスタイルを維持するため、base.css の変数を流用。
+ */
+
+html, body { min-width: 1280px; }
+
+/* ============ ヘッダー ============ */
+.register-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 32px;
+  background: var(--uz-deep-space, #0B1842);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.back-link {
+  color: #fff;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  transition: background 0.2s;
+}
+.back-link:hover { background: rgba(255,255,255,0.2); text-decoration: none; }
+.register-title {
+  flex: 1;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+.register-stage-badge {
+  background: var(--uz-accent, #C9A24B);
+  color: var(--uz-deep-space-deep, #060E2A);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* ============ ステッパー ============ */
+.stepper {
+  background: #fff;
+  border-bottom: 1px solid #e5e5e5;
+  padding: 20px 32px;
+  position: sticky;
+  top: 56px;
+  z-index: 90;
+}
+.stepper-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 0;
+  justify-content: space-between;
+  max-width: 900px;
+  margin: 0 auto;
+  position: relative;
+}
+.stepper-list::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  left: 28px;
+  right: 28px;
+  height: 2px;
+  background: #e0e0e0;
+  z-index: 0;
+}
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+}
+.step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  color: #888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #e0e0e0;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.step-label {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+}
+.step-item.step-current .step-circle {
+  background: var(--uz-deep-space, #0B1842);
+  color: #fff;
+  box-shadow: 0 0 0 1px var(--uz-deep-space, #0B1842), 0 0 0 4px rgba(11, 24, 66, 0.15);
+}
+.step-item.step-current .step-label {
+  color: var(--uz-deep-space, #0B1842);
+  font-weight: 700;
+}
+.step-item.step-done .step-circle {
+  background: #27ae60;
+  color: #fff;
+  box-shadow: 0 0 0 1px #27ae60;
+}
+.step-item.step-done .step-circle::before {
+  content: '✓';
+  font-size: 14px;
+  font-weight: 700;
+}
+.step-item.step-done .step-circle > * { display: none; }
+.step-item.step-done .step-label { color: #555; }
+.step-item.step-future { cursor: not-allowed; }
+.step-item.step-future .step-circle { background: #f0f0f0; color: #bbb; box-shadow: 0 0 0 1px #ddd; }
+
+/* ============ メイン ============ */
+.register-main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 32px 120px 32px;
+}
+.step-panel {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+}
+.step-panel[hidden] { display: none; }
+.step-heading {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--uz-deep-space, #0B1842);
+  margin: 0 0 8px 0;
+}
+.step-help {
+  font-size: 13px;
+  color: #666;
+  margin: 0 0 20px 0;
+  line-height: 1.6;
+}
+.sub-heading {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin: 24px 0 8px 0;
+  padding-top: 16px;
+  border-top: 1px dashed #e5e5e5;
+}
+
+/* ============ フォーム共通（edit.css と統一感） ============ */
+.form-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.form-row label {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+.form-row input[type="text"],
+.form-row input[type="email"],
+.form-row input[type="tel"],
+.form-row input[type="date"],
+.form-row input[type="time"],
+.form-row input[type="number"],
+.form-row select {
+  width: 100%;
+  max-width: 400px;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.form-row input:focus, .form-row select:focus {
+  outline: none;
+  border-color: var(--uz-deep-space, #0B1842);
+  box-shadow: 0 0 0 2px rgba(11, 24, 66, 0.1);
+}
+.form-row input.readonly, .readonly-text {
+  background: #f5f5f5;
+  color: #666;
+  cursor: not-allowed;
+}
+.form-row .required { color: #c00; }
+.form-note {
+  grid-column: 2;
+  font-size: 12px;
+  color: #888;
+  margin: 4px 0 0 0;
+}
+.business-hours {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.business-hours input[type="time"] { width: 120px; }
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  margin-left: 8px;
+  font-weight: 400;
+}
+.color-text-input {
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  width: 100px !important;
+}
+.form-row input[type="color"] {
+  width: 60px;
+  height: 36px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+/* ============ Step 2 タイムカードラジオ ============ */
+.timecard-options {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.timecard-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: #fafbfd;
+}
+.timecard-option:hover { border-color: var(--uz-deep-space, #0B1842); background: #fff; }
+.timecard-option input[type="radio"] { margin-bottom: 8px; }
+.timecard-option input[type="radio"]:checked + .timecard-option-label { color: var(--uz-deep-space, #0B1842); }
+.timecard-option:has(input:checked) {
+  border-color: var(--uz-deep-space, #0B1842);
+  background: rgba(11, 24, 66, 0.04);
+}
+.timecard-option-label {
+  font-size: 20px;
+  font-weight: 700;
+  color: #333;
+  text-align: center;
+}
+.timecard-option-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: #888;
+  margin-top: 4px;
+}
+.grade-derivation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #f7f7fa;
+  border-radius: 6px;
+}
+.grade-derivation-badge {
+  padding: 4px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  background: #f4d36c;
+  color: #5a4400;
+}
+.grade-derivation-badge--astra { background: #e0e0e0; color: #555; }
+.grade-derivation-badge--leo { background: #f4d36c; color: #5a4400; }
+.grade-derivation-desc {
+  font-size: 13px;
+  color: #555;
+}
+
+/* ============ テーブル（Step 3） ============ */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+.data-table th, .data-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  vertical-align: middle;
+}
+.data-table thead th {
+  background: #f7f7fa;
+  font-weight: 600;
+  color: #555;
+  font-size: 13px;
+}
+.data-table input[type="text"], .data-table select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 13px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.btn-icon-delete {
+  background: transparent;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-icon-delete:hover { background: #fee; border-color: #fcc; }
+.toggle-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.empty-row { text-align: center; color: #999; padding: 24px !important; }
+
+/* ============ Step 4 ロゴ・アイコン ============ */
+.asset-picker {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.asset-preview {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fafafa;
+  object-fit: contain;
+}
+.asset-preview--logo { width: 240px; height: 60px; }
+.asset-preview--icon { width: 64px; height: 64px; }
+.asset-filename {
+  font-size: 12px;
+  color: #666;
+  font-family: 'Courier New', monospace;
+}
+.theme-color-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.theme-presets {
+  display: flex;
+  gap: 6px;
+}
+.theme-preset {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #ccc;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.theme-preset:hover { transform: scale(1.1); box-shadow: 0 0 0 2px var(--uz-deep-space, #0B1842); }
+
+/* ============ Step 5 PIN ============ */
+.pin-mode {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+.radio-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.pin-warning {
+  margin-top: 8px;
+  padding: 10px 14px;
+  background: #fff3cd;
+  border-left: 4px solid #f0ad4e;
+  border-radius: 4px;
+  color: #856404;
+  font-size: 13px;
+}
+
+/* ============ Step エラー ============ */
+.step-error {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 4px;
+  color: #c00;
+  font-size: 13px;
+}
+
+/* ============ Step 6 確認画面 ============ */
+.summary-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.summary-section {
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.summary-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #f7f7fa;
+  border-bottom: 1px solid #e5e5e5;
+}
+.summary-section-header h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--uz-deep-space, #0B1842);
+  font-weight: 700;
+}
+.summary-edit-link {
+  font-size: 13px;
+  color: var(--uz-deep-space, #0B1842);
+  text-decoration: none;
+}
+.summary-edit-link:hover { text-decoration: underline; }
+.summary-list {
+  margin: 0;
+  padding: 12px 20px;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 8px 16px;
+}
+.summary-list dt {
+  font-weight: 500;
+  color: #666;
+  font-size: 13px;
+}
+.summary-list dd {
+  margin: 0;
+  font-size: 13px;
+  color: #333;
+  word-break: break-word;
+}
+.color-chip {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+
+/* ============ Step 7 プレースホルダ ============ */
+.phase-placeholder {
+  padding: 24px;
+  background: #fff8e1;
+  border: 1px solid #ffe0a0;
+  border-radius: 6px;
+  color: #5a4400;
+  line-height: 1.7;
+}
+.phase-placeholder p { margin: 4px 0; }
+
+/* ============ 下部 sticky ナビ ============ */
+.register-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  background: #fff;
+  border-top: 1px solid #e5e5e5;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+  z-index: 50;
+}
+.footer-step-info {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  color: #888;
+  font-weight: 500;
+}
+
+/* ============ ボタン状態（base.css 既存に補完） ============ */
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ============ トースト ============ */
+.toast {
+  position: fixed;
+  top: 80px;
+  right: 32px;
+  z-index: 300;
+  padding: 14px 24px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  max-width: 400px;
+}
+.toast[hidden] { display: none; }
+.toast--info { background: #2980b9; }
+.toast--success { background: #27ae60; }
+.toast--error { background: #c0392b; }
