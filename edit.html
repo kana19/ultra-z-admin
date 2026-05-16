@@ -81,13 +81,15 @@
       </div>
     </section>
 
-    <!-- §2 タイムカード設定 -->
+    <!-- §2 タイムカード・マスタ枠設定 -->
     <section class="edit-section" data-section="timecard">
       <div class="section-header">
-        <h2>2. タイムカード設定</h2>
+        <h2>2. タイムカード・マスタ枠設定</h2>
         <span class="dirty-indicator" hidden>● 変更あり</span>
       </div>
       <div class="section-body">
+        <p class="section-description">タイムカード数とマスタ件数枠（独立オプション）の設定。いずれも納品時の付与枠数を運営側で管理する項目。</p>
+
         <div class="form-row">
           <label>タイムカード数</label>
           <select id="f-timecard-count">
@@ -105,6 +107,29 @@
         </div>
         <div class="form-row warning-box" id="timecard-decrease-warning" hidden>
           <p>⚠ タイムカード数を減らすと、既存スタッフ枠の一部が無効化されます。本当に減らしますか？</p>
+        </div>
+
+        <!-- v0.5.1：マスタ件数枠（独立オプション） -->
+        <div class="quota-box">
+          <div class="quota-box-header">
+            <span class="quota-box-badge">運営内部管理</span>
+            <span class="quota-box-title">マスタ件数枠（付与枠数）</span>
+          </div>
+          <p class="quota-box-help">本店舗に付与する基本枠数。拡張オプション販売時はここで増枠する。ユーザーUIには表示されない管理項目。<br>※ 既存項目数より少ない数値を設定すると、超過分は薄黄色で警告表示されます（保存は可能・運営判断を尊重）。</p>
+          <div class="quota-row">
+            <div class="quota-field">
+              <label for="f-service-master-quota">売上品目マスタ枠数</label>
+              <input type="number" id="f-service-master-quota" min="1" step="1" value="5">
+              <span class="quota-unit">件</span>
+              <span class="quota-current" id="f-service-master-quota-current"></span>
+            </div>
+            <div class="quota-field">
+              <label for="f-cost-optional-quota">コストマスタ任意枠（26〜30）枠数</label>
+              <input type="number" id="f-cost-optional-quota" min="1" step="1" value="5">
+              <span class="quota-unit">件</span>
+              <span class="quota-current" id="f-cost-optional-quota-current"></span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -208,7 +233,7 @@
         <span class="dirty-indicator" hidden>● 変更あり</span>
       </div>
       <div class="section-body">
-        <p class="section-description">ユーザーが売上入力で使うサービス一覧。ユーザー自身がスマホ設定からも編集可能。</p>
+        <p class="section-description">ユーザーが売上入力で使うサービス一覧。ユーザー自身がスマホ設定からも編集可能。<br><span class="quota-status" id="service-master-quota-status"></span></p>
         <table class="data-table" id="service-table">
           <thead>
             <tr>
@@ -232,7 +257,7 @@
         <span class="dirty-indicator" hidden>● 変更あり</span>
       </div>
       <div class="section-body">
-        <p class="section-description">青色申告書互換のコスト科目。固定科目（コード8〜25,31）は名称変更不可・税率のみ編集可。任意枠（コード26〜30）は名称も編集可。smartphoneVisible はスマホコスト入力画面での表示有無。</p>
+        <p class="section-description">青色申告書互換のコスト科目。固定科目（コード8〜25,31）は名称変更不可・税率のみ編集可。任意枠（コード26〜30）は名称も編集可。smartphoneVisible はスマホコスト入力画面での表示有無。<br><span class="quota-status" id="cost-optional-quota-status"></span></p>
         <table class="data-table" id="cost-master-table">
           <thead>
             <tr>

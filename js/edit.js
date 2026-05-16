@@ -1,8 +1,11 @@
 /* ============================================================
- * ultra-z-admin / 第6段階 ユーザー編集画面
+ * ultra-z-admin / 第7段階 小段階7-C ユーザー編集画面
  *   - 単一スクロール9セクション構成（タブ構造なし）
- *   - 運営ポータル管轄：枠（タイムカード数・契約）＋全体設定
+ *   - 運営ポータル管轄：枠（タイムカード数・マスタ件数枠・契約）＋全体設定
  *     （スタッフ個別情報・取引先・売上・コスト・出勤データは管轄外・編集UIなし）
+ *   - 7-C：§2「タイムカード設定」を「タイムカード・マスタ枠設定」に拡張
+ *     serviceMasterQuota / costOptionalQuota を運営内部管理項目として編集可
+ *     §5/§6 description に「付与枠数 N 件 / 現在使用 M 件」を動的表示
  *
  * 名前空間：window.uzAdmin（app.js が AdminApp/AdminAuth を橋渡しして提供）
  * URL クエリ：?id=uz-XXXXXXXX を主、?clientId=uz-XXXXXXXX も後方互換で受領
@@ -131,15 +134,29 @@
     };
   }
 
-  // ============ §2 タイムカード ============
+  // ============ §2 タイムカード・マスタ枠 ============
   function renderTimecard() {
     document.getElementById('f-timecard-count').value = String(state.currentClient.timecardCount != null ? state.currentClient.timecardCount : 0);
+    // v0.5.1：マスタ件数枠
+    const smq = (state.currentClient.serviceMasterQuota != null && state.currentClient.serviceMasterQuota !== '')
+      ? Number(state.currentClient.serviceMasterQuota) : 5;
+    const coq = (state.currentClient.costOptionalQuota != null && state.currentClient.costOptionalQuota !== '')
+      ? Number(state.currentClient.costOptionalQuota) : 5;
+    document.getElementById('f-service-master-quota').value = String(smq);
+    document.getElementById('f-cost-optional-quota').value = String(coq);
     updateGradeDisplay();
+    updateQuotaCurrent();  // 件数枠 input の右側に「現在: N件」表示
+    updateQuotaStatusInTables();  // §5/§6 のセクション description 反映
   }
 
   function readTimecard() {
     state.currentClient.timecardCount = parseInt(document.getElementById('f-timecard-count').value, 10) || 0;
     state.currentClient.grade = computeGrade(state.currentClient.timecardCount);
+    // v0.5.1：マスタ件数枠
+    const smqRaw = parseInt(document.getElementById('f-service-master-quota').value, 10);
+    const coqRaw = parseInt(document.getElementById('f-cost-optional-quota').value, 10);
+    if (isFinite(smqRaw) && smqRaw >= 1) state.currentClient.serviceMasterQuota = smqRaw;
+    if (isFinite(coqRaw) && coqRaw >= 1) state.currentClient.costOptionalQuota = coqRaw;
   }
 
   function updateGradeDisplay() {
@@ -158,6 +175,46 @@
     if (n === 0) return 'アストラ';
     if (n >= 5) return 'レオ';
     return 'unknown';
+  }
+
+  // v0.5.1：マスタ件数枠 input 右側の「現在: N 件」表示
+  function updateQuotaCurrent() {
+    const serviceCount = (state.currentSettings && Array.isArray(state.currentSettings.serviceList))
+      ? state.currentSettings.serviceList.filter(function (s) { return s && s.name; }).length : 0;
+    const costOptionalUsedCount = (state.currentSettings && Array.isArray(state.currentSettings.costMasterList))
+      ? state.currentSettings.costMasterList.filter(function (c) {
+          return c && c.code >= 26 && c.code <= 30 && c.name && String(c.name).trim() !== '';
+        }).length : 0;
+
+    const smqEl = document.getElementById('f-service-master-quota-current');
+    const coqEl = document.getElementById('f-cost-optional-quota-current');
+    if (smqEl) smqEl.textContent = '（現在: ' + serviceCount + ' 件）';
+    if (coqEl) coqEl.textContent = '（任意枠使用: ' + costOptionalUsedCount + ' 件）';
+  }
+
+  // v0.5.1：セクション5/6 description に「付与枠数 N 件 / 使用 M 件」を表示
+  function updateQuotaStatusInTables() {
+    const smq = parseInt(document.getElementById('f-service-master-quota').value, 10) || 5;
+    const coq = parseInt(document.getElementById('f-cost-optional-quota').value, 10) || 5;
+    const serviceUsed = (state.currentSettings && Array.isArray(state.currentSettings.serviceList))
+      ? state.currentSettings.serviceList.filter(function (s) { return s && s.name; }).length : 0;
+    const costOptionalUsed = (state.currentSettings && Array.isArray(state.currentSettings.costMasterList))
+      ? state.currentSettings.costMasterList.filter(function (c) {
+          return c && c.code >= 26 && c.code <= 30 && c.name && String(c.name).trim() !== '';
+        }).length : 0;
+
+    const sStatus = document.getElementById('service-master-quota-status');
+    const cStatus = document.getElementById('cost-optional-quota-status');
+    if (sStatus) {
+      const over = serviceUsed > smq;
+      sStatus.innerHTML = '<strong>付与枠数：' + smq + ' 件 / 現在使用：' + serviceUsed + ' 件</strong>'
+        + (over ? ' <span class="quota-warning">⚠ 枠数を超えています（保存可・運営判断）</span>' : '');
+    }
+    if (cStatus) {
+      const over = costOptionalUsed > coq;
+      cStatus.innerHTML = '<strong>任意枠付与枠数：' + coq + ' 件 / 現在使用：' + costOptionalUsed + ' 件</strong>'
+        + (over ? ' <span class="quota-warning">⚠ 枠数を超えています（保存可・運営判断）</span>' : '');
+    }
   }
 
   // ============ §3 ロゴ・アイコン ============
@@ -317,12 +374,14 @@
     state.currentSettings.serviceList.push({ name: '', taxRate: 10 });
     renderServiceMaster();
     markDirty('service-master');
+    updateQuotaStatusInTables();
   }
 
   function deleteService(idx) {
     state.currentSettings.serviceList.splice(idx, 1);
     renderServiceMaster();
     markDirty('service-master');
+    updateQuotaStatusInTables();
   }
 
   // ============ §6 科目マスタ ============
@@ -561,6 +620,13 @@
     if (state.currentClient.contractStart !== state.initialClient.contractStart) fields.contractStart = state.currentClient.contractStart;
     if (state.currentClient.contractEnd !== state.initialClient.contractEnd) fields.contractEnd = state.currentClient.contractEnd;
     if (state.currentClient.monthlyFee !== state.initialClient.monthlyFee) fields.monthlyFee = state.currentClient.monthlyFee;
+    // v0.5.1：マスタ件数枠（運営内部管理項目）
+    if (Number(state.currentClient.serviceMasterQuota) !== Number(state.initialClient.serviceMasterQuota)) {
+      fields.serviceMasterQuota = state.currentClient.serviceMasterQuota;
+    }
+    if (Number(state.currentClient.costOptionalQuota) !== Number(state.initialClient.costOptionalQuota)) {
+      fields.costOptionalQuota = state.currentClient.costOptionalQuota;
+    }
     return fields;
   }
 
@@ -735,6 +801,8 @@
       'f-address': 'basic-info', 'f-phone': 'basic-info', 'f-email': 'basic-info',
       'f-business-open': 'basic-info', 'f-business-close': 'basic-info', 'f-close-next-day': 'basic-info',
       'f-timecard-count': 'timecard',
+      'f-service-master-quota': 'timecard',
+      'f-cost-optional-quota': 'timecard',
       'f-theme-color': 'logo-icon', 'f-theme-color-text': 'logo-icon',
       'f-logo-background-color': 'logo-icon', 'f-logo-background-color-text': 'logo-icon',
       'fv-clockin-menu': 'feature-visibility', 'fv-payroll-menu': 'feature-visibility',
@@ -753,6 +821,16 @@
 
     // タイムカード数変更でグレード再計算
     document.getElementById('f-timecard-count').addEventListener('change', updateGradeDisplay);
+
+    // v0.5.1：件数枠 input 変更で §5/§6 ステータス更新（read もして state へ吸い上げ）
+    document.getElementById('f-service-master-quota').addEventListener('input', function () {
+      readTimecard();  // 件数枠を state に反映
+      updateQuotaStatusInTables();
+    });
+    document.getElementById('f-cost-optional-quota').addEventListener('input', function () {
+      readTimecard();
+      updateQuotaStatusInTables();
+    });
 
     // 色 input ⇔ text 同期
     ['theme-color', 'logo-background-color'].forEach(function (name) {
@@ -789,10 +867,18 @@
     // サービスマスタ操作（イベント委譲）
     const svcBody = document.getElementById('service-table-body');
     svcBody.addEventListener('input', function (e) {
-      if (e.target.dataset.svcIdx !== undefined) markDirty('service-master');
+      if (e.target.dataset.svcIdx !== undefined) {
+        markDirty('service-master');
+        readServiceMaster();  // 空文字判定のため逐次 state へ吸い上げ
+        updateQuotaStatusInTables();
+      }
     });
     svcBody.addEventListener('change', function (e) {
-      if (e.target.dataset.svcIdx !== undefined) markDirty('service-master');
+      if (e.target.dataset.svcIdx !== undefined) {
+        markDirty('service-master');
+        readServiceMaster();
+        updateQuotaStatusInTables();
+      }
     });
     svcBody.addEventListener('click', function (e) {
       if (e.target.dataset.svcDel !== undefined) {
@@ -808,10 +894,18 @@
     // 科目マスタ操作（イベント委譲）
     const cmBody = document.getElementById('cost-master-table-body');
     cmBody.addEventListener('input', function (e) {
-      if (e.target.dataset.cmIdx !== undefined) markDirty('cost-master');
+      if (e.target.dataset.cmIdx !== undefined) {
+        markDirty('cost-master');
+        readCostMaster();
+        updateQuotaStatusInTables();
+      }
     });
     cmBody.addEventListener('change', function (e) {
-      if (e.target.dataset.cmIdx !== undefined) markDirty('cost-master');
+      if (e.target.dataset.cmIdx !== undefined) {
+        markDirty('cost-master');
+        readCostMaster();
+        updateQuotaStatusInTables();
+      }
     });
 
     // 認証セクション
