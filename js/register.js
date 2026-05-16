@@ -1,7 +1,11 @@
 /* ============================================================
- * ultra-z-admin / 第7段階 小段階7-B 新規登録ウィザード
+ * ultra-z-admin / 第7段階 小段階7-C 新規登録ウィザード
  *   - 7ステップ構成（Step 1〜6 入力 + Step 7 実行プレースホルダ）
- *   - Step 7 自動処理本体は次フェーズ 7-C で実装するため、本フェーズの
+ *   - 7-B からの変更点：
+ *       Step 3 にマスタ件数枠（serviceMasterQuota / costOptionalQuota）の運営内部管理入力を追加
+ *       defaultCostMasterList() のコード20〜25 を国税庁様式（令和7年分以降）と整合
+ *         （旧 7-B では 21=雑給 / 22=外注工賃 / ... と1つズレていた）
+ *   - Step 7 自動処理本体は次フェーズで実装するため、本フェーズの
  *     「登録実行」ボタンは disabled で停止する
  *   - state は全てクライアント側保持（マスタGAS 投入は次フェーズ）
  *
@@ -31,7 +35,14 @@
         monthlyFee: 4980
       },
       step2: { timecardCount: 5 },
-      step3: { serviceList: [], costMasterList: [] },
+      step3: {
+        // v0.5.1：マスタ件数枠（運営側内部管理項目・01_商品体系.md §4-2）
+        // 既定5・UI硬制限なし・拡張オプション販売時は edit 画面でも変更可
+        serviceMasterQuota: 5,
+        costOptionalQuota: 5,
+        serviceList: [],
+        costMasterList: []
+      },
       step4: {
         logoFile: null,
         icon192File: null,
@@ -137,32 +148,36 @@
   }
 
   // ============ Step3 既定値（青色申告デフォルト） ============
+  // 国税庁青色申告決算書（令和7年分以降）と整合した固定値。
+  // 03_データ仕様.md §1-2・01_商品体系.md §4-2 と完全整合。
+  // コード20/21/25 はアプリ全体（スタッフプルダウン・給与確定スポット突合・PC出勤管理科目別合計列・
+  // staffList.costCategory・税理士用CSV）でハードコードされているため、改廃禁止。
   function defaultCostMasterList() {
     return [
-      { code: 8,  name: '租税公課',   taxRate: 0,  smartphoneVisible: false },
-      { code: 9,  name: '荷造運賃',   taxRate: 10, smartphoneVisible: true  },
-      { code: 10, name: '水道光熱費', taxRate: 10, smartphoneVisible: true  },
-      { code: 11, name: '旅費交通費', taxRate: 10, smartphoneVisible: true  },
-      { code: 12, name: '通信費',     taxRate: 10, smartphoneVisible: true  },
-      { code: 13, name: '広告宣伝費', taxRate: 10, smartphoneVisible: true  },
-      { code: 14, name: '接待交際費', taxRate: 10, smartphoneVisible: true  },
-      { code: 15, name: '損害保険料', taxRate: 0,  smartphoneVisible: false },
-      { code: 16, name: '修繕費',     taxRate: 10, smartphoneVisible: true  },
-      { code: 17, name: '消耗品費',   taxRate: 10, smartphoneVisible: true  },
-      { code: 18, name: '減価償却費', taxRate: 0,  smartphoneVisible: false },
-      { code: 19, name: '福利厚生費', taxRate: 10, smartphoneVisible: true  },
-      { code: 20, name: '給料賃金',   taxRate: 0,  smartphoneVisible: false },
-      { code: 21, name: '雑給',       taxRate: 0,  smartphoneVisible: false },
-      { code: 22, name: '外注工賃',   taxRate: 10, smartphoneVisible: false },
-      { code: 23, name: '利子割引料', taxRate: 0,  smartphoneVisible: false },
-      { code: 24, name: '地代家賃',   taxRate: 10, smartphoneVisible: true  },
-      { code: 25, name: '貸倒金',     taxRate: 0,  smartphoneVisible: false },
-      { code: 26, name: '',           taxRate: 10, smartphoneVisible: false },
-      { code: 27, name: '',           taxRate: 10, smartphoneVisible: false },
-      { code: 28, name: '',           taxRate: 10, smartphoneVisible: false },
-      { code: 29, name: '',           taxRate: 10, smartphoneVisible: false },
-      { code: 30, name: '',           taxRate: 10, smartphoneVisible: false },
-      { code: 31, name: '雑費',       taxRate: 10, smartphoneVisible: true  }
+      { code: 8,  name: '租税公課',       taxRate: 0,  smartphoneVisible: false },
+      { code: 9,  name: '荷造運賃',       taxRate: 10, smartphoneVisible: true  },
+      { code: 10, name: '水道光熱費',     taxRate: 10, smartphoneVisible: true  },
+      { code: 11, name: '旅費交通費',     taxRate: 10, smartphoneVisible: true  },
+      { code: 12, name: '通信費',         taxRate: 10, smartphoneVisible: true  },
+      { code: 13, name: '広告宣伝費',     taxRate: 10, smartphoneVisible: true  },
+      { code: 14, name: '接待交際費',     taxRate: 10, smartphoneVisible: true  },
+      { code: 15, name: '損害保険料',     taxRate: 0,  smartphoneVisible: false },
+      { code: 16, name: '修繕費',         taxRate: 10, smartphoneVisible: true  },
+      { code: 17, name: '消耗品費',       taxRate: 10, smartphoneVisible: true  },
+      { code: 18, name: '減価償却費',     taxRate: 0,  smartphoneVisible: false },
+      { code: 19, name: '福利厚生費',     taxRate: 10, smartphoneVisible: true  },
+      { code: 20, name: '給料賃金',       taxRate: 0,  smartphoneVisible: false },
+      { code: 21, name: '外注工賃',       taxRate: 10, smartphoneVisible: false },
+      { code: 22, name: '利子割引料',     taxRate: 0,  smartphoneVisible: false },
+      { code: 23, name: '地代家賃',       taxRate: 10, smartphoneVisible: true  },
+      { code: 24, name: '貸倒金',         taxRate: 0,  smartphoneVisible: false },
+      { code: 25, name: '税理士等の報酬', taxRate: 10, smartphoneVisible: false },
+      { code: 26, name: '',               taxRate: 10, smartphoneVisible: false },
+      { code: 27, name: '',               taxRate: 10, smartphoneVisible: false },
+      { code: 28, name: '',               taxRate: 10, smartphoneVisible: false },
+      { code: 29, name: '',               taxRate: 10, smartphoneVisible: false },
+      { code: 30, name: '',               taxRate: 10, smartphoneVisible: false },
+      { code: 31, name: '雑費',           taxRate: 10, smartphoneVisible: true  }
     ];
   }
   function initStep3Defaults() {
@@ -214,7 +229,7 @@
       $('btn-execute').hidden = true;
     }
     // Step 別の遅延描画
-    if (n === 3) renderServiceTable() && renderCostTable();
+    if (n === 3) { renderServiceTable(); renderCostTable(); paintStep3(); }
     if (n === 6) {
       readAllSteps();
       $('summary-container').innerHTML = buildSummary();
@@ -248,6 +263,14 @@
     const radios = document.querySelectorAll('input[name="f2-timecard"]');
     radios.forEach(function (r) { r.checked = (parseInt(r.value, 10) === RegisterState.data.step2.timecardCount); });
     updateGradeDerivation();
+  }
+  function paintStep3() {
+    // v0.5.1：付与枠数を state から input に復元
+    const s3 = RegisterState.data.step3;
+    const smqEl = $('f3-service-master-quota');
+    const coqEl = $('f3-cost-optional-quota');
+    if (smqEl) smqEl.value = s3.serviceMasterQuota;
+    if (coqEl) coqEl.value = s3.costOptionalQuota;
   }
   function paintStep4() {
     const s = RegisterState.data.step4;
@@ -323,6 +346,26 @@
   }
 
   function readStep3AndValidate() {
+    // v0.5.1：付与枠数を input から state に反映
+    const s3 = RegisterState.data.step3;
+    const smqEl = $('f3-service-master-quota');
+    const coqEl = $('f3-cost-optional-quota');
+    if (smqEl) {
+      const v = parseInt(smqEl.value, 10);
+      if (!isFinite(v) || v < 1) {
+        showStepError('step3-error', '売上品目マスタの付与枠数は1以上の整数で指定してください');
+        return false;
+      }
+      s3.serviceMasterQuota = v;
+    }
+    if (coqEl) {
+      const v = parseInt(coqEl.value, 10);
+      if (!isFinite(v) || v < 1) {
+        showStepError('step3-error', 'コストマスタ任意枠の付与枠数は1以上の整数で指定してください');
+        return false;
+      }
+      s3.costOptionalQuota = v;
+    }
     // サービス・科目マスタは行内 input を逐次読込（イベント側で随時 state に反映している前提）
     // 念のため最終同期
     syncServiceTableToState();
@@ -403,6 +446,7 @@
     showStep(next);
     // 描画後の paint（state を form に反映）
     if (next === 2) paintStep2();
+    else if (next === 3) paintStep3();
     else if (next === 4) paintStep4();
     else if (next === 5) paintStep5();
   }
@@ -413,13 +457,14 @@
     // 現Stepの入力を一旦保存（戻ったら復元可能に）
     if (cur === 1) readStep1AndValidate();
     else if (cur === 2) readStep2AndValidate();
-    else if (cur === 3) syncServiceTableToState() & syncCostTableToState();
+    else if (cur === 3) { syncServiceTableToState(); syncCostTableToState(); readStep3QuotasSilent(); }
     else if (cur === 4) readStep4AndValidate();
     else if (cur === 5) readStep5AndValidate();
     const prev = cur - 1;
     showStep(prev);
     if (prev === 1) paintStep1();
     else if (prev === 2) paintStep2();
+    else if (prev === 3) paintStep3();
     else if (prev === 4) paintStep4();
     else if (prev === 5) paintStep5();
   }
@@ -432,14 +477,31 @@
     const cur = RegisterState.currentStep;
     if (cur === 1) readStep1AndValidate();
     else if (cur === 2) readStep2AndValidate();
-    else if (cur === 3) syncServiceTableToState() & syncCostTableToState();
+    else if (cur === 3) { syncServiceTableToState(); syncCostTableToState(); readStep3QuotasSilent(); }
     else if (cur === 4) readStep4AndValidate();
     else if (cur === 5) readStep5AndValidate();
     showStep(target);
     if (target === 1) paintStep1();
     else if (target === 2) paintStep2();
+    else if (target === 3) paintStep3();
     else if (target === 4) paintStep4();
     else if (target === 5) paintStep5();
+  }
+
+  // v0.5.1：戻る／円ジャンプ時の付与枠数だけはバリデーション抜きで state へ吸い上げる
+  // （バリデーションエラーは「次へ」時のみ表示）
+  function readStep3QuotasSilent() {
+    const s3 = RegisterState.data.step3;
+    const smqEl = $('f3-service-master-quota');
+    const coqEl = $('f3-cost-optional-quota');
+    if (smqEl) {
+      const v = parseInt(smqEl.value, 10);
+      if (isFinite(v) && v >= 1) s3.serviceMasterQuota = v;
+    }
+    if (coqEl) {
+      const v = parseInt(coqEl.value, 10);
+      if (isFinite(v) && v >= 1) s3.costOptionalQuota = v;
+    }
   }
 
   // ============ Step 1 補助 ============
@@ -680,6 +742,7 @@
         ['グレード派生', grade]
       ]) +
       section('Step 3：サービス・科目マスタ', 3, [
+        ['付与枠数（運営内部管理）', '売上品目マスタ ' + s3.serviceMasterQuota + ' 件 / コストマスタ任意枠 ' + s3.costOptionalQuota + ' 件'],
         ['サービスマスタ', serviceText],
         ['科目マスタ', '青色申告デフォルト 25件 / 任意枠使用 ' + customCostCount + ' 件 / スマホ表示 ' + visibleCount + ' 件']
       ]) +
@@ -705,6 +768,7 @@
         gotoStep(target);
         if (target === 1) paintStep1();
         else if (target === 2) paintStep2();
+        else if (target === 3) paintStep3();
         else if (target === 4) paintStep4();
         else if (target === 5) paintStep5();
       });
@@ -717,7 +781,7 @@
     $('btn-next').addEventListener('click', goNext);
     $('btn-back').addEventListener('click', goBack);
     $('btn-execute').addEventListener('click', function () {
-      alert('Step 7 自動処理は次フェーズ 7-C で実装予定です。\n\n本フェーズ（7-B）は Step 1〜6 の入力UI までの実装範囲です。');
+      alert('Step 7 自動処理本体は次フェーズで実装予定です。\n\n本フェーズ（7-C）は Step 3 マスタ件数枠の運営内部管理項目追加までの実装範囲です。');
     });
 
     // ステッパー円クリック

@@ -14,7 +14,7 @@
   <header class="register-header">
     <a href="dashboard.html" class="back-link">‹ ユーザー一覧へ</a>
     <h1 class="register-title">新規登録ウィザード</h1>
-    <span class="register-stage-badge">第7段階 / 小段階7-B</span>
+    <span class="register-stage-badge">第7段階 / 小段階7-C</span>
   </header>
 
   <!-- ステッパー -->
@@ -141,6 +141,27 @@
     <section class="step-panel" data-panel="3" hidden>
       <h2 class="step-heading">Step 3：サービス・科目マスタ</h2>
       <p class="step-help">ユーザーが日次入力で使うサービス名と、青色申告書互換の科目マスタを初期化します。後から運営ポータルでも編集可。</p>
+
+      <!-- v0.5.1：マスタ件数枠（運営側内部管理項目） -->
+      <div class="quota-box">
+        <div class="quota-box-header">
+          <span class="quota-box-badge">運営内部管理</span>
+          <span class="quota-box-title">マスタ件数枠（付与枠数）</span>
+        </div>
+        <p class="quota-box-help">本店舗に付与する基本枠数。拡張オプション販売時はここで増枠する（後から edit 画面でも変更可）。ユーザーUIには表示されない管理項目。</p>
+        <div class="quota-row">
+          <div class="quota-field">
+            <label for="f3-service-master-quota">売上品目マスタ枠数</label>
+            <input type="number" id="f3-service-master-quota" min="1" step="1" value="5">
+            <span class="quota-unit">件</span>
+          </div>
+          <div class="quota-field">
+            <label for="f3-cost-optional-quota">コストマスタ任意枠（26〜30）枠数</label>
+            <input type="number" id="f3-cost-optional-quota" min="1" step="1" value="5">
+            <span class="quota-unit">件</span>
+          </div>
+        </div>
+      </div>
 
       <h3 class="sub-heading">サービスマスタ</h3>
       <p class="step-help">空のままでも登録可。後でユーザー側スマホからも追加できます。</p>

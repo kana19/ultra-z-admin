@@ -341,6 +341,75 @@ html, body { min-width: 1280px; }
 }
 .empty-row { text-align: center; color: #999; padding: 24px !important; }
 
+/* ============ Step 3 マスタ件数枠（運営内部管理） v0.5.1 ============ */
+.quota-box {
+  background: #f7f4ec;
+  border: 1px solid #e0d4a8;
+  border-left: 4px solid var(--uz-accent, #C9A24B);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+}
+.quota-box-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.quota-box-badge {
+  background: var(--uz-accent, #C9A24B);
+  color: var(--uz-deep-space-deep, #060E2A);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.quota-box-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #5a4400;
+}
+.quota-box-help {
+  font-size: 12px;
+  color: #6b5a30;
+  margin: 0 0 12px 0;
+  line-height: 1.6;
+}
+.quota-row {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.quota-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.quota-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+.quota-field input[type="number"] {
+  width: 80px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: right;
+  font-family: inherit;
+}
+.quota-field input[type="number"]:focus {
+  outline: none;
+  border-color: var(--uz-deep-space, #0B1842);
+  box-shadow: 0 0 0 2px rgba(11, 24, 66, 0.1);
+}
+.quota-unit {
+  font-size: 13px;
+  color: #666;
+}
+
 /* ============ Step 4 ロゴ・アイコン ============ */
 .asset-picker {
   display: flex;
