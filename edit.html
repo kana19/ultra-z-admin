@@ -88,7 +88,7 @@
         <span class="dirty-indicator" hidden>● 変更あり</span>
       </div>
       <div class="section-body">
-        <p class="section-description">タイムカード数とマスタ件数枠（独立オプション）の設定。いずれも納品時の付与枠数を運営側で管理する項目。</p>
+        <p class="section-description">タイムカード数とマスタ件数枠（独立オプション）の設定。タイムカード数はグレード派生・マスタ件数枠（S/P/C）はマスタ拡張オプション販売実績の把握。いずれも運営側の内部管理項目。</p>
 
         <div class="form-row">
           <label>タイムカード数</label>
@@ -109,7 +109,8 @@
           <p>⚠ タイムカード数を減らすと、既存スタッフ枠の一部が無効化されます。本当に減らしますか？</p>
         </div>
 
-        <!-- v0.5.1：マスタ件数枠（独立オプション） -->
+        <!-- 6-D：マスタ件数枠（独立オプション・3軸 S/P/C）
+             01_商品体系.md §4-2 基本枠：S=5 / P=3 / C=5 -->
         <div class="quota-box">
           <div class="quota-box-header">
             <span class="quota-box-badge">運営内部管理</span>
@@ -118,13 +119,19 @@
           <p class="quota-box-help">本店舗に付与する基本枠数。拡張オプション販売時はここで増枠する。ユーザーUIには表示されない管理項目。<br>※ 既存項目数より少ない数値を設定すると、超過分は薄黄色で警告表示されます（保存は可能・運営判断を尊重）。</p>
           <div class="quota-row">
             <div class="quota-field">
-              <label for="f-service-master-quota">売上品目マスタ枠数</label>
+              <label for="f-service-master-quota">サービスマスタ枠数</label>
               <input type="number" id="f-service-master-quota" min="1" step="1" value="5">
               <span class="quota-unit">件</span>
               <span class="quota-current" id="f-service-master-quota-current"></span>
             </div>
             <div class="quota-field">
-              <label for="f-cost-optional-quota">コストマスタ任意枠（26〜30）枠数</label>
+              <label for="f-purchase-master-quota">仕入マスタ枠数</label>
+              <input type="number" id="f-purchase-master-quota" min="1" step="1" value="3">
+              <span class="quota-unit">件</span>
+              <span class="quota-current" id="f-purchase-master-quota-current"></span>
+            </div>
+            <div class="quota-field">
+              <label for="f-cost-optional-quota">販管費マスタ任意枠（26〜30）枠数</label>
               <input type="number" id="f-cost-optional-quota" min="1" step="1" value="5">
               <span class="quota-unit">件</span>
               <span class="quota-current" id="f-cost-optional-quota-current"></span>
@@ -250,21 +257,47 @@
       </div>
     </section>
 
-    <!-- §6 科目マスタ -->
-    <section class="edit-section" data-section="cost-master">
+    <!-- §5-2 仕入マスタ（6-D 新設・03_データ仕様.md §1-3 / 04_運営ポータル.md §4-1 セクション5-2）-->
+    <section class="edit-section" data-section="purchase-master">
       <div class="section-header">
-        <h2>6. 科目マスタ</h2>
+        <h2>5-2. 仕入マスタ</h2>
         <span class="dirty-indicator" hidden>● 変更あり</span>
       </div>
       <div class="section-body">
-        <p class="section-description">青色申告書互換のコスト科目。固定科目（コード8〜25,31）は名称変更不可・税率のみ編集可。任意枠（コード26〜30）は名称も編集可。smartphoneVisible はスマホコスト入力画面での表示有無。<br><span class="quota-status" id="cost-optional-quota-status"></span></p>
+        <p class="section-description">業種固有の仕入原価科目を登録します。コストシート D列='1'（仕入原価）として記録され、青色申告決算書の「売上原価」に集計されます。基本枠：3件（運営付与）・ユーザーもスマホ設定から枠内で追加可能。<br><span class="quota-status" id="purchase-master-quota-status"></span></p>
+        <table class="data-table" id="purchase-master-table">
+          <thead>
+            <tr>
+              <th style="width: 12%;">コード</th>
+              <th style="width: 48%;">科目名</th>
+              <th style="width: 20%;">税率</th>
+              <th style="width: 12%;">スマホ表示</th>
+              <th style="width: 8%;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="purchase-master-table-body">
+            <!-- JS で動的生成 -->
+          </tbody>
+        </table>
+        <button type="button" id="btn-add-purchase" class="btn-secondary">＋ 仕入科目を追加</button>
+      </div>
+    </section>
+
+    <!-- §6 販管費マスタ（6-D：「科目マスタ」→「販管費マスタ」改名） -->
+    <section class="edit-section" data-section="cost-master">
+      <div class="section-header">
+        <h2>6. 販管費マスタ</h2>
+        <span class="dirty-indicator" hidden>● 変更あり</span>
+      </div>
+      <div class="section-body">
+        <p class="section-description">青色申告書互換の販管費科目（コストシート D列='2'）。固定枠（コード8〜25,31）は名称変更不可・税率のみ編集可。任意枠（コード26〜30）は業種固有の販管費科目（団体会費・看板料等）として名称も編集可。<br>⚠ 仕入原価科目（食材費・商品仕入等）は本マスタではなく <strong>5-2 仕入マスタ</strong> に登録してください。<br><span class="quota-status" id="cost-optional-quota-status"></span></p>
         <table class="data-table" id="cost-master-table">
           <thead>
             <tr>
               <th style="width: 10%;">コード</th>
               <th style="width: 35%;">科目名</th>
               <th style="width: 15%;">税率</th>
-              <th style="width: 15%;">区分</th>
+              <th style="width: 15%;">枠</th>
               <th style="width: 25%;">スマホ表示</th>
             </tr>
           </thead>
