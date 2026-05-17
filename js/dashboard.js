@@ -1,13 +1,16 @@
 /* ============================================================
  * ultra-z-admin / ダッシュボード（ユーザー一覧）スクリプト
- * 第7段階 小段階7-C：マスタ件数枠（clients K/L列）の一覧表示対応
+ * 第7段階 小段階6-D：仕入原価マスタ purchaseMasterList 対応・clients 13列化
+ *   - 7-C：マスタ件数枠（K=serviceMasterQuota / L=costOptionalQuota）の一覧表示
+ *   - 6-D：clients 13列化（K=S / L=P / M=C）に追随
+ *     - L=purchaseMasterQuota（新設・既定3）・M=costOptionalQuota（旧L列から繰下げ）
+ *     - clients-table の「マスタ枠」セルを S / P / C の3軸表示に拡張
+ *     - 拡張枠判定：S>5 OR P>3 OR C>5 のいずれかで薄黄色強調
  *   - 第5-C で確立した6シナリオ（空状態／再読み込み／アストラ／レオ／
  *     セッション失効遷移／認証エラー遷移）の挙動を完全維持
  *   - 認証エラー判定を AdminApp.handleAuthError 経由に集約
  *     （新action の code 形式・旧 listClients の error/detail.error 形式の両対応）
  *   - clients-table に「操作」列を追加し、各行に edit.html への遷移リンクを配置
- *   - 7-C：clients-table に「マスタ枠（S/C）」列追加
- *     serviceMasterQuota / costOptionalQuota を表示・拡張枠（5超）は薄黄色強調
  *
  * 依存：app.js → auth.js → dashboard.js の順で読み込むこと（HTML側で保証）。
  * ============================================================ */
@@ -145,17 +148,26 @@
       var grade = c.grade || 'unknown';
       var status = c.contractStatus || '';
       var safeId = escapeHTML(c.clientId);
-      // 7-C：マスタ件数枠（運営内部管理）
-      //  - サーバー側で空欄は5に補完済（_normalizeQuota_）だが念のためフロント側でもガード
-      //  - 基本枠（5）超過は td-quota--expanded で薄黄色強調
+      // 6-D：マスタ件数枠（運営内部管理・3軸）
+      //  - サーバー側（_buildClientRecord_）で空欄は既定値に補完済
+      //    （S=5 / P=3 / C=5）だが念のためフロント側でもガード
+      //  - 基本枠超過は td-quota--expanded で薄黄色強調
+      //    （S>5 OR P>3 OR C>5 のいずれかで「拡張枠あり」と判定）
       var smq = (c.serviceMasterQuota != null && c.serviceMasterQuota !== '')
         ? Number(c.serviceMasterQuota) : 5;
+      var pmq = (c.purchaseMasterQuota != null && c.purchaseMasterQuota !== '')
+        ? Number(c.purchaseMasterQuota) : 3;
       var coq = (c.costOptionalQuota != null && c.costOptionalQuota !== '')
         ? Number(c.costOptionalQuota) : 5;
-      var quotaExpanded = (smq > 5 || coq > 5);
+      var quotaExpanded = (smq > 5 || pmq > 3 || coq > 5);
       var quotaCellClass = 'td-quota' + (quotaExpanded ? ' td-quota--expanded' : '');
-      var quotaCell = '<td class="' + quotaCellClass + '" title="売上品目マスタ ' + smq + ' 件 / コストマスタ任意枠 ' + coq + ' 件">'
-        + escapeHTML(smq) + '<span class="quota-sep">/</span>' + escapeHTML(coq)
+      var quotaTitle = 'サービスマスタ ' + smq + ' 件 / '
+                     + '仕入原価マスタ ' + pmq + ' 件 / '
+                     + '販管費マスタ任意枠 ' + coq + ' 件';
+      var quotaCell = '<td class="' + quotaCellClass + '" title="' + escapeHTML(quotaTitle) + '">'
+        + escapeHTML(smq) + '<span class="quota-sep">/</span>'
+        + escapeHTML(pmq) + '<span class="quota-sep">/</span>'
+        + escapeHTML(coq)
         + '</td>';
       return [
         '<tr>',

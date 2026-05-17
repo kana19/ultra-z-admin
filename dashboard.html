@@ -61,7 +61,8 @@
       color: var(--color-danger);
       font-weight: 700;
     }
-    /* 7-C：clients テーブル「マスタ枠」列のスタイル */
+    /* 7-C：clients テーブル「マスタ枠」列のスタイル
+       6-D：3軸（S/P/C）表示に拡張 */
     .th-sub {
       display: block;
       font-size: 10px;
@@ -77,7 +78,7 @@
       white-space: nowrap;
     }
     .td-quota .quota-sep { color: var(--color-text-muted); margin: 0 4px; }
-    /* 基本枠（5以下）は通常表示・拡張枠ありは薄い金色背景で強調 */
+    /* 基本枠（S=5/P=3/C=5以下）は通常表示・拡張枠ありは薄い金色背景で強調 */
     .td-quota--expanded {
       background: #fdf4dc;
       font-weight: 700;
@@ -135,7 +136,7 @@
               <th>契約状態</th>
               <th>月額</th>
               <th>契約開始</th>
-              <th title="売上品目マスタ / コストマスタ任意枠の付与枠数">マスタ枠<br><span class="th-sub">S / C</span></th>
+              <th title="売上品目マスタ / 仕入原価マスタ / 販管費マスタ任意枠 の付与枠数">マスタ枠<br><span class="th-sub">S / P / C</span></th>
               <th>操作</th>
             </tr>
           </thead>
@@ -172,7 +173,7 @@
         </div>
         <div class="kv-grid__item">
           <span class="kv-grid__label">ビルド段階</span>
-          <span class="kv-grid__value">第7段階 小段階7-C（マスタ件数枠・clients 12列化）</span>
+          <span class="kv-grid__value">第7段階 小段階6-D（仕入原価マスタ・clients 13列化 S/P/C）</span>
         </div>
       </div>
 
