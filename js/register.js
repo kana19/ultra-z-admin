@@ -1,10 +1,17 @@
 /* ============================================================
- * ultra-z-admin / 第7段階 小段階7-C 新規登録ウィザード
+ * ultra-z-admin / 第7段階 小段階6-D 新規登録ウィザード
  *   - 7ステップ構成（Step 1〜6 入力 + Step 7 実行プレースホルダ）
- *   - 7-B からの変更点：
- *       Step 3 にマスタ件数枠（serviceMasterQuota / costOptionalQuota）の運営内部管理入力を追加
- *       defaultCostMasterList() のコード20〜25 を国税庁様式（令和7年分以降）と整合
- *         （旧 7-B では 21=雑給 / 22=外注工賃 / ... と1つズレていた）
+ *   - 6-D 改修点：
+ *       Step 3 を2段構成に再編：
+ *         3-1：マスタ件数枠付与（運営内部管理・3軸 S/P/C）
+ *               serviceMasterQuota（既定5）/ purchaseMasterQuota（新設・既定3）/ costOptionalQuota（既定5）
+ *         3-2：3種マスタ雛形投入
+ *               ①サービスマスタ（settings.B3）/ ②仕入マスタ（settings.B5・新設）/ ③販管費マスタ（settings.B4）
+ *       仕入マスタは ID プレフィックス `pNNN` 連番自動採番
+ *       「科目マスタ」→「販管費マスタ」改名・「区分」→「枠」（用語整合）
+ *       Step 6 確認サマリーに 3軸件数枠表示・仕入マスタ件数表示を追加
+ *       業種別自動判定機構は導入しない（00_原則.md §4-5）
+ *   - 7-C：マスタ件数枠（2軸時代）・defaultCostMasterList の青色申告整合
  *   - Step 7 自動処理本体は次フェーズで実装するため、本フェーズの
  *     「登録実行」ボタンは disabled で停止する
  *   - state は全てクライアント側保持（マスタGAS 投入は次フェーズ）
@@ -36,11 +43,13 @@
       },
       step2: { timecardCount: 5 },
       step3: {
-        // v0.5.1：マスタ件数枠（運営側内部管理項目・01_商品体系.md §4-2）
-        // 既定5・UI硬制限なし・拡張オプション販売時は edit 画面でも変更可
+        // 6-D：マスタ件数枠（運営側内部管理項目・01_商品体系.md §4-2）
+        // 基本枠：S=5 / P=3 / C=5・UI硬制限なし・拡張オプション販売時は edit 画面でも変更可
         serviceMasterQuota: 5,
+        purchaseMasterQuota: 3,
         costOptionalQuota: 5,
         serviceList: [],
+        purchaseMasterList: [],   // 6-D：新設・settings.B5 へ投入
         costMasterList: []
       },
       step4: {
@@ -180,8 +189,22 @@
       { code: 31, name: '雑費',           taxRate: 10, smartphoneVisible: true  }
     ];
   }
+  // 6-D：仕入原価マスタ汎用フォールバック雛形（3件）
+  // マスタGAS v0.5.3 の _defaultPurchaseMasterList_ と完全整合。
+  // ID プレフィックス `pNNN` 連番（コストシート F列に格納される値と一致）。
+  // 業種別自動判定機構はなし（00_原則.md §4-5）。
+  // 業種カスタマイズはターゲット社が納品時にこのウィザードまたは edit 画面で手作業投入。
+  function defaultPurchaseMasterList() {
+    return [
+      { id: 'p001', name: '仕入',     defaultTaxRate: 10, smartphoneVisible: true },
+      { id: 'p002', name: '材料費',   defaultTaxRate: 10, smartphoneVisible: true },
+      { id: 'p003', name: '消耗品',   defaultTaxRate: 10, smartphoneVisible: true }
+    ];
+  }
+
   function initStep3Defaults() {
     RegisterState.data.step3.serviceList = [];
+    RegisterState.data.step3.purchaseMasterList = defaultPurchaseMasterList();
     RegisterState.data.step3.costMasterList = defaultCostMasterList();
   }
 
@@ -229,7 +252,7 @@
       $('btn-execute').hidden = true;
     }
     // Step 別の遅延描画
-    if (n === 3) { renderServiceTable(); renderCostTable(); paintStep3(); }
+    if (n === 3) { renderServiceTable(); renderPurchaseTable(); renderCostTable(); paintStep3(); }
     if (n === 6) {
       readAllSteps();
       $('summary-container').innerHTML = buildSummary();
@@ -265,11 +288,13 @@
     updateGradeDerivation();
   }
   function paintStep3() {
-    // v0.5.1：付与枠数を state から input に復元
+    // 6-D：付与枠数を state から input に復元（3軸 S/P/C）
     const s3 = RegisterState.data.step3;
     const smqEl = $('f3-service-master-quota');
+    const pmqEl = $('f3-purchase-master-quota');
     const coqEl = $('f3-cost-optional-quota');
     if (smqEl) smqEl.value = s3.serviceMasterQuota;
+    if (pmqEl) pmqEl.value = s3.purchaseMasterQuota;
     if (coqEl) coqEl.value = s3.costOptionalQuota;
   }
   function paintStep4() {
@@ -346,33 +371,47 @@
   }
 
   function readStep3AndValidate() {
-    // v0.5.1：付与枠数を input から state に反映
+    // 6-D：付与枠数を input から state に反映（3軸 S/P/C）
     const s3 = RegisterState.data.step3;
     const smqEl = $('f3-service-master-quota');
+    const pmqEl = $('f3-purchase-master-quota');
     const coqEl = $('f3-cost-optional-quota');
     if (smqEl) {
       const v = parseInt(smqEl.value, 10);
       if (!isFinite(v) || v < 1) {
-        showStepError('step3-error', '売上品目マスタの付与枠数は1以上の整数で指定してください');
+        showStepError('step3-error', 'サービスマスタの付与枠数は1以上の整数で指定してください');
         return false;
       }
       s3.serviceMasterQuota = v;
     }
+    if (pmqEl) {
+      const v = parseInt(pmqEl.value, 10);
+      if (!isFinite(v) || v < 1) {
+        showStepError('step3-error', '仕入マスタの付与枠数は1以上の整数で指定してください');
+        return false;
+      }
+      s3.purchaseMasterQuota = v;
+    }
     if (coqEl) {
       const v = parseInt(coqEl.value, 10);
       if (!isFinite(v) || v < 1) {
-        showStepError('step3-error', 'コストマスタ任意枠の付与枠数は1以上の整数で指定してください');
+        showStepError('step3-error', '販管費マスタ任意枠の付与枠数は1以上の整数で指定してください');
         return false;
       }
       s3.costOptionalQuota = v;
     }
-    // サービス・科目マスタは行内 input を逐次読込（イベント側で随時 state に反映している前提）
+    // サービス・仕入・販管費マスタは行内 input を逐次読込（イベント側で随時 state に反映している前提）
     // 念のため最終同期
     syncServiceTableToState();
+    syncPurchaseTableToState();   // 6-D：仕入マスタ同期
     syncCostTableToState();
     // バリデーション：サービス名空文字は自動除去（規定）。固定科目改名は readonly のためそもそも変えられない
     RegisterState.data.step3.serviceList = RegisterState.data.step3.serviceList.filter(function (s) {
       return s && s.name;
+    });
+    // 6-D：仕入マスタ・名前空欄は自動除去（規定）
+    RegisterState.data.step3.purchaseMasterList = RegisterState.data.step3.purchaseMasterList.filter(function (p) {
+      return p && p.name;
     });
     hideStepError('step3-error');
     return true;
@@ -488,15 +527,20 @@
     else if (target === 5) paintStep5();
   }
 
-  // v0.5.1：戻る／円ジャンプ時の付与枠数だけはバリデーション抜きで state へ吸い上げる
-  // （バリデーションエラーは「次へ」時のみ表示）
+  // 6-D：戻る／円ジャンプ時の付与枠数だけはバリデーション抜きで state へ吸い上げる
+  // （バリデーションエラーは「次へ」時のみ表示）3軸 S/P/C 対応
   function readStep3QuotasSilent() {
     const s3 = RegisterState.data.step3;
     const smqEl = $('f3-service-master-quota');
+    const pmqEl = $('f3-purchase-master-quota');
     const coqEl = $('f3-cost-optional-quota');
     if (smqEl) {
       const v = parseInt(smqEl.value, 10);
       if (isFinite(v) && v >= 1) s3.serviceMasterQuota = v;
+    }
+    if (pmqEl) {
+      const v = parseInt(pmqEl.value, 10);
+      if (isFinite(v) && v >= 1) s3.purchaseMasterQuota = v;
     }
     if (coqEl) {
       const v = parseInt(coqEl.value, 10);
@@ -596,6 +640,94 @@
     syncServiceTableToState();
     RegisterState.data.step3.serviceList.splice(idx, 1);
     renderServiceTable();
+  }
+
+  // ============ Step 3 仕入マスタテーブル（6-D 新設） ============
+  // 03_データ仕様.md §1-3 purchaseMasterList の編集 UI
+  // ID プレフィックス：p001〜（コストシート F列に格納される値と一致）
+  // 業種別自動判定機構はなし（00_原則.md §4-5）
+  function renderPurchaseTable() {
+    const tbody = $('register-purchase-tbody');
+    if (!tbody) return true;
+    tbody.innerHTML = '';
+    const list = RegisterState.data.step3.purchaseMasterList || [];
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">仕入科目未登録（後で追加可能）</td></tr>';
+      return true;
+    }
+    list.forEach(function (p, idx) {
+      const taxRate = (p.defaultTaxRate != null ? p.defaultTaxRate : (p.taxRate != null ? p.taxRate : 10));
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><span class="readonly-text">' + escapeHtml(p.id || '(未割当)') + '</span></td>' +
+        '<td><input type="text" data-pm-idx="' + idx + '" data-pm-field="name" value="' + escapeHtml(p.name || '') + '" maxlength="30" placeholder="（例：仕入(酒類・食材)）"></td>' +
+        '<td>' +
+          '<select data-pm-idx="' + idx + '" data-pm-field="defaultTaxRate">' +
+            '<option value="0"'  + (Number(taxRate) === 0  ? ' selected' : '') + '>0%</option>' +
+            '<option value="8"'  + (Number(taxRate) === 8  ? ' selected' : '') + '>8%</option>' +
+            '<option value="10"' + (Number(taxRate) === 10 ? ' selected' : '') + '>10%</option>' +
+          '</select>' +
+        '</td>' +
+        '<td>' +
+          '<label class="toggle-inline">' +
+            '<input type="checkbox" data-pm-idx="' + idx + '" data-pm-field="smartphoneVisible"' + (p.smartphoneVisible !== false ? ' checked' : '') + '> 表示' +
+          '</label>' +
+        '</td>' +
+        '<td><button type="button" class="btn-icon-delete" data-pm-del="' + idx + '">🗑️</button></td>';
+      tbody.appendChild(tr);
+    });
+    return true;
+  }
+
+  function syncPurchaseTableToState() {
+    const tbody = $('register-purchase-tbody');
+    if (!tbody) return true;
+    const updated = JSON.parse(JSON.stringify(RegisterState.data.step3.purchaseMasterList || []));
+    const inputs = tbody.querySelectorAll('[data-pm-idx]');
+    inputs.forEach(function (el) {
+      const idx = parseInt(el.dataset.pmIdx, 10);
+      const field = el.dataset.pmField;
+      if (!updated[idx]) return;
+      if (field === 'smartphoneVisible') updated[idx][field] = el.checked;
+      else if (field === 'defaultTaxRate') updated[idx][field] = parseInt(el.value, 10);
+      else if (field === 'name') updated[idx][field] = el.value.trim();
+    });
+    RegisterState.data.step3.purchaseMasterList = updated;
+    return true;
+  }
+
+  // ID プレフィックス `pNNN` の連番自動採番（既存IDの最大値+1）
+  function nextPurchaseId() {
+    const list = RegisterState.data.step3.purchaseMasterList || [];
+    let maxN = 0;
+    list.forEach(function (p) {
+      const m = String(p.id || '').match(/^p(\d+)$/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (isFinite(n) && n > maxN) maxN = n;
+      }
+    });
+    return 'p' + String(maxN + 1).padStart(3, '0');
+  }
+
+  function addPurchase() {
+    syncPurchaseTableToState();
+    if (!Array.isArray(RegisterState.data.step3.purchaseMasterList)) {
+      RegisterState.data.step3.purchaseMasterList = [];
+    }
+    RegisterState.data.step3.purchaseMasterList.push({
+      id: nextPurchaseId(),
+      name: '',
+      defaultTaxRate: 10,
+      smartphoneVisible: true
+    });
+    renderPurchaseTable();
+  }
+
+  function deletePurchase(idx) {
+    syncPurchaseTableToState();
+    RegisterState.data.step3.purchaseMasterList.splice(idx, 1);
+    renderPurchaseTable();
   }
 
   // ============ Step 3 科目マスタテーブル ============
@@ -719,6 +851,14 @@
     const serviceText = (s3.serviceList && s3.serviceList.length)
       ? s3.serviceList.map(function (sv) { return sv.name + '（' + sv.taxRate + '%）'; }).join(' / ')
       : '（未登録）';
+    // 6-D：仕入マスタサマリー
+    const purchaseList = s3.purchaseMasterList || [];
+    const purchaseText = purchaseList.length
+      ? purchaseList.map(function (p) {
+          const tax = (p.defaultTaxRate != null ? p.defaultTaxRate : (p.taxRate != null ? p.taxRate : 10));
+          return p.name + '（' + tax + '%）';
+        }).join(' / ')
+      : '（未登録）';
     const customCostCount = (s3.costMasterList || []).filter(function (cm) {
       return [26, 27, 28, 29, 30].indexOf(Number(cm.code)) >= 0 && cm.name;
     }).length;
@@ -741,10 +881,14 @@
         ['タイムカード数', String(s2.timecardCount)],
         ['グレード派生', grade]
       ]) +
-      section('Step 3：サービス・科目マスタ', 3, [
-        ['付与枠数（運営内部管理）', '売上品目マスタ ' + s3.serviceMasterQuota + ' 件 / コストマスタ任意枠 ' + s3.costOptionalQuota + ' 件'],
+      section('Step 3：マスタ件数枠＋3種マスタ雛形', 3, [
+        ['付与枠数（運営内部管理・S/P/C）',
+          'サービスマスタ ' + s3.serviceMasterQuota + ' 件 / ' +
+          '仕入マスタ ' + s3.purchaseMasterQuota + ' 件 / ' +
+          '販管費マスタ任意枠 ' + s3.costOptionalQuota + ' 件'],
         ['サービスマスタ', serviceText],
-        ['科目マスタ', '青色申告デフォルト 25件 / 任意枠使用 ' + customCostCount + ' 件 / スマホ表示 ' + visibleCount + ' 件']
+        ['仕入マスタ', purchaseText],
+        ['販管費マスタ', '青色申告デフォルト 24件 / 任意枠使用 ' + customCostCount + ' 件 / スマホ表示 ' + visibleCount + ' 件']
       ]) +
       section('Step 4：ロゴ・テーマ', 4, [
         ['店舗ロゴ', s4.logoFile ? s4.logoFile.name : '（未選択・Step 7 でスキップ）'],
@@ -825,7 +969,25 @@
     });
     $('btn-add-service').addEventListener('click', addService);
 
-    // Step 3：科目マスタテーブルのイベント委譲
+    // Step 3：仕入マスタテーブルのイベント委譲（6-D 新設）
+    const pmBody = $('register-purchase-tbody');
+    if (pmBody) {
+      pmBody.addEventListener('input', function (e) {
+        if (e.target.dataset.pmIdx !== undefined) syncPurchaseTableToState();
+      });
+      pmBody.addEventListener('change', function (e) {
+        if (e.target.dataset.pmIdx !== undefined) syncPurchaseTableToState();
+      });
+      pmBody.addEventListener('click', function (e) {
+        if (e.target.dataset.pmDel !== undefined) {
+          deletePurchase(parseInt(e.target.dataset.pmDel, 10));
+        }
+      });
+    }
+    const btnAddPurchase = $('btn-add-purchase');
+    if (btnAddPurchase) btnAddPurchase.addEventListener('click', addPurchase);
+
+    // Step 3：販管費マスタテーブルのイベント委譲（6-D：「科目マスタ」→「販管費マスタ」改名）
     const cmBody = $('register-cost-tbody');
     cmBody.addEventListener('input', function (e) {
       if (e.target.dataset.cmIdx !== undefined) syncCostTableToState();
