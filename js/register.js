@@ -1,17 +1,19 @@
 /* ============================================================
- * ultra-z-admin / 第7段階 小段階6-D 新規登録ウィザード
+ * ultra-z-admin / 第7段階 小段階6-E 新規登録ウィザード
  *   - 7ステップ構成（Step 1〜6 入力 + Step 7 実行プレースホルダ）
- *   - 6-D 改修点：
- *       Step 3 を2段構成に再編：
- *         3-1：マスタ件数枠付与（運営内部管理・3軸 S/P/C）
- *               serviceMasterQuota（既定5）/ purchaseMasterQuota（新設・既定3）/ costOptionalQuota（既定5）
- *         3-2：3種マスタ雛形投入
- *               ①サービスマスタ（settings.B3）/ ②仕入マスタ（settings.B5・新設）/ ③販管費マスタ（settings.B4）
- *       仕入マスタは ID プレフィックス `pNNN` 連番自動採番
- *       「科目マスタ」→「販管費マスタ」改名・「区分」→「枠」（用語整合）
- *       Step 6 確認サマリーに 3軸件数枠表示・仕入マスタ件数表示を追加
+ *   - 6-E 改修点：
+ *       3-1：販管費マスタ任意枠（C）5件固定化（編集UI廃止・固定表示テキスト化）
+ *            （税務署様式準拠・拡張販売対象外・01_商品体系.md §4-2）
+ *            state.step3.costOptionalQuota は 5 固定維持・readStep3 / paintStep3 から coq input 操作削除
+ *       3-2-①：サービスマスタに id フィールド対応（sv001〜連番自動採番）
+ *            テーブルにコード列・スマホ・iPad表示列を追加（5列構成）
+ *            03_データ仕様.md §1-1 serviceList JSON 構造に整合
+ *       3-2-②/③：列ラベル「スマホ表示」→「スマホ・iPad表示」（00_原則.md §6-5）
+ *       Step 6 サマリーに「販管費マスタ任意枠：5件固定」明示
+ *   - 6-D 改修点（継続）：
+ *       Step 3 を2段構成（3-1 枠付与＋3-2 雛形投入）
+ *       仕入マスタ ID プレフィックス `pNNN` 連番自動採番
  *       業種別自動判定機構は導入しない（00_原則.md §4-5）
- *   - 7-C：マスタ件数枠（2軸時代）・defaultCostMasterList の青色申告整合
  *   - Step 7 自動処理本体は次フェーズで実装するため、本フェーズの
  *     「登録実行」ボタンは disabled で停止する
  *   - state は全てクライアント側保持（マスタGAS 投入は次フェーズ）
@@ -288,14 +290,14 @@
     updateGradeDerivation();
   }
   function paintStep3() {
-    // 6-D：付与枠数を state から input に復元（3軸 S/P/C）
+    // 6-E：付与枠数を state から input に復元（S/P のみ・C は固定5表示でinput無し）
     const s3 = RegisterState.data.step3;
     const smqEl = $('f3-service-master-quota');
     const pmqEl = $('f3-purchase-master-quota');
-    const coqEl = $('f3-cost-optional-quota');
     if (smqEl) smqEl.value = s3.serviceMasterQuota;
     if (pmqEl) pmqEl.value = s3.purchaseMasterQuota;
-    if (coqEl) coqEl.value = s3.costOptionalQuota;
+    // 6-E：C は5固定維持（state に保持・HTML側は固定表示テキスト）
+    s3.costOptionalQuota = 5;
   }
   function paintStep4() {
     const s = RegisterState.data.step4;
@@ -371,11 +373,10 @@
   }
 
   function readStep3AndValidate() {
-    // 6-D：付与枠数を input から state に反映（3軸 S/P/C）
+    // 6-E：付与枠数を input から state に反映（S/P のみ・C は5固定維持）
     const s3 = RegisterState.data.step3;
     const smqEl = $('f3-service-master-quota');
     const pmqEl = $('f3-purchase-master-quota');
-    const coqEl = $('f3-cost-optional-quota');
     if (smqEl) {
       const v = parseInt(smqEl.value, 10);
       if (!isFinite(v) || v < 1) {
@@ -392,14 +393,8 @@
       }
       s3.purchaseMasterQuota = v;
     }
-    if (coqEl) {
-      const v = parseInt(coqEl.value, 10);
-      if (!isFinite(v) || v < 1) {
-        showStepError('step3-error', '販管費マスタ任意枠の付与枠数は1以上の整数で指定してください');
-        return false;
-      }
-      s3.costOptionalQuota = v;
-    }
+    // 6-E：C は5固定（編集UI廃止・税務署様式準拠）
+    s3.costOptionalQuota = 5;
     // サービス・仕入・販管費マスタは行内 input を逐次読込（イベント側で随時 state に反映している前提）
     // 念のため最終同期
     syncServiceTableToState();
@@ -527,13 +522,12 @@
     else if (target === 5) paintStep5();
   }
 
-  // 6-D：戻る／円ジャンプ時の付与枠数だけはバリデーション抜きで state へ吸い上げる
-  // （バリデーションエラーは「次へ」時のみ表示）3軸 S/P/C 対応
+  // 6-E：戻る／円ジャンプ時の付与枠数だけはバリデーション抜きで state へ吸い上げる
+  // （バリデーションエラーは「次へ」時のみ表示）S/P 2軸対応・C は5固定維持
   function readStep3QuotasSilent() {
     const s3 = RegisterState.data.step3;
     const smqEl = $('f3-service-master-quota');
     const pmqEl = $('f3-purchase-master-quota');
-    const coqEl = $('f3-cost-optional-quota');
     if (smqEl) {
       const v = parseInt(smqEl.value, 10);
       if (isFinite(v) && v >= 1) s3.serviceMasterQuota = v;
@@ -542,10 +536,8 @@
       const v = parseInt(pmqEl.value, 10);
       if (isFinite(v) && v >= 1) s3.purchaseMasterQuota = v;
     }
-    if (coqEl) {
-      const v = parseInt(coqEl.value, 10);
-      if (isFinite(v) && v >= 1) s3.costOptionalQuota = v;
-    }
+    // 6-E：C は5固定維持（input が存在しない）
+    s3.costOptionalQuota = 5;
   }
 
   // ============ Step 1 補助 ============
@@ -592,17 +584,22 @@
   }
 
   // ============ Step 3 サービステーブル ============
+  // 6-E：id フィールド対応（sv001〜連番自動採番）＋ smartphoneVisible 列追加
+  //   03_データ仕様.md §1-1 serviceList JSON 構造に整合
+  //   各科目には sv001〜の連番ID（コード）が自動採番される
   function renderServiceTable() {
     const tbody = $('register-service-tbody');
     tbody.innerHTML = '';
     const list = RegisterState.data.step3.serviceList;
     if (list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="empty-row">サービス未登録（後で追加可能）</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">サービス未登録（後で追加可能）</td></tr>';
       return true;
     }
     list.forEach(function (svc, idx) {
+      const idDisplay = svc.id || '(未割当)';
       const tr = document.createElement('tr');
       tr.innerHTML =
+        '<td><span class="readonly-text">' + escapeHtml(idDisplay) + '</span></td>' +
         '<td><input type="text" data-svc-idx="' + idx + '" data-svc-field="name" value="' + escapeHtml(svc.name || '') + '" maxlength="30" placeholder="例：セット"></td>' +
         '<td>' +
           '<select data-svc-idx="' + idx + '" data-svc-field="taxRate">' +
@@ -610,6 +607,11 @@
             '<option value="8"' + (Number(svc.taxRate) === 8 ? ' selected' : '') + '>8%</option>' +
             '<option value="10"' + (Number(svc.taxRate) === 10 ? ' selected' : '') + '>10%</option>' +
           '</select>' +
+        '</td>' +
+        '<td>' +
+          '<label class="toggle-inline">' +
+            '<input type="checkbox" data-svc-idx="' + idx + '" data-svc-field="smartphoneVisible"' + (svc.smartphoneVisible !== false ? ' checked' : '') + '> 表示' +
+          '</label>' +
         '</td>' +
         '<td><button type="button" class="btn-icon-delete" data-svc-del="' + idx + '">🗑️</button></td>';
       tbody.appendChild(tr);
@@ -619,21 +621,41 @@
   function syncServiceTableToState() {
     const tbody = $('register-service-tbody');
     if (!tbody) return true;
+    // 6-E：id を維持するため既存リストを保持してマージ更新する
+    const existing = JSON.parse(JSON.stringify(RegisterState.data.step3.serviceList || []));
     const inputs = tbody.querySelectorAll('[data-svc-idx]');
-    const list = [];
     inputs.forEach(function (el) {
       const idx = parseInt(el.dataset.svcIdx, 10);
       const field = el.dataset.svcField;
-      if (!list[idx]) list[idx] = {};
-      if (field === 'taxRate') list[idx][field] = parseInt(el.value, 10);
-      else list[idx][field] = el.value.trim();
+      if (!existing[idx]) existing[idx] = {};
+      if (field === 'taxRate') existing[idx][field] = parseInt(el.value, 10);
+      else if (field === 'smartphoneVisible') existing[idx][field] = el.checked;
+      else if (field === 'name') existing[idx][field] = el.value.trim();
     });
-    RegisterState.data.step3.serviceList = list.filter(function (s) { return s; });
+    RegisterState.data.step3.serviceList = existing.filter(function (s) { return s; });
     return true;
+  }
+  // ID プレフィックス `svNNN` の連番自動採番（既存IDの最大値+1）
+  function nextServiceId() {
+    const list = RegisterState.data.step3.serviceList || [];
+    let maxN = 0;
+    list.forEach(function (s) {
+      const m = String(s.id || '').match(/^sv(\d+)$/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (isFinite(n) && n > maxN) maxN = n;
+      }
+    });
+    return 'sv' + String(maxN + 1).padStart(3, '0');
   }
   function addService() {
     syncServiceTableToState();
-    RegisterState.data.step3.serviceList.push({ name: '', taxRate: 10 });
+    RegisterState.data.step3.serviceList.push({
+      id: nextServiceId(),
+      name: '',
+      taxRate: 10,
+      smartphoneVisible: true
+    });
     renderServiceTable();
   }
   function deleteService(idx) {
@@ -882,13 +904,14 @@
         ['グレード派生', grade]
       ]) +
       section('Step 3：マスタ件数枠＋3種マスタ雛形', 3, [
-        ['付与枠数（運営内部管理・S/P/C）',
+        // 6-E：S/P は編集可・C は5件固定（税務署様式準拠・編集不可）
+        ['付与枠数（運営内部管理・S/P）',
           'サービスマスタ ' + s3.serviceMasterQuota + ' 件 / ' +
-          '仕入マスタ ' + s3.purchaseMasterQuota + ' 件 / ' +
-          '販管費マスタ任意枠 ' + s3.costOptionalQuota + ' 件'],
+          '仕入マスタ ' + s3.purchaseMasterQuota + ' 件'],
+        ['販管費マスタ任意枠（C）', '5件固定（税務署様式準拠・編集不可）'],
         ['サービスマスタ', serviceText],
         ['仕入マスタ', purchaseText],
-        ['販管費マスタ', '青色申告デフォルト 24件 / 任意枠使用 ' + customCostCount + ' 件 / スマホ表示 ' + visibleCount + ' 件']
+        ['販管費マスタ', '青色申告デフォルト 24件 / 任意枠使用 ' + customCostCount + ' 件 / スマホ・iPad表示 ' + visibleCount + ' 件']
       ]) +
       section('Step 4：ロゴ・テーマ', 4, [
         ['店舗ロゴ', s4.logoFile ? s4.logoFile.name : '（未選択・Step 7 でスキップ）'],

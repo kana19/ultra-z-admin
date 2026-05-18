@@ -88,7 +88,7 @@
         <span class="dirty-indicator" hidden>● 変更あり</span>
       </div>
       <div class="section-body">
-        <p class="section-description">タイムカード数とマスタ件数枠（独立オプション）の設定。タイムカード数はグレード派生・マスタ件数枠（S/P/C）はマスタ拡張オプション販売実績の把握。いずれも運営側の内部管理項目。</p>
+        <p class="section-description">タイムカード数とマスタ件数枠（独立オプション）の設定。タイムカード数はグレード派生・マスタ件数枠（S/P）はマスタ拡張オプション販売実績の把握。販管費マスタ任意枠（C）は税務署様式準拠で5件固定・編集不可。いずれも運営側の内部管理項目。</p>
 
         <div class="form-row">
           <label>タイムカード数</label>
@@ -109,8 +109,8 @@
           <p>⚠ タイムカード数を減らすと、既存スタッフ枠の一部が無効化されます。本当に減らしますか？</p>
         </div>
 
-        <!-- 6-D：マスタ件数枠（独立オプション・3軸 S/P/C）
-             01_商品体系.md §4-2 基本枠：S=5 / P=3 / C=5 -->
+        <!-- 6-E：マスタ件数枠（独立オプション・S/P 2軸編集＋C 固定表示）
+             01_商品体系.md §4-2 基本枠：S=5 / P=3 / C=5固定（編集不可・拡張販売対象外） -->
         <div class="quota-box">
           <div class="quota-box-header">
             <span class="quota-box-badge">運営内部管理</span>
@@ -130,10 +130,9 @@
               <span class="quota-unit">件</span>
               <span class="quota-current" id="f-purchase-master-quota-current"></span>
             </div>
-            <div class="quota-field">
-              <label for="f-cost-optional-quota">販管費マスタ任意枠（26〜30）枠数</label>
-              <input type="number" id="f-cost-optional-quota" min="1" step="1" value="5">
-              <span class="quota-unit">件</span>
+            <div class="quota-field quota-field--fixed">
+              <label>販管費マスタ任意枠（26〜30）</label>
+              <span class="quota-fixed-text"><strong>5件固定</strong>（税務署様式準拠・編集不可）</span>
               <span class="quota-current" id="f-cost-optional-quota-current"></span>
             </div>
           </div>
@@ -240,13 +239,15 @@
         <span class="dirty-indicator" hidden>● 変更あり</span>
       </div>
       <div class="section-body">
-        <p class="section-description">ユーザーが売上入力で使うサービス一覧。ユーザー自身がスマホ設定からも編集可能。<br><span class="quota-status" id="service-master-quota-status"></span></p>
+        <p class="section-description">ユーザーが売上入力で使うサービス一覧。ユーザー自身がスマホ設定からも編集可能。各科目には sv001〜の連番ID（コード）が自動採番される。<br><span class="quota-status" id="service-master-quota-status"></span></p>
         <table class="data-table" id="service-table">
           <thead>
             <tr>
-              <th style="width: 60%;">サービス名</th>
-              <th style="width: 20%;">税率</th>
-              <th style="width: 20%;">操作</th>
+              <th style="width: 12%;">コード</th>
+              <th style="width: 48%;">サービス名</th>
+              <th style="width: 16%;">税率</th>
+              <th style="width: 16%;">スマホ・iPad表示</th>
+              <th style="width: 8%;">操作</th>
             </tr>
           </thead>
           <tbody id="service-table-body">
@@ -271,7 +272,7 @@
               <th style="width: 12%;">コード</th>
               <th style="width: 48%;">科目名</th>
               <th style="width: 20%;">税率</th>
-              <th style="width: 12%;">スマホ表示</th>
+              <th style="width: 12%;">スマホ・iPad表示</th>
               <th style="width: 8%;">操作</th>
             </tr>
           </thead>
@@ -298,7 +299,7 @@
               <th style="width: 35%;">科目名</th>
               <th style="width: 15%;">税率</th>
               <th style="width: 15%;">枠</th>
-              <th style="width: 25%;">スマホ表示</th>
+              <th style="width: 25%;">スマホ・iPad表示</th>
             </tr>
           </thead>
           <tbody id="cost-master-table-body">

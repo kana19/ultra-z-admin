@@ -1,16 +1,19 @@
 /* ============================================================
- * ultra-z-admin / 第7段階 小段階6-D ユーザー編集画面
+ * ultra-z-admin / 第7段階 小段階6-E ユーザー編集画面
  *   - 単一スクロール10セクション構成（タブ構造なし）
- *   - 運営ポータル管轄：枠（タイムカード数・マスタ件数枠 S/P/C・契約）＋全体設定
+ *   - 運営ポータル管轄：枠（タイムカード数・マスタ件数枠 S/P・契約）＋全体設定
  *     （スタッフ個別情報・取引先・売上・コスト・出勤データは管轄外・編集UIなし）
- *   - 7-C：§2「タイムカード設定」を「タイムカード・マスタ枠設定」に拡張
- *     serviceMasterQuota / costOptionalQuota を運営内部管理項目として編集可
- *     §5/§6 description に「付与枠数 N 件 / 現在使用 M 件」を動的表示
- *   - 6-D：仕入原価マスタ purchaseMasterList 対応・clients 13列化
- *     §2 件数枠 UI 3軸化（serviceMasterQuota / purchaseMasterQuota / costOptionalQuota）
- *     §5-2 仕入マスタ セクション新設（settings.B5 purchaseMasterList の編集UI）
- *     §6 名称変更「科目マスタ」→「販管費マスタ」・description で仕入科目との分離を明示
- *     購入科目 ID は `p001`〜の連番自動採番（コストシート F列 = `p001` 等で記録）
+ *   - 6-E：販管費マスタ任意枠（C）5件固定化
+ *     §2 マスタ件数枠 UI を S/P 2軸編集＋C 固定表示テキスト化
+ *     （税務署様式準拠・拡張販売対象外・01_商品体系.md §4-2）
+ *     diffClient から costOptionalQuota 削除（編集不可のため差分発生せず）
+ *   - 6-E：サービスマスタ id フィールド対応（sv001〜連番採番）
+ *     §5 サービスマスタにコード列・スマホ・iPad表示列を追加（5列構成）
+ *     03_データ仕様.md §1-1 serviceList JSON 構造に整合
+ *   - 6-E：表示ラベル「スマホ表示」→「スマホ・iPad表示」に統一
+ *     00_原則.md §6-5 smartphoneVisible 参照範囲明確化
+ *   - 6-D：仕入原価マスタ purchaseMasterList 対応・clients 13列化（継続）
+ *     §5-2 仕入マスタ セクション・購入科目 ID は `p001`〜の連番自動採番
  *
  * 名前空間：window.uzAdmin（app.js が AdminApp/AdminAuth を橋渡しして提供）
  * URL クエリ：?id=uz-XXXXXXXX を主、?clientId=uz-XXXXXXXX も後方互換で受領
@@ -143,16 +146,17 @@
   // ============ §2 タイムカード・マスタ枠 ============
   function renderTimecard() {
     document.getElementById('f-timecard-count').value = String(state.currentClient.timecardCount != null ? state.currentClient.timecardCount : 0);
-    // 6-D：マスタ件数枠（3軸 S/P/C・既定 S=5 / P=3 / C=5）
+    // 6-E：マスタ件数枠（S/P 2軸編集・C は5固定編集不可）
+    //  - S/P は input から編集可能
+    //  - C は税務署様式準拠で5固定・HTMLには input なし・state には常に5を保持
     const smq = (state.currentClient.serviceMasterQuota != null && state.currentClient.serviceMasterQuota !== '')
       ? Number(state.currentClient.serviceMasterQuota) : 5;
     const pmq = (state.currentClient.purchaseMasterQuota != null && state.currentClient.purchaseMasterQuota !== '')
       ? Number(state.currentClient.purchaseMasterQuota) : 3;
-    const coq = (state.currentClient.costOptionalQuota != null && state.currentClient.costOptionalQuota !== '')
-      ? Number(state.currentClient.costOptionalQuota) : 5;
     document.getElementById('f-service-master-quota').value = String(smq);
     document.getElementById('f-purchase-master-quota').value = String(pmq);
-    document.getElementById('f-cost-optional-quota').value = String(coq);
+    // C は5固定維持（state には常に5を保持し、API への送信は diffClient で抑止）
+    state.currentClient.costOptionalQuota = 5;
     updateGradeDisplay();
     updateQuotaCurrent();  // 件数枠 input の右側に「現在: N件」表示
     updateQuotaStatusInTables();  // §5/§5-2/§6 のセクション description 反映
@@ -161,13 +165,13 @@
   function readTimecard() {
     state.currentClient.timecardCount = parseInt(document.getElementById('f-timecard-count').value, 10) || 0;
     state.currentClient.grade = computeGrade(state.currentClient.timecardCount);
-    // 6-D：マスタ件数枠（3軸 S/P/C）
+    // 6-E：マスタ件数枠（S/P 2軸編集・C は固定5維持）
     const smqRaw = parseInt(document.getElementById('f-service-master-quota').value, 10);
     const pmqRaw = parseInt(document.getElementById('f-purchase-master-quota').value, 10);
-    const coqRaw = parseInt(document.getElementById('f-cost-optional-quota').value, 10);
     if (isFinite(smqRaw) && smqRaw >= 1) state.currentClient.serviceMasterQuota = smqRaw;
     if (isFinite(pmqRaw) && pmqRaw >= 1) state.currentClient.purchaseMasterQuota = pmqRaw;
-    if (isFinite(coqRaw) && coqRaw >= 1) state.currentClient.costOptionalQuota = coqRaw;
+    // C は input が存在しないため読込なし・常に5を維持
+    state.currentClient.costOptionalQuota = 5;
   }
 
   function updateGradeDisplay() {
@@ -188,7 +192,7 @@
     return 'unknown';
   }
 
-  // 6-D：マスタ件数枠 input 右側の「現在: N 件」表示（3軸 S/P/C）
+  // 6-E：マスタ件数枠 input 右側の「現在: N 件」表示（S/P input ＋ C は固定5表示）
   function updateQuotaCurrent() {
     const serviceCount = (state.currentSettings && Array.isArray(state.currentSettings.serviceList))
       ? state.currentSettings.serviceList.filter(function (s) { return s && s.name; }).length : 0;
@@ -205,14 +209,16 @@
     const coqEl = document.getElementById('f-cost-optional-quota-current');
     if (smqEl) smqEl.textContent = '（現在: ' + serviceCount + ' 件）';
     if (pmqEl) pmqEl.textContent = '（現在: ' + purchaseCount + ' 件）';
-    if (coqEl) coqEl.textContent = '（任意枠使用: ' + costOptionalUsedCount + ' 件）';
+    // 6-E：C は5固定・使用件数のみ表示（input は存在しない）
+    if (coqEl) coqEl.textContent = '（任意枠使用: ' + costOptionalUsedCount + ' / 5 件）';
   }
 
-  // 6-D：セクション5/5-2/6 description に「付与枠数 N 件 / 使用 M 件」を表示
+  // 6-E：セクション5/5-2/6 description に「付与枠数 N 件 / 使用 M 件」を表示
+  //   - S/P は input から動的取得・C は5固定
   function updateQuotaStatusInTables() {
     const smq = parseInt(document.getElementById('f-service-master-quota').value, 10) || 5;
     const pmq = parseInt(document.getElementById('f-purchase-master-quota').value, 10) || 3;
-    const coq = parseInt(document.getElementById('f-cost-optional-quota').value, 10) || 5;
+    const coq = 5;  // 6-E：C は税務署様式準拠で5固定
     const serviceUsed = (state.currentSettings && Array.isArray(state.currentSettings.serviceList))
       ? state.currentSettings.serviceList.filter(function (s) { return s && s.name; }).length : 0;
     const purchaseUsed = (state.currentSettings && Array.isArray(state.currentSettings.purchaseMasterList))
@@ -236,9 +242,8 @@
         + (over ? ' <span class="quota-warning">⚠ 枠数を超えています（保存可・運営判断）</span>' : '');
     }
     if (cStatus) {
-      const over = costOptionalUsed > coq;
-      cStatus.innerHTML = '<strong>任意枠付与枠数：' + coq + ' 件 / 現在使用：' + costOptionalUsed + ' 件</strong>'
-        + (over ? ' <span class="quota-warning">⚠ 枠数を超えています（保存可・運営判断）</span>' : '');
+      // 6-E：任意枠は5件固定（拡張販売対象外）
+      cStatus.innerHTML = '<strong>任意枠付与枠数：' + coq + ' 件固定（税務署様式準拠）／現在使用：' + costOptionalUsed + ' 件</strong>';
     }
   }
 
@@ -352,17 +357,22 @@
   }
 
   // ============ §5 サービスマスタ ============
+  // 6-E：id フィールド対応（sv001〜連番自動採番）＋ smartphoneVisible 列追加
+  //   03_データ仕様.md §1-1 serviceList JSON 構造に整合
+  //   既存ユーザーは migrateUserSettings_v0_5_4_addServiceListIds で id 付与済
   function renderServiceMaster() {
     const tbody = document.getElementById('service-table-body');
     tbody.innerHTML = '';
     const list = state.currentSettings.serviceList || [];
     if (list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="empty-row">サービスが登録されていません</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">サービスが登録されていません</td></tr>';
       return;
     }
     list.forEach(function (svc, idx) {
+      const idDisplay = svc.id || '(未割当)';
       const tr = document.createElement('tr');
       tr.innerHTML =
+        '<td><span class="readonly-text">' + escapeHtml(idDisplay) + '</span></td>' +
         '<td><input type="text" data-svc-idx="' + idx + '" data-svc-field="name" value="' + escapeHtml(svc.name || '') + '" maxlength="30"></td>' +
         '<td>' +
           '<select data-svc-idx="' + idx + '" data-svc-field="taxRate">' +
@@ -371,6 +381,11 @@
             '<option value="10"' + (Number(svc.taxRate) === 10 ? ' selected' : '') + '>10%</option>' +
           '</select>' +
         '</td>' +
+        '<td>' +
+          '<label class="toggle-inline">' +
+            '<input type="checkbox" data-svc-idx="' + idx + '" data-svc-field="smartphoneVisible"' + (svc.smartphoneVisible !== false ? ' checked' : '') + '> 表示' +
+          '</label>' +
+        '</td>' +
         '<td><button type="button" class="btn-icon-delete" data-svc-del="' + idx + '">🗑️</button></td>';
       tbody.appendChild(tr);
     });
@@ -378,25 +393,47 @@
 
   function readServiceMaster() {
     const tbody = document.getElementById('service-table-body');
+    // 6-E：id を維持するため既存リストを保持してマージ更新する
+    const existing = JSON.parse(JSON.stringify(state.currentSettings.serviceList || []));
     const inputs = tbody.querySelectorAll('[data-svc-idx]');
-    const list = [];
     inputs.forEach(function (el) {
       const idx = parseInt(el.dataset.svcIdx, 10);
       const field = el.dataset.svcField;
-      if (!list[idx]) list[idx] = {};
+      if (!existing[idx]) existing[idx] = {};
       if (field === 'taxRate') {
-        list[idx][field] = parseInt(el.value, 10);
-      } else {
-        list[idx][field] = el.value.trim();
+        existing[idx][field] = parseInt(el.value, 10);
+      } else if (field === 'smartphoneVisible') {
+        existing[idx][field] = el.checked;
+      } else if (field === 'name') {
+        existing[idx][field] = el.value.trim();
       }
     });
-    // 空のものを除外
-    state.currentSettings.serviceList = list.filter(function (s) { return s && s.name; });
+    // 空のもの（name 空文字）を除外
+    state.currentSettings.serviceList = existing.filter(function (s) { return s && s.name; });
+  }
+
+  // ID プレフィックス `svNNN` の連番自動採番（既存IDの最大値+1）
+  function nextServiceId() {
+    const list = state.currentSettings.serviceList || [];
+    let maxN = 0;
+    list.forEach(function (s) {
+      const m = String(s.id || '').match(/^sv(\d+)$/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (isFinite(n) && n > maxN) maxN = n;
+      }
+    });
+    return 'sv' + String(maxN + 1).padStart(3, '0');
   }
 
   function addService() {
     if (!state.currentSettings.serviceList) state.currentSettings.serviceList = [];
-    state.currentSettings.serviceList.push({ name: '', taxRate: 10 });
+    state.currentSettings.serviceList.push({
+      id: nextServiceId(),
+      name: '',
+      taxRate: 10,
+      smartphoneVisible: true
+    });
     renderServiceMaster();
     markDirty('service-master');
     updateQuotaStatusInTables();
@@ -748,15 +785,14 @@
     if (state.currentClient.contractStart !== state.initialClient.contractStart) fields.contractStart = state.currentClient.contractStart;
     if (state.currentClient.contractEnd !== state.initialClient.contractEnd) fields.contractEnd = state.currentClient.contractEnd;
     if (state.currentClient.monthlyFee !== state.initialClient.monthlyFee) fields.monthlyFee = state.currentClient.monthlyFee;
-    // 6-D：マスタ件数枠（運営内部管理項目・3軸 S/P/C）
+    // 6-E：マスタ件数枠（運営内部管理項目・S/P 2軸編集）
+    //   costOptionalQuota は税務署様式準拠で5固定・編集UI廃止のため差分検出対象外
+    //   （万一 state に変化があっても API には送信しない・updateClient 側でも invalid_quota 防御あり）
     if (Number(state.currentClient.serviceMasterQuota) !== Number(state.initialClient.serviceMasterQuota)) {
       fields.serviceMasterQuota = state.currentClient.serviceMasterQuota;
     }
     if (Number(state.currentClient.purchaseMasterQuota) !== Number(state.initialClient.purchaseMasterQuota)) {
       fields.purchaseMasterQuota = state.currentClient.purchaseMasterQuota;
-    }
-    if (Number(state.currentClient.costOptionalQuota) !== Number(state.initialClient.costOptionalQuota)) {
-      fields.costOptionalQuota = state.currentClient.costOptionalQuota;
     }
     return fields;
   }
@@ -936,7 +972,7 @@
       'f-timecard-count': 'timecard',
       'f-service-master-quota': 'timecard',
       'f-purchase-master-quota': 'timecard',
-      'f-cost-optional-quota': 'timecard',
+      // 6-E：f-cost-optional-quota は固定表示テキスト化のため dirtyMap から削除
       'f-theme-color': 'logo-icon', 'f-theme-color-text': 'logo-icon',
       'f-logo-background-color': 'logo-icon', 'f-logo-background-color-text': 'logo-icon',
       'fv-clockin-menu': 'feature-visibility', 'fv-payroll-menu': 'feature-visibility',
@@ -956,16 +992,13 @@
     // タイムカード数変更でグレード再計算
     document.getElementById('f-timecard-count').addEventListener('change', updateGradeDisplay);
 
-    // 6-D：件数枠 input 変更で §5/§5-2/§6 ステータス更新（read もして state へ吸い上げ）
+    // 6-E：件数枠 input 変更で §5/§5-2/§6 ステータス更新
+    //   S/P のみ input 存在・C は input なし（固定表示テキスト）
     document.getElementById('f-service-master-quota').addEventListener('input', function () {
       readTimecard();  // 件数枠を state に反映
       updateQuotaStatusInTables();
     });
     document.getElementById('f-purchase-master-quota').addEventListener('input', function () {
-      readTimecard();
-      updateQuotaStatusInTables();
-    });
-    document.getElementById('f-cost-optional-quota').addEventListener('input', function () {
       readTimecard();
       updateQuotaStatusInTables();
     });

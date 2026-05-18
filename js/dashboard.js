@@ -1,11 +1,11 @@
 /* ============================================================
  * ultra-z-admin / ダッシュボード（ユーザー一覧）スクリプト
- * 第7段階 小段階6-D：仕入原価マスタ purchaseMasterList 対応・clients 13列化
- *   - 7-C：マスタ件数枠（K=serviceMasterQuota / L=costOptionalQuota）の一覧表示
- *   - 6-D：clients 13列化（K=S / L=P / M=C）に追随
- *     - L=purchaseMasterQuota（新設・既定3）・M=costOptionalQuota（旧L列から繰下げ）
- *     - clients-table の「マスタ枠」セルを S / P / C の3軸表示に拡張
- *     - 拡張枠判定：S>5 OR P>3 OR C>5 のいずれかで薄黄色強調
+ * 第7段階 小段階6-E：販管費任意枠5件固定化＋マスタ枠表示の S/P 2軸化
+ *   - 6-E：clients-table「マスタ枠」セルを S/P 2軸表示に簡略化
+ *     C列 costOptionalQuota は税務署様式準拠で5固定・編集不可・拡張販売対象外
+ *     のためテーブル表示から省略（内部データとしては clients.M に保持）
+ *     拡張枠判定（td-quota--expanded）から coq>5 判定を削除
+ *   - 6-D：clients 13列化（K=S / L=P / M=C）に追随（C列は内部データのみ）
  *   - 第5-C で確立した6シナリオ（空状態／再読み込み／アストラ／レオ／
  *     セッション失効遷移／認証エラー遷移）の挙動を完全維持
  *   - 認証エラー判定を AdminApp.handleAuthError 経由に集約
@@ -148,26 +148,25 @@
       var grade = c.grade || 'unknown';
       var status = c.contractStatus || '';
       var safeId = escapeHTML(c.clientId);
-      // 6-D：マスタ件数枠（運営内部管理・3軸）
+      // 6-E：マスタ件数枠（運営内部管理・2軸 S/P 表示）
+      //  - C列 costOptionalQuota は税務署様式準拠で 5 固定・編集対象外
+      //    のため表示から省略（内部データとしては clients.M に保持される）
       //  - サーバー側（_buildClientRecord_）で空欄は既定値に補完済
-      //    （S=5 / P=3 / C=5）だが念のためフロント側でもガード
+      //    （S=5 / P=3）だが念のためフロント側でもガード
       //  - 基本枠超過は td-quota--expanded で薄黄色強調
-      //    （S>5 OR P>3 OR C>5 のいずれかで「拡張枠あり」と判定）
+      //    （S>5 OR P>3 のいずれかで「拡張枠あり」と判定・coq 判定対象外）
       var smq = (c.serviceMasterQuota != null && c.serviceMasterQuota !== '')
         ? Number(c.serviceMasterQuota) : 5;
       var pmq = (c.purchaseMasterQuota != null && c.purchaseMasterQuota !== '')
         ? Number(c.purchaseMasterQuota) : 3;
-      var coq = (c.costOptionalQuota != null && c.costOptionalQuota !== '')
-        ? Number(c.costOptionalQuota) : 5;
-      var quotaExpanded = (smq > 5 || pmq > 3 || coq > 5);
+      var quotaExpanded = (smq > 5 || pmq > 3);
       var quotaCellClass = 'td-quota' + (quotaExpanded ? ' td-quota--expanded' : '');
       var quotaTitle = 'サービスマスタ ' + smq + ' 件 / '
-                     + '仕入原価マスタ ' + pmq + ' 件 / '
-                     + '販管費マスタ任意枠 ' + coq + ' 件';
+                     + '仕入原価マスタ ' + pmq + ' 件'
+                     + '（販管費マスタ任意枠は5件固定・税務署様式準拠）';
       var quotaCell = '<td class="' + quotaCellClass + '" title="' + escapeHTML(quotaTitle) + '">'
         + escapeHTML(smq) + '<span class="quota-sep">/</span>'
-        + escapeHTML(pmq) + '<span class="quota-sep">/</span>'
-        + escapeHTML(coq)
+        + escapeHTML(pmq)
         + '</td>';
       return [
         '<tr>',

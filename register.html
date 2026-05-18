@@ -142,14 +142,14 @@
       <h2 class="step-heading">Step 3：マスタ件数枠＋3種マスタ雛形</h2>
       <p class="step-help">運営内部管理として件数枠（3-1）を設定し、ユーザーが日次入力で使う3種マスタ（3-2 サービス／仕入／販管費）の初期雛形を投入します。後から運営ポータルでも編集可。<br>⚠ 取引先・仕入先は customers シート（ユーザー領域）で日々追加するもの。ここでは設定しません。</p>
 
-      <!-- 3-1：マスタ件数枠付与（運営内部管理・3軸 S/P/C） -->
+      <!-- 3-1：マスタ件数枠付与（運営内部管理・S/P 2軸編集＋C 固定表示） -->
       <h3 class="sub-heading">3-1：マスタ件数枠付与（運営内部管理）</h3>
       <div class="quota-box">
         <div class="quota-box-header">
           <span class="quota-box-badge">運営内部管理</span>
           <span class="quota-box-title">マスタ件数枠（付与枠数）</span>
         </div>
-        <p class="quota-box-help">本店舗に付与する基本枠数。拡張オプション販売時はここで増枠する（後から edit 画面でも変更可）。ユーザーUIには表示されない管理項目。</p>
+        <p class="quota-box-help">本店舗に付与する基本枠数。拡張オプション販売時はここで増枠する（後から edit 画面でも変更可）。ユーザーUIには表示されない管理項目。販管費マスタ任意枠は税務署様式準拠で5件固定（編集不可・拡張販売対象外）。</p>
         <div class="quota-row">
           <div class="quota-field">
             <label for="f3-service-master-quota">サービスマスタ枠数</label>
@@ -161,10 +161,9 @@
             <input type="number" id="f3-purchase-master-quota" min="1" step="1" value="3">
             <span class="quota-unit">件</span>
           </div>
-          <div class="quota-field">
-            <label for="f3-cost-optional-quota">販管費マスタ任意枠（26〜30）枠数</label>
-            <input type="number" id="f3-cost-optional-quota" min="1" step="1" value="5">
-            <span class="quota-unit">件</span>
+          <div class="quota-field quota-field--fixed">
+            <label>販管費マスタ任意枠（26〜30）</label>
+            <span class="quota-fixed-text"><strong>5件固定</strong>（税務署様式準拠・編集不可）</span>
           </div>
         </div>
       </div>
@@ -174,13 +173,15 @@
 
       <!-- 3-2-① サービスマスタ -->
       <h4 class="sub-heading-2">サービスマスタ（売上品目）</h4>
-      <p class="step-help">空のままでも登録可。後でユーザー側スマホからも追加できます。業種に合わせてターゲット社が納品時に雛形投入（例：飲食店「ボトル代・セット料金」／サロン「カット・カラー」等）。</p>
+      <p class="step-help">空のままでも登録可。後でユーザー側スマホからも追加できます。業種に合わせてターゲット社が納品時に雛形投入（例：飲食店「ボトル代・セット料金」／サロン「カット・カラー」等）。各科目には sv001〜の連番ID（コード）が自動採番される。</p>
       <table class="data-table" id="register-service-table">
         <thead>
           <tr>
-            <th style="width: 60%;">サービス名</th>
-            <th style="width: 20%;">税率</th>
-            <th style="width: 20%;">操作</th>
+            <th style="width: 12%;">コード</th>
+            <th style="width: 48%;">サービス名</th>
+            <th style="width: 16%;">税率</th>
+            <th style="width: 16%;">スマホ・iPad表示</th>
+            <th style="width: 8%;">操作</th>
           </tr>
         </thead>
         <tbody id="register-service-tbody"></tbody>
@@ -196,7 +197,7 @@
             <th style="width: 12%;">コード</th>
             <th style="width: 48%;">科目名</th>
             <th style="width: 20%;">税率</th>
-            <th style="width: 12%;">スマホ表示</th>
+            <th style="width: 12%;">スマホ・iPad表示</th>
             <th style="width: 8%;">操作</th>
           </tr>
         </thead>
@@ -214,7 +215,7 @@
             <th style="width: 35%;">科目名</th>
             <th style="width: 15%;">税率</th>
             <th style="width: 15%;">枠</th>
-            <th style="width: 25%;">スマホ表示</th>
+            <th style="width: 25%;">スマホ・iPad表示</th>
           </tr>
         </thead>
         <tbody id="register-cost-tbody"></tbody>
