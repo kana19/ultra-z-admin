@@ -239,14 +239,13 @@
         <span class="dirty-indicator" hidden>● 変更あり</span>
       </div>
       <div class="section-body">
-        <p class="section-description">ユーザーが売上入力で使うサービス一覧。ユーザー自身がスマホ設定からも編集可能。各科目には sv001〜の連番ID（コード）が自動採番される。<br><span class="quota-status" id="service-master-quota-status"></span></p>
+        <p class="section-description">ユーザーが売上入力で使うサービス一覧。ユーザー自身がスマホ設定からも編集可能。各科目には sv001〜の連番ID（コード）が自動採番される。登録した時点でアプリ側に表示されます（業種により非表示にする概念なし）。<br><span class="quota-status" id="service-master-quota-status"></span></p>
         <table class="data-table" id="service-table">
           <thead>
             <tr>
               <th style="width: 12%;">コード</th>
-              <th style="width: 48%;">サービス名</th>
-              <th style="width: 16%;">税率</th>
-              <th style="width: 16%;">スマホ・iPad表示</th>
+              <th style="width: 60%;">サービス名</th>
+              <th style="width: 20%;">税率</th>
               <th style="width: 8%;">操作</th>
             </tr>
           </thead>
@@ -265,14 +264,13 @@
         <span class="dirty-indicator" hidden>● 変更あり</span>
       </div>
       <div class="section-body">
-        <p class="section-description">業種固有の仕入原価科目を登録します。コストシート D列='1'（仕入原価）として記録され、青色申告決算書の「売上原価」に集計されます。基本枠：3件（運営付与）・ユーザーもスマホ設定から枠内で追加可能。<br><span class="quota-status" id="purchase-master-quota-status"></span></p>
+        <p class="section-description">業種固有の仕入原価科目を登録します。コストシート D列='1'（仕入原価）として記録され、青色申告決算書の「売上原価」に集計されます。基本枠：3件（運営付与）・ユーザーもスマホ設定から枠内で追加可能。登録した時点でアプリ側に表示されます（業種により非表示にする概念なし）。<br><span class="quota-status" id="purchase-master-quota-status"></span></p>
         <table class="data-table" id="purchase-master-table">
           <thead>
             <tr>
               <th style="width: 12%;">コード</th>
-              <th style="width: 48%;">科目名</th>
+              <th style="width: 60%;">科目名</th>
               <th style="width: 20%;">税率</th>
-              <th style="width: 12%;">スマホ・iPad表示</th>
               <th style="width: 8%;">操作</th>
             </tr>
           </thead>
@@ -291,7 +289,7 @@
         <span class="dirty-indicator" hidden>● 変更あり</span>
       </div>
       <div class="section-body">
-        <p class="section-description">青色申告書互換の販管費科目（コストシート D列='2'）。固定枠（コード8〜25,31）は名称変更不可・税率のみ編集可。任意枠（コード26〜30）は業種固有の販管費科目（団体会費・看板料等）として名称も編集可。<br>⚠ 仕入原価科目（食材費・商品仕入等）は本マスタではなく <strong>5-2 仕入マスタ</strong> に登録してください。<br><span class="quota-status" id="cost-optional-quota-status"></span></p>
+        <p class="section-description">青色申告書互換の販管費科目（コストシート D列='2'）。固定枠（コード8〜25,31）は名称変更不可・税率のみ編集可。任意枠（コード26〜30）は業種固有の販管費科目（団体会費・看板料等）として名称も編集可。<br>「アプリ表示」はユーザーアプリ（スマホ・iPad）のコスト入力モーダル販管費タブでの表示有無。業種により使わない科目を非表示にしてユーザーUIを簡潔化する用途（例：飲食店なら「外注工賃」「税理士等の報酬」を非表示）。PC版コスト入力では本フラグは無視され全科目利用可能。<br>⚠ 仕入原価科目（食材費・商品仕入等）は本マスタではなく <strong>5-2 仕入マスタ</strong> に登録してください。<br><span class="quota-status" id="cost-optional-quota-status"></span></p>
         <table class="data-table" id="cost-master-table">
           <thead>
             <tr>
@@ -299,7 +297,7 @@
               <th style="width: 35%;">科目名</th>
               <th style="width: 15%;">税率</th>
               <th style="width: 15%;">枠</th>
-              <th style="width: 25%;">スマホ・iPad表示</th>
+              <th style="width: 25%;">アプリ表示</th>
             </tr>
           </thead>
           <tbody id="cost-master-table-body">

@@ -1,14 +1,21 @@
 /* ============================================================
- * ultra-z-admin / 第7段階 小段階6-E 新規登録ウィザード
+ * ultra-z-admin / 第7段階 小段階6-F 新規登録ウィザード
  *   - 7ステップ構成（Step 1〜6 入力 + Step 7 実行プレースホルダ）
- *   - 6-E 改修点：
+ *   - 6-F 改修点：
+ *       3-2-①：サービスマスタの smartphoneVisible 列を廃止（4列構成）
+ *            登録＝表示固定・業種により非表示にする概念なし（00_原則.md §6-5）
+ *       3-2-②：仕入マスタの smartphoneVisible 列を廃止（4列構成）
+ *            登録＝表示固定（同上）
+ *       3-2-③：販管費マスタの列ラベル「スマホ・iPad表示」→「アプリ表示」に変更
+ *            （業種により使わない科目をユーザーアプリ側で非表示にする運用専用）
+ *       defaultPurchaseMasterListFixture から smartphoneVisible:true を削除
+ *       Step 6 サマリーの「スマホ・iPad表示 X件」→「アプリ表示 X件」
+ *   - 6-E 改修点（継続）：
  *       3-1：販管費マスタ任意枠（C）5件固定化（編集UI廃止・固定表示テキスト化）
  *            （税務署様式準拠・拡張販売対象外・01_商品体系.md §4-2）
  *            state.step3.costOptionalQuota は 5 固定維持・readStep3 / paintStep3 から coq input 操作削除
  *       3-2-①：サービスマスタに id フィールド対応（sv001〜連番自動採番）
- *            テーブルにコード列・スマホ・iPad表示列を追加（5列構成）
  *            03_データ仕様.md §1-1 serviceList JSON 構造に整合
- *       3-2-②/③：列ラベル「スマホ表示」→「スマホ・iPad表示」（00_原則.md §6-5）
  *       Step 6 サマリーに「販管費マスタ任意枠：5件固定」明示
  *   - 6-D 改修点（継続）：
  *       Step 3 を2段構成（3-1 枠付与＋3-2 雛形投入）
@@ -192,15 +199,16 @@
     ];
   }
   // 6-D：仕入原価マスタ汎用フォールバック雛形（3件）
-  // マスタGAS v0.5.3 の _defaultPurchaseMasterList_ と完全整合。
+  // マスタGAS v0.5.5 の _defaultPurchaseMasterList_ と完全整合。
   // ID プレフィックス `pNNN` 連番（コストシート F列に格納される値と一致）。
   // 業種別自動判定機構はなし（00_原則.md §4-5）。
   // 業種カスタマイズはターゲット社が納品時にこのウィザードまたは edit 画面で手作業投入。
+  // 6-F：smartphoneVisible フィールド削除（登録＝表示固定・00_原則.md §6-5）
   function defaultPurchaseMasterList() {
     return [
-      { id: 'p001', name: '仕入',     defaultTaxRate: 10, smartphoneVisible: true },
-      { id: 'p002', name: '材料費',   defaultTaxRate: 10, smartphoneVisible: true },
-      { id: 'p003', name: '消耗品',   defaultTaxRate: 10, smartphoneVisible: true }
+      { id: 'p001', name: '仕入',     defaultTaxRate: 10 },
+      { id: 'p002', name: '材料費',   defaultTaxRate: 10 },
+      { id: 'p003', name: '消耗品',   defaultTaxRate: 10 }
     ];
   }
 
@@ -584,7 +592,9 @@
   }
 
   // ============ Step 3 サービステーブル ============
-  // 6-E：id フィールド対応（sv001〜連番自動採番）＋ smartphoneVisible 列追加
+  // 6-F：smartphoneVisible 列廃止（登録＝表示固定・00_原則.md §6-5）
+  //   4列構成（コード・サービス名・税率・操作）
+  // 6-E：id フィールド対応（sv001〜連番自動採番）
   //   03_データ仕様.md §1-1 serviceList JSON 構造に整合
   //   各科目には sv001〜の連番ID（コード）が自動採番される
   function renderServiceTable() {
@@ -592,7 +602,7 @@
     tbody.innerHTML = '';
     const list = RegisterState.data.step3.serviceList;
     if (list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">サービス未登録（後で追加可能）</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-row">サービス未登録（後で追加可能）</td></tr>';
       return true;
     }
     list.forEach(function (svc, idx) {
@@ -607,11 +617,6 @@
             '<option value="8"' + (Number(svc.taxRate) === 8 ? ' selected' : '') + '>8%</option>' +
             '<option value="10"' + (Number(svc.taxRate) === 10 ? ' selected' : '') + '>10%</option>' +
           '</select>' +
-        '</td>' +
-        '<td>' +
-          '<label class="toggle-inline">' +
-            '<input type="checkbox" data-svc-idx="' + idx + '" data-svc-field="smartphoneVisible"' + (svc.smartphoneVisible !== false ? ' checked' : '') + '> 表示' +
-          '</label>' +
         '</td>' +
         '<td><button type="button" class="btn-icon-delete" data-svc-del="' + idx + '">🗑️</button></td>';
       tbody.appendChild(tr);
@@ -629,8 +634,11 @@
       const field = el.dataset.svcField;
       if (!existing[idx]) existing[idx] = {};
       if (field === 'taxRate') existing[idx][field] = parseInt(el.value, 10);
-      else if (field === 'smartphoneVisible') existing[idx][field] = el.checked;
       else if (field === 'name') existing[idx][field] = el.value.trim();
+    });
+    // 6-F：smartphoneVisible が残っていれば除去（防御的に）
+    existing.forEach(function (s) {
+      if (s && 'smartphoneVisible' in s) delete s.smartphoneVisible;
     });
     RegisterState.data.step3.serviceList = existing.filter(function (s) { return s; });
     return true;
@@ -653,8 +661,7 @@
     RegisterState.data.step3.serviceList.push({
       id: nextServiceId(),
       name: '',
-      taxRate: 10,
-      smartphoneVisible: true
+      taxRate: 10
     });
     renderServiceTable();
   }
@@ -668,13 +675,15 @@
   // 03_データ仕様.md §1-3 purchaseMasterList の編集 UI
   // ID プレフィックス：p001〜（コストシート F列に格納される値と一致）
   // 業種別自動判定機構はなし（00_原則.md §4-5）
+  // 6-F：smartphoneVisible 列廃止（登録＝表示固定・00_原則.md §6-5）
+  //   4列構成（コード・科目名・税率・操作）
   function renderPurchaseTable() {
     const tbody = $('register-purchase-tbody');
     if (!tbody) return true;
     tbody.innerHTML = '';
     const list = RegisterState.data.step3.purchaseMasterList || [];
     if (list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">仕入科目未登録（後で追加可能）</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-row">仕入科目未登録（後で追加可能）</td></tr>';
       return true;
     }
     list.forEach(function (p, idx) {
@@ -689,11 +698,6 @@
             '<option value="8"'  + (Number(taxRate) === 8  ? ' selected' : '') + '>8%</option>' +
             '<option value="10"' + (Number(taxRate) === 10 ? ' selected' : '') + '>10%</option>' +
           '</select>' +
-        '</td>' +
-        '<td>' +
-          '<label class="toggle-inline">' +
-            '<input type="checkbox" data-pm-idx="' + idx + '" data-pm-field="smartphoneVisible"' + (p.smartphoneVisible !== false ? ' checked' : '') + '> 表示' +
-          '</label>' +
         '</td>' +
         '<td><button type="button" class="btn-icon-delete" data-pm-del="' + idx + '">🗑️</button></td>';
       tbody.appendChild(tr);
@@ -710,9 +714,12 @@
       const idx = parseInt(el.dataset.pmIdx, 10);
       const field = el.dataset.pmField;
       if (!updated[idx]) return;
-      if (field === 'smartphoneVisible') updated[idx][field] = el.checked;
-      else if (field === 'defaultTaxRate') updated[idx][field] = parseInt(el.value, 10);
+      if (field === 'defaultTaxRate') updated[idx][field] = parseInt(el.value, 10);
       else if (field === 'name') updated[idx][field] = el.value.trim();
+    });
+    // 6-F：smartphoneVisible が残っていれば除去（防御的に）
+    updated.forEach(function (p) {
+      if (p && 'smartphoneVisible' in p) delete p.smartphoneVisible;
     });
     RegisterState.data.step3.purchaseMasterList = updated;
     return true;
@@ -740,8 +747,7 @@
     RegisterState.data.step3.purchaseMasterList.push({
       id: nextPurchaseId(),
       name: '',
-      defaultTaxRate: 10,
-      smartphoneVisible: true
+      defaultTaxRate: 10
     });
     renderPurchaseTable();
   }
@@ -911,7 +917,7 @@
         ['販管費マスタ任意枠（C）', '5件固定（税務署様式準拠・編集不可）'],
         ['サービスマスタ', serviceText],
         ['仕入マスタ', purchaseText],
-        ['販管費マスタ', '青色申告デフォルト 24件 / 任意枠使用 ' + customCostCount + ' 件 / スマホ・iPad表示 ' + visibleCount + ' 件']
+        ['販管費マスタ', '青色申告デフォルト 24件 / 任意枠使用 ' + customCostCount + ' 件 / アプリ表示 ' + visibleCount + ' 件']
       ]) +
       section('Step 4：ロゴ・テーマ', 4, [
         ['店舗ロゴ', s4.logoFile ? s4.logoFile.name : '（未選択・Step 7 でスキップ）'],

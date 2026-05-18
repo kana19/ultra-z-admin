@@ -1,17 +1,20 @@
 /* ============================================================
- * ultra-z-admin / 第7段階 小段階6-E ユーザー編集画面
+ * ultra-z-admin / 第7段階 小段階6-F ユーザー編集画面
  *   - 単一スクロール10セクション構成（タブ構造なし）
  *   - 運営ポータル管轄：枠（タイムカード数・マスタ件数枠 S/P・契約）＋全体設定
  *     （スタッフ個別情報・取引先・売上・コスト・出勤データは管轄外・編集UIなし）
+ *   - 6-F：用語統一「アプリ表示」＋smartphoneVisible 範囲縮小
+ *     §5 サービスマスタ・§5-2 仕入マスタから smartphoneVisible 列削除（4列構成）
+ *     （登録＝表示固定・業種により非表示にする概念なし）
+ *     §6 販管費マスタの列ラベル「スマホ・iPad表示」→「アプリ表示」に変更
+ *     （業種により使わない科目をユーザーアプリ側で非表示にする運用専用）
+ *     00_原則.md §6-5 改訂で確定
  *   - 6-E：販管費マスタ任意枠（C）5件固定化
  *     §2 マスタ件数枠 UI を S/P 2軸編集＋C 固定表示テキスト化
  *     （税務署様式準拠・拡張販売対象外・01_商品体系.md §4-2）
  *     diffClient から costOptionalQuota 削除（編集不可のため差分発生せず）
  *   - 6-E：サービスマスタ id フィールド対応（sv001〜連番採番）
- *     §5 サービスマスタにコード列・スマホ・iPad表示列を追加（5列構成）
  *     03_データ仕様.md §1-1 serviceList JSON 構造に整合
- *   - 6-E：表示ラベル「スマホ表示」→「スマホ・iPad表示」に統一
- *     00_原則.md §6-5 smartphoneVisible 参照範囲明確化
  *   - 6-D：仕入原価マスタ purchaseMasterList 対応・clients 13列化（継続）
  *     §5-2 仕入マスタ セクション・購入科目 ID は `p001`〜の連番自動採番
  *
@@ -357,15 +360,16 @@
   }
 
   // ============ §5 サービスマスタ ============
-  // 6-E：id フィールド対応（sv001〜連番自動採番）＋ smartphoneVisible 列追加
+  // 6-F：smartphoneVisible 列廃止（登録＝表示固定・00_原則.md §6-5）
+  //   4列構成（コード・サービス名・税率・操作）
+  //   id フィールド対応（sv001〜連番自動採番・6-E から継続）
   //   03_データ仕様.md §1-1 serviceList JSON 構造に整合
-  //   既存ユーザーは migrateUserSettings_v0_5_4_addServiceListIds で id 付与済
   function renderServiceMaster() {
     const tbody = document.getElementById('service-table-body');
     tbody.innerHTML = '';
     const list = state.currentSettings.serviceList || [];
     if (list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">サービスが登録されていません</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-row">サービスが登録されていません</td></tr>';
       return;
     }
     list.forEach(function (svc, idx) {
@@ -380,11 +384,6 @@
             '<option value="8"' + (Number(svc.taxRate) === 8 ? ' selected' : '') + '>8%</option>' +
             '<option value="10"' + (Number(svc.taxRate) === 10 ? ' selected' : '') + '>10%</option>' +
           '</select>' +
-        '</td>' +
-        '<td>' +
-          '<label class="toggle-inline">' +
-            '<input type="checkbox" data-svc-idx="' + idx + '" data-svc-field="smartphoneVisible"' + (svc.smartphoneVisible !== false ? ' checked' : '') + '> 表示' +
-          '</label>' +
         '</td>' +
         '<td><button type="button" class="btn-icon-delete" data-svc-del="' + idx + '">🗑️</button></td>';
       tbody.appendChild(tr);
@@ -402,11 +401,13 @@
       if (!existing[idx]) existing[idx] = {};
       if (field === 'taxRate') {
         existing[idx][field] = parseInt(el.value, 10);
-      } else if (field === 'smartphoneVisible') {
-        existing[idx][field] = el.checked;
       } else if (field === 'name') {
         existing[idx][field] = el.value.trim();
       }
+    });
+    // 6-F：smartphoneVisible が残っていれば除去（マイグレ後は不要だが防御的に）
+    existing.forEach(function (s) {
+      if (s && 'smartphoneVisible' in s) delete s.smartphoneVisible;
     });
     // 空のもの（name 空文字）を除外
     state.currentSettings.serviceList = existing.filter(function (s) { return s && s.name; });
@@ -431,8 +432,7 @@
     state.currentSettings.serviceList.push({
       id: nextServiceId(),
       name: '',
-      taxRate: 10,
-      smartphoneVisible: true
+      taxRate: 10
     });
     renderServiceMaster();
     markDirty('service-master');
@@ -461,7 +461,7 @@
     }
     const list = state.currentSettings.purchaseMasterList;
     if (list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">仕入科目が登録されていません。「＋ 仕入科目を追加」から追加してください。</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-row">仕入科目が登録されていません。「＋ 仕入科目を追加」から追加してください。</td></tr>';
       return;
     }
     list.forEach(function (p, idx) {
@@ -477,11 +477,6 @@
             '<option value="8"'  + (Number(taxRate) === 8  ? ' selected' : '') + '>8%</option>' +
             '<option value="10"' + (Number(taxRate) === 10 ? ' selected' : '') + '>10%</option>' +
           '</select>' +
-        '</td>' +
-        '<td>' +
-          '<label class="toggle-inline">' +
-            '<input type="checkbox" data-pm-idx="' + idx + '" data-pm-field="smartphoneVisible"' + (p.smartphoneVisible !== false ? ' checked' : '') + '> 表示' +
-          '</label>' +
         '</td>' +
         '<td><button type="button" class="btn-icon-delete" data-pm-del="' + idx + '">🗑️</button></td>';
       tbody.appendChild(tr);
@@ -500,13 +495,15 @@
       const idx = parseInt(el.dataset.pmIdx, 10);
       const field = el.dataset.pmField;
       if (!updatedList[idx]) return;
-      if (field === 'smartphoneVisible') {
-        updatedList[idx][field] = el.checked;
-      } else if (field === 'defaultTaxRate') {
+      if (field === 'defaultTaxRate') {
         updatedList[idx][field] = parseInt(el.value, 10);
       } else if (field === 'name') {
         updatedList[idx][field] = el.value.trim();
       }
+    });
+    // 6-F：smartphoneVisible が残っていれば除去（マイグレ後は不要だが防御的に）
+    updatedList.forEach(function (p) {
+      if (p && 'smartphoneVisible' in p) delete p.smartphoneVisible;
     });
     state.currentSettings.purchaseMasterList = updatedList;
   }
@@ -533,8 +530,7 @@
     state.currentSettings.purchaseMasterList.push({
       id: nextPurchaseId(),
       name: '',
-      defaultTaxRate: 10,
-      smartphoneVisible: true
+      defaultTaxRate: 10
     });
     renderPurchaseMaster();
     markDirty('purchase-master');
