@@ -1,4 +1,4 @@
-/* css/edit.css - 第6段階 単一スクロール9セクション用
+/* css/edit.css - 第7段階 単一スクロール9セクション用
  * タブ構造は使わない。すべてのセクションを縦に並べ、最下部の sticky 操作バーで
  * 全項目を一括保存/破棄する。PC専用前提（min-width 1280px）。
  */
@@ -172,7 +172,7 @@
 }
 .warning-box p { margin: 0; }
 
-/* ============ §2 マスタ件数枠（運営内部管理） v0.5.1 ============ */
+/* ============ §2 マスタ件数枠（運営内部管理） ============ */
 .quota-box {
   background: #f7f4ec;
   border: 1px solid #e0d4a8;
@@ -216,6 +216,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
 }
 .quota-field label {
   font-size: 13px;
@@ -246,7 +250,29 @@
   font-style: italic;
 }
 
-/* §5/§6 description 内の付与枠数ステータス */
+/* 6-G：§2 件数枠が現在使用件数を下回る場合の警告強調
+ *   - フィールド全体を薄黄色背景＋枠線で明示
+ *   - input 自体も薄黄色背景＋警告色枠線
+ *   - 「現在: N件」表示も警告色＋太字に
+ *   - 保存阻害なし（運営判断を尊重）
+ */
+.quota-field--over {
+  background: #fdf4dc;
+  border-color: #e0d4a8;
+}
+.quota-field--over input[type="number"] {
+  background: #fff8e1;
+  border-color: #d4a017;
+  color: #856404;
+  font-weight: 700;
+}
+.quota-current--over {
+  color: #c97a00;
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* §5/§5-2/§6 description 内の付与枠数ステータス */
 .quota-status {
   display: inline-block;
   margin-top: 4px;
@@ -350,6 +376,18 @@
   box-sizing: border-box;
   font-family: inherit;
 }
+
+/* 6-G：テーブル行も枠超過時に薄黄色強調
+ *   - §5 サービスマスタ・§5-2 仕入マスタの超過分の行（枠数 N を超えた N+1 行目以降）
+ *   - data-over-quota="true" を付与した tr に適用
+ */
+.data-table tr[data-over-quota="true"] {
+  background: #fdf4dc;
+}
+.data-table tr[data-over-quota="true"] td:first-child {
+  border-left: 3px solid #d4a017;
+}
+
 .btn-icon-delete {
   background: transparent;
   border: 1px solid #ddd;
@@ -414,10 +452,7 @@
   font-weight: 600;
 }
 
-/* ============ ボタン（edit.html 用ローカル定義・base.css 優先のためここでは詳細を控えめに）
- * base.css に既に .btn-primary / .btn-secondary / .btn-danger が定義されているため、
- * 二重定義は避けて、edit.css 固有の状態だけ補完する。
- * ============ */
+/* ============ ボタン（base.css 優先・状態のみ補完） ============ */
 .btn-primary:disabled,
 .btn-secondary:disabled,
 .btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
