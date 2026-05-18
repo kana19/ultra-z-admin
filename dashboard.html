@@ -56,13 +56,12 @@
       background: #2A0A0A;
       color: #F4B6B6;
     }
-    /* 第5-B：GAS Version 取得失敗時の赤色強調 */
+    /* GAS Version 取得失敗時の赤色強調 */
     .debug-error {
       color: var(--color-danger);
       font-weight: 700;
     }
-    /* 7-C：clients テーブル「マスタ枠」列のスタイル
-       6-E：S/P 2軸表示に簡略化（C=5固定・編集不可・拡張販売対象外・表示省略） */
+    /* clients テーブル「マスタ枠」列のスタイル（S/P 2軸表示） */
     .th-sub {
       display: block;
       font-size: 10px;
@@ -78,11 +77,127 @@
       white-space: nowrap;
     }
     .td-quota .quota-sep { color: var(--color-text-muted); margin: 0 4px; }
-    /* 基本枠（S=5/P=3）は通常表示・拡張枠ありは薄い金色背景で強調
-       6-E：C列は5固定のため判定対象外 */
     .td-quota--expanded {
       background: #fdf4dc;
       font-weight: 700;
+    }
+
+    /* ============ 6-H：アプリURL列・展開▼ ============ */
+    .td-app-url {
+      text-align: center;
+      white-space: nowrap;
+    }
+    .btn-url-expand {
+      padding: 4px 12px;
+      font-size: 12px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-family: inherit;
+    }
+    .btn-url-expand:hover {
+      background: #f0f0f0;
+    }
+    .btn-url-expand[aria-expanded="true"] {
+      background: var(--color-space, #0B1842);
+      color: #fff;
+      border-color: var(--color-space, #0B1842);
+    }
+
+    /* 展開行（インライン展開・各clientId行の直下に表示） */
+    .tr-url-list {
+      background: #fafafa;
+    }
+    .tr-url-list[hidden] {
+      display: none;
+    }
+    .url-list-cell {
+      padding: 12px 16px !important;
+      background: #fafafa;
+      border-bottom: 1px solid #e5e5e5;
+    }
+    .url-list-group {
+      margin-bottom: 12px;
+    }
+    .url-list-group:last-child {
+      margin-bottom: 0;
+    }
+    .url-list-group-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #555;
+      margin: 0 0 6px 0;
+      letter-spacing: 0.04em;
+    }
+    .url-list-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+    }
+    .url-list-item__label {
+      font-size: 11px;
+      color: #777;
+      min-width: 110px;
+      flex-shrink: 0;
+    }
+    .url-list-item__url {
+      flex: 1;
+      font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      color: #1a1a1a;
+      word-break: break-all;
+      padding: 4px 8px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+    }
+    .url-list-item__copy {
+      padding: 4px 10px;
+      font-size: 11px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      cursor: pointer;
+      flex-shrink: 0;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .url-list-item__copy:hover {
+      background: #e8f4ff;
+      border-color: #88c0e0;
+    }
+    .url-list-item__copy--copied {
+      background: #d4edda !important;
+      border-color: #6abc6a !important;
+      color: #155724;
+    }
+    .url-list-staff-empty {
+      font-size: 11px;
+      color: #999;
+      font-style: italic;
+      padding: 4px 0;
+    }
+
+    /* コピー成功トースト */
+    .copy-toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      background: #27ae60;
+      color: #fff;
+      border-radius: 4px;
+      font-size: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      z-index: 1000;
+      transition: opacity 0.3s;
+    }
+    .copy-toast[hidden] {
+      display: none;
     }
   </style>
 </head>
@@ -138,6 +253,7 @@
               <th>月額</th>
               <th>契約開始</th>
               <th title="売上品目マスタ / 仕入原価マスタ の付与枠数（販管費マスタ任意枠は5件固定・税務署様式準拠）">マスタ枠<br><span class="th-sub">S / P</span></th>
+              <th title="オーナーアプリ（スマホ・iPad・PC）／スタッフ子アカウントのURL一覧">アプリURL</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -174,7 +290,7 @@
         </div>
         <div class="kv-grid__item">
           <span class="kv-grid__label">ビルド段階</span>
-          <span class="kv-grid__value">第7段階 小段階6-E（販管費任意枠5固定化・serviceList id 採番・マスタ枠 S/P 2軸表示）</span>
+          <span class="kv-grid__value">第7段階 小段階6-H（dashboard アプリURL列・展開▼）</span>
         </div>
       </div>
 
@@ -192,6 +308,9 @@
       </div>
     </section>
   </main>
+
+  <!-- 6-H：コピー成功トースト -->
+  <div id="copy-toast" class="copy-toast" hidden>URLをコピーしました</div>
 
   <footer class="app-footer">
     &copy; TARGET Inc. ／ ultra-z-admin

@@ -1,26 +1,36 @@
 /* ============================================================
  * ultra-z-admin / ダッシュボード（ユーザー一覧）スクリプト
- * 第7段階 小段階6-E：販管費任意枠5件固定化＋マスタ枠表示の S/P 2軸化
- *   - 6-E：clients-table「マスタ枠」セルを S/P 2軸表示に簡略化
- *     C列 costOptionalQuota は税務署様式準拠で5固定・編集不可・拡張販売対象外
- *     のためテーブル表示から省略（内部データとしては clients.M に保持）
- *     拡張枠判定（td-quota--expanded）から coq>5 判定を削除
- *   - 6-D：clients 13列化（K=S / L=P / M=C）に追随（C列は内部データのみ）
- *   - 第5-C で確立した6シナリオ（空状態／再読み込み／アストラ／レオ／
- *     セッション失効遷移／認証エラー遷移）の挙動を完全維持
- *   - 認証エラー判定を AdminApp.handleAuthError 経由に集約
- *     （新action の code 形式・旧 listClients の error/detail.error 形式の両対応）
- *   - clients-table に「操作」列を追加し、各行に edit.html への遷移リンクを配置
+ *
+ * 第7段階 6-H：dashboard アプリURL列・展開▼ボタン
+ *   - clients-table に「アプリURL」列を追加（マスタ枠列と操作列の間）
+ *   - 「展開▼」ボタンで以下を行下にインライン展開：
+ *       オーナーアプリ（スマホ・iPad）：https://kana19.github.io/{clientId}/
+ *       オーナーアプリ（PC版）：https://kana19.github.io/{clientId}/pc/
+ *       スタッフ子アカウント（タイムカード数分・TC=0 アストラでは非表示）：
+ *         https://kana19.github.io/{clientId}/staff-clockin.html?staff=sNNN
+ *   - 各URLにコピーボタン
+ *   - 代理ログインURL（一時URL）は本テーブル外・別操作で発行（QR表示は将来拡張）
+ *   - 04_運営ポータル.md §2-2 / 06_環境.md §2-1 に整合
+ *
+ * 6-E：販管費任意枠5件固定化＋マスタ枠表示 S/P 2軸化
+ *   - clients-table「マスタ枠」セルは S/P 2軸表示
+ *   - C列 costOptionalQuota は税務署様式準拠で5固定・テーブル表示から省略
+ *
+ * 第5-C で確立した6シナリオ（空状態／再読み込み／アストラ／レオ／
+ *   セッション失効遷移／認証エラー遷移）の挙動を完全維持。
  *
  * 依存：app.js → auth.js → dashboard.js の順で読み込むこと（HTML側で保証）。
  * ============================================================ */
 (function () {
   'use strict';
 
-  // セッション無ければ index.html へ（dashboard.html のガード）
+  // セッション無ければ index.html へ
   AdminAuth.bootstrapDashboardPage();
 
-  // ---- DEBUG表示・ヘッダー初期化（旧インラインの冒頭処理） --------
+  // GitHub Pages のユーザー側公開URL ベース
+  var USER_PWA_BASE = 'https://kana19.github.io/';
+
+  // ---- DEBUG表示・ヘッダー初期化 --------
   function initEnvInfo() {
     var ssidEl = document.getElementById('env-ssid');
     var gasEl = document.getElementById('env-gas');
@@ -57,7 +67,7 @@
     btn.addEventListener('click', function () { AdminAuth.logout(); });
   }
 
-  // ---- 接続テスト（DEBUG用：本番運用時に削除検討） ---------------
+  // ---- 接続テスト（DEBUG用） ---------------------------
   function initConnectionTest() {
     var resultEl = document.getElementById('ping-result');
     var getBtn = document.getElementById('ping-get-btn');
@@ -142,19 +152,75 @@
     return '¥' + num.toLocaleString('ja-JP');
   }
 
+  // 6-H：staffId padding（s001〜sNNN）
+  function padStaffId(n) {
+    return 's' + String(n).padStart(3, '0');
+  }
+
+  // 6-H：URL展開行を生成（インライン展開・行下に挿入）
+  function buildUrlListRowHtml(clientId, timecardCount) {
+    var safeClientId = escapeHTML(clientId);
+    var safeClientIdEnc = encodeURIComponent(clientId);
+    var ownerUrl = USER_PWA_BASE + safeClientIdEnc + '/';
+    var pcUrl = USER_PWA_BASE + safeClientIdEnc + '/pc/';
+    var tc = parseInt(timecardCount, 10) || 0;
+
+    var staffRows = '';
+    if (tc > 0) {
+      var staffItems = [];
+      for (var i = 1; i <= tc; i++) {
+        var staffId = padStaffId(i);
+        var staffUrl = USER_PWA_BASE + safeClientIdEnc + '/staff-clockin.html?staff=' + staffId;
+        staffItems.push(
+          '<div class="url-list-item">' +
+            '<span class="url-list-item__label">' + staffId + '</span>' +
+            '<span class="url-list-item__url">' + escapeHTML(staffUrl) + '</span>' +
+            '<button type="button" class="url-list-item__copy" data-copy-url="' + escapeHTML(staffUrl) + '">コピー</button>' +
+          '</div>'
+        );
+      }
+      staffRows =
+        '<div class="url-list-group">' +
+          '<h4 class="url-list-group-title">スタッフ子アカウント（' + tc + '名分）</h4>' +
+          staffItems.join('') +
+        '</div>';
+    } else {
+      staffRows =
+        '<div class="url-list-group">' +
+          '<h4 class="url-list-group-title">スタッフ子アカウント</h4>' +
+          '<p class="url-list-staff-empty">タイムカード数 0（アストラ）のため発行なし</p>' +
+        '</div>';
+    }
+
+    return [
+      '<tr class="tr-url-list" data-url-list-for="' + safeClientId + '" hidden>',
+        '<td colspan="10" class="url-list-cell">',
+          '<div class="url-list-group">',
+            '<h4 class="url-list-group-title">オーナーアプリ</h4>',
+            '<div class="url-list-item">',
+              '<span class="url-list-item__label">スマホ・iPad</span>',
+              '<span class="url-list-item__url">' + escapeHTML(ownerUrl) + '</span>',
+              '<button type="button" class="url-list-item__copy" data-copy-url="' + escapeHTML(ownerUrl) + '">コピー</button>',
+            '</div>',
+            '<div class="url-list-item">',
+              '<span class="url-list-item__label">PC版</span>',
+              '<span class="url-list-item__url">' + escapeHTML(pcUrl) + '</span>',
+              '<button type="button" class="url-list-item__copy" data-copy-url="' + escapeHTML(pcUrl) + '">コピー</button>',
+            '</div>',
+          '</div>',
+          staffRows,
+        '</td>',
+      '</tr>'
+    ].join('');
+  }
+
   function renderClientsTable(clients) {
     var tbody = document.getElementById('clients-tbody');
     var rows = clients.map(function (c) {
       var grade = c.grade || 'unknown';
       var status = c.contractStatus || '';
       var safeId = escapeHTML(c.clientId);
-      // 6-E：マスタ件数枠（運営内部管理・2軸 S/P 表示）
-      //  - C列 costOptionalQuota は税務署様式準拠で 5 固定・編集対象外
-      //    のため表示から省略（内部データとしては clients.M に保持される）
-      //  - サーバー側（_buildClientRecord_）で空欄は既定値に補完済
-      //    （S=5 / P=3）だが念のためフロント側でもガード
-      //  - 基本枠超過は td-quota--expanded で薄黄色強調
-      //    （S>5 OR P>3 のいずれかで「拡張枠あり」と判定・coq 判定対象外）
+      // マスタ件数枠（運営内部管理・2軸 S/P 表示）
       var smq = (c.serviceMasterQuota != null && c.serviceMasterQuota !== '')
         ? Number(c.serviceMasterQuota) : 5;
       var pmq = (c.purchaseMasterQuota != null && c.purchaseMasterQuota !== '')
@@ -168,7 +234,11 @@
         + escapeHTML(smq) + '<span class="quota-sep">/</span>'
         + escapeHTML(pmq)
         + '</td>';
-      return [
+      // 6-H：URL展開列
+      var urlCell = '<td class="td-app-url">'
+        + '<button type="button" class="btn-url-expand" data-toggle-url-list="' + safeId + '" aria-expanded="false">展開▼</button>'
+        + '</td>';
+      var clientRow = [
         '<tr>',
           '<td class="td-clientId">' + safeId + '</td>',
           '<td>' + escapeHTML(c.storeName) + '</td>',
@@ -178,11 +248,92 @@
           '<td class="td-fee">' + escapeHTML(formatFee(c.monthlyFee)) + '</td>',
           '<td>' + escapeHTML(c.contractStart) + '</td>',
           quotaCell,
+          urlCell,
           '<td class="td-action"><a href="edit.html?clientId=' + encodeURIComponent(c.clientId) + '" class="btn-edit">編集</a></td>',
         '</tr>'
       ].join('');
+      var urlListRow = buildUrlListRowHtml(c.clientId, c.timecardCount);
+      return clientRow + urlListRow;
     });
     tbody.innerHTML = rows.join('');
+    bindUrlListEvents();
+  }
+
+  // 6-H：URL展開ボタン・コピーボタンのイベント委譲
+  function bindUrlListEvents() {
+    var tbody = document.getElementById('clients-tbody');
+    if (!tbody) return;
+
+    // 展開▼ボタン
+    tbody.addEventListener('click', function (e) {
+      var target = e.target;
+      // 展開ボタン
+      var expandClientId = target.getAttribute && target.getAttribute('data-toggle-url-list');
+      if (expandClientId) {
+        var listRow = tbody.querySelector('[data-url-list-for="' + expandClientId + '"]');
+        if (listRow) {
+          var isOpen = !listRow.hidden;
+          listRow.hidden = isOpen;
+          target.setAttribute('aria-expanded', String(!isOpen));
+          target.textContent = isOpen ? '展開▼' : '閉じる▲';
+        }
+        return;
+      }
+      // コピーボタン
+      var copyUrl = target.getAttribute && target.getAttribute('data-copy-url');
+      if (copyUrl) {
+        copyToClipboard(copyUrl, target);
+        return;
+      }
+    });
+  }
+
+  // 6-H：クリップボードコピー（Clipboard API・フォールバック付き）
+  function copyToClipboard(text, btnEl) {
+    var done = function () {
+      if (btnEl) {
+        btnEl.classList.add('url-list-item__copy--copied');
+        var orig = btnEl.textContent;
+        btnEl.textContent = '✓';
+        setTimeout(function () {
+          btnEl.classList.remove('url-list-item__copy--copied');
+          btnEl.textContent = orig;
+        }, 1500);
+      }
+      showCopyToast();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () {
+        fallbackCopy(text, done);
+      });
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+
+  function fallbackCopy(text, onDone) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (onDone) onDone();
+    } catch (e) {
+      console.warn('clipboard copy failed', e);
+    }
+  }
+
+  var copyToastTimer = null;
+  function showCopyToast() {
+    var t = document.getElementById('copy-toast');
+    if (!t) return;
+    t.hidden = false;
+    if (copyToastTimer) clearTimeout(copyToastTimer);
+    copyToastTimer = setTimeout(function () { t.hidden = true; }, 1800);
   }
 
   function showClientsError(res) {
@@ -217,8 +368,6 @@
     elCount.hidden = true;
     elLoading.hidden = false;
 
-    // セッションから pin が取れなければ強制ログアウト（callMasterGas が自動付与する前提だが
-    // セッションそのものが無ければ pin も無いため事前ガード）
     var session = AdminAuth.getSession();
     if (!session || !session.pin) {
       AdminAuth.clearSession();
@@ -230,7 +379,6 @@
 
     elLoading.hidden = true;
 
-    // 認証エラー系は handleAuthError に委譲（旧形式 error/detail.error も内部で処理）
     if (AdminApp.handleAuthError(res)) return;
 
     if (!res.ok) {
@@ -253,7 +401,6 @@
     var refreshBtn = document.getElementById('clients-refresh-btn');
     if (refreshBtn) refreshBtn.addEventListener('click', loadClients);
 
-    // 第7段階 小段階7-B：「+ 新規追加」ボタン → register.html へ遷移
     var registerBtn = document.getElementById('btn-register-new');
     if (registerBtn) {
       registerBtn.addEventListener('click', function () {
@@ -261,7 +408,6 @@
       });
     }
 
-    // 初回読込（bootstrapDashboardPage で済んでいるが念のため再確認）
     (async function () {
       if (!AdminAuth.isSessionValid()) {
         location.replace('index.html');
@@ -272,9 +418,6 @@
   }
 
   // ---- エントリポイント ----------------------------------------
-  // dashboard.html では body 末尾で script を読み込むため、DOM は parse 済。
-  // ただし dashboard.html 内に DOMContentLoaded 待ちのコードが残っている可能性に備え、
-  // readyState 判定で両ケースに対応する。
   function onReady(cb) {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', cb);
