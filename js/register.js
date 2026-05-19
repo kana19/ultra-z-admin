@@ -1,7 +1,23 @@
 /* ============================================================
- * ultra-z-admin / 第7段階 小段階6-F 新規登録ウィザード
- *   - 7ステップ構成（Step 1〜6 入力 + Step 7 実行プレースホルダ）
- *   - 6-F 改修点：
+ * ultra-z-admin / 第7段階 小段階7-C 新規登録ウィザード
+ *   - 7ステップ構成（Step 1〜6 入力 + Step 7 自動処理本体）
+ *   - 7-C 改修点：
+ *       Step 7 自動処理本体を実装（プレースホルダから本実装へ移行）
+ *       マスタGAS の 8 action を順次呼出して新規ユーザー環境を構築：
+ *         1. generateClientId       → clientId 採番
+ *         2. createUserRepository   → GitHub テンプレからフォーク
+ *         3. uploadUserAsset × 3    → logo / icon-192 / icon-512（任意・選択時のみ）
+ *         4. writeUserRepositoryFiles → manifest.json / theme.css / app.js
+ *         5. createUserSpreadsheet  → ユーザーSS 新規作成＋B17 masterQuota 初期投入
+ *         6. createUserGasDeployment → Apps Script API V1 でGAS デプロイ
+ *         7. registerNewClient      → clients/auth/change_log 一括投入
+ *         8. generateDeliveryCard   → 納品カード A6 PDF 生成
+ *       PIN ハッシュ化：SHA-256(clientId + '|' + pin) を Web Crypto API で計算
+ *       進捗UI：8ステップを段階的に表示・各ステップ成功時にチェック・エラー時に赤表示
+ *       完了画面：納品カードPDFダウンロード・各種URL・PINを表示
+ *       エラー時：失敗ステップを明示・既に作成された clientId を表示
+ *                 （自動ロールバックは実装しない・運営側で個別対応）
+ *   - 6-F 改修点（継続）：
  *       3-2-①：サービスマスタの smartphoneVisible 列を廃止（4列構成）
  *            登録＝表示固定・業種により非表示にする概念なし（00_原則.md §6-5）
  *       3-2-②：仕入マスタの smartphoneVisible 列を廃止（4列構成）
@@ -21,9 +37,6 @@
  *       Step 3 を2段構成（3-1 枠付与＋3-2 雛形投入）
  *       仕入マスタ ID プレフィックス `pNNN` 連番自動採番
  *       業種別自動判定機構は導入しない（00_原則.md §4-5）
- *   - Step 7 自動処理本体は次フェーズで実装するため、本フェーズの
- *     「登録実行」ボタンは disabled で停止する
- *   - state は全てクライアント側保持（マスタGAS 投入は次フェーズ）
  *
  * 名前空間：window.uzAdmin（app.js が AdminApp/AdminAuth から橋渡し）
  *
@@ -948,13 +961,421 @@
     });
   }
 
-  // ============ イベントバインド ============
+  // ============================================================
+  // Step 7：自動処理本体（7-C）
+  //   マスタGAS の 8 action を順次呼出して新規ユーザー環境を構築する。
+  //   進捗を画面に逐次表示し、エラー時は失敗ステップ＋clientId を提示する。
+  //
+  //   実行順序（04_運営ポータル.md §3 Step 7 準拠）：
+  //     1. generateClientId          → state.clientId 保持
+  //     2. createUserRepository      → GitHubテンプレ ultra-z-leo からフォーク
+  //     3. uploadUserAsset × 3        → logo / icon-192 / icon-512（選択時のみ）
+  //     4. writeUserRepositoryFiles  → manifest.json / theme.css / app.js 書込
+  //     5. createUserSpreadsheet     → SS生成＋settings初期化＋B17 masterQuota
+  //     6. createUserGasDeployment   → Apps Script API V1 でGAS デプロイ
+  //     7. registerNewClient         → clients/auth/change_log 一括投入
+  //     8. generateDeliveryCard      → 納品カードPDF（A6・Base64）
+  //
+  //   エラーハンドリング：
+  //     - 各ステップで応答 ok:false なら即停止
+  //     - 既に作成された clientId / spreadsheetId / repoUrl / gasUrl を表示
+  //     - 自動ロールバックは実装しない（複合トランザクション化はスコープ外）
+  //     - 失敗内容を運営に明示し、運営側で個別対応する設計（プロジェクト指示 §3-2）
+  // ============================================================
+
+  // 実行状態の管理（プログレスUI 更新と完了画面の組立で参照）
+  const Step7Progress = {
+    running: false,
+    clientId: '',
+    spreadsheetId: '',
+    spreadsheetUrl: '',
+    repoUrl: '',
+    gasUrl: '',
+    deliveryCardBase64: '',
+    completed: false,
+    failedAt: '',
+    errorMessage: ''
+  };
+
+  // 進捗UIの定義（8 ステップ）
+  // id: progress-row 要素の data-step-id 属性と一致
+  // label: 画面表示ラベル
+  const STEP7_STAGES = [
+    { id: 'clientId',     label: '1. clientId 発行' },
+    { id: 'repo',         label: '2. GitHubリポジトリ生成' },
+    { id: 'assets',       label: '3. ロゴ・アイコン アップロード' },
+    { id: 'repoFiles',    label: '4. manifest / theme.css / app.js 書込' },
+    { id: 'spreadsheet',  label: '5. ユーザーSS 生成・settings 初期化' },
+    { id: 'gas',          label: '6. ユーザーGAS デプロイ' },
+    { id: 'client',       label: '7. clients/auth/change_log 投入' },
+    { id: 'deliveryCard', label: '8. 納品カード PDF 生成' }
+  ];
+
+  // ---- SHA-256（Web Crypto API）-----------------------------------
+  // マスタGAS hashPin(pin, salt) と同一仕様：salt + '|' + pin の SHA-256 を16進文字列で返す
+  // 新規登録時の salt は clientId（マスタGAS 側 _changeUserPin_ 等と整合）
+  async function sha256Hex(text) {
+    const enc = new TextEncoder();
+    const buf = await crypto.subtle.digest('SHA-256', enc.encode(text));
+    const bytes = new Uint8Array(buf);
+    let hex = '';
+    for (let i = 0; i < bytes.length; i++) {
+      hex += ('0' + bytes[i].toString(16)).slice(-2);
+    }
+    return hex;
+  }
+  async function hashPin(pin, salt) {
+    return sha256Hex(String(salt || '') + '|' + String(pin));
+  }
+
+  // ---- File → Base64（dataURL ヘッダー除去後の純Base64）---------
+  function fileToBase64(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file) { resolve(''); return; }
+      const reader = new FileReader();
+      reader.onload = function () {
+        const result = String(reader.result || '');
+        const comma = result.indexOf(',');
+        resolve(comma >= 0 ? result.slice(comma + 1) : result);
+      };
+      reader.onerror = function () { reject(new Error('FileReader 失敗：' + file.name)); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ---- 進捗UI 操作 ------------------------------------------------
+  function step7SetStatus(stageId, status, detail) {
+    // status: 'pending' | 'running' | 'done' | 'error'
+    const row = document.querySelector('[data-step-id="' + stageId + '"]');
+    if (!row) return;
+    row.classList.remove('progress-pending', 'progress-running', 'progress-done', 'progress-error');
+    row.classList.add('progress-' + status);
+    const iconEl = row.querySelector('.progress-icon');
+    if (iconEl) {
+      iconEl.textContent =
+        status === 'done'    ? '✅' :
+        status === 'error'   ? '❌' :
+        status === 'running' ? '⏳' : '○';
+    }
+    if (detail !== undefined) {
+      const detailEl = row.querySelector('.progress-detail');
+      if (detailEl) detailEl.textContent = detail || '';
+    }
+  }
+
+  function step7InitProgressUI() {
+    const container = $('step7-progress-container');
+    if (!container) return;
+    container.innerHTML = STEP7_STAGES.map(function (s) {
+      return (
+        '<div class="progress-row progress-pending" data-step-id="' + s.id + '">' +
+          '<span class="progress-icon">○</span>' +
+          '<span class="progress-label">' + escapeHtml(s.label) + '</span>' +
+          '<span class="progress-detail"></span>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  // 実行中の操作（執行用ヘルパー：応答が ok:false なら例外 throw）
+  async function callGasAction(action, extra) {
+    const res = await window.uzAdmin.callMasterGas(action, extra || {});
+    if (window.uzAdmin.handleAuthError && window.uzAdmin.handleAuthError(res)) {
+      // セッション失効：handleAuthError が index.html へ遷移済
+      throw new Error('セッション失効');
+    }
+    if (!res || res.ok !== true) {
+      const code = (res && (res.code || res.error)) || 'unknown';
+      const msg  = (res && (res.message || res._message)) || '';
+      const err = new Error(action + ' 失敗 [' + code + ']' + (msg ? ' ' + msg : ''));
+      err._gasResponse = res;
+      throw err;
+    }
+    return res;
+  }
+
+  // 完了画面の組立
+  function buildCompletionView() {
+    const s1 = RegisterState.data.step1;
+    const ownerUrl = 'https://kana19.github.io/' + Step7Progress.clientId + '/';
+    const staffUrl = ownerUrl + 'staff-clockin.html';
+    const pdfBase64 = Step7Progress.deliveryCardBase64;
+    const pdfHref = pdfBase64
+      ? 'data:application/pdf;base64,' + pdfBase64
+      : '#';
+    const pdfFilename = 'delivery_card_' + Step7Progress.clientId + '.pdf';
+
+    return (
+      '<div class="completion-card">' +
+        '<div class="completion-header">' +
+          '<span class="completion-icon">🎉</span>' +
+          '<h3>新規登録が完了しました</h3>' +
+        '</div>' +
+        '<dl class="completion-list">' +
+          '<dt>店舗名</dt><dd>' + escapeHtml(s1.storeName) + '</dd>' +
+          '<dt>clientId</dt><dd><code>' + escapeHtml(Step7Progress.clientId) + '</code></dd>' +
+          '<dt>オーナーアプリ URL</dt><dd><a href="' + escapeHtml(ownerUrl) + '" target="_blank" rel="noopener">' + escapeHtml(ownerUrl) + '</a></dd>' +
+          '<dt>スタッフ打刻 URL</dt><dd><a href="' + escapeHtml(staffUrl) + '" target="_blank" rel="noopener">' + escapeHtml(staffUrl) + '</a></dd>' +
+          '<dt>ユーザーSS URL</dt><dd><a href="' + escapeHtml(Step7Progress.spreadsheetUrl) + '" target="_blank" rel="noopener">' + escapeHtml(Step7Progress.spreadsheetUrl) + '</a></dd>' +
+          '<dt>ユーザーGAS URL</dt><dd><code class="break-all">' + escapeHtml(Step7Progress.gasUrl) + '</code></dd>' +
+          '<dt>初期PIN</dt><dd><code>' + escapeHtml(RegisterState.data.step5.pin) + '</code> <span class="completion-warn">⚠ お客様へ別途お伝えください</span></dd>' +
+        '</dl>' +
+        (pdfBase64
+          ? '<div class="completion-actions">' +
+              '<a class="btn-primary" href="' + pdfHref + '" download="' + escapeHtml(pdfFilename) + '">📄 納品カードPDFをダウンロード</a>' +
+              '<a class="btn-secondary" href="dashboard.html">ダッシュボードへ戻る</a>' +
+            '</div>'
+          : '<div class="completion-actions">' +
+              '<a class="btn-secondary" href="dashboard.html">ダッシュボードへ戻る</a>' +
+            '</div>'
+        ) +
+      '</div>'
+    );
+  }
+
+  // エラー画面の組立
+  function buildErrorView() {
+    const completedItems = [];
+    if (Step7Progress.clientId)       completedItems.push(['clientId',       Step7Progress.clientId]);
+    if (Step7Progress.repoUrl)        completedItems.push(['リポジトリ',     Step7Progress.repoUrl]);
+    if (Step7Progress.spreadsheetUrl) completedItems.push(['ユーザーSS',     Step7Progress.spreadsheetUrl]);
+    if (Step7Progress.gasUrl)         completedItems.push(['ユーザーGAS URL', Step7Progress.gasUrl]);
+
+    return (
+      '<div class="completion-card completion-card--error">' +
+        '<div class="completion-header">' +
+          '<span class="completion-icon">⚠</span>' +
+          '<h3>登録処理が中断しました</h3>' +
+        '</div>' +
+        '<p class="completion-error-message">' +
+          '失敗ステップ：<strong>' + escapeHtml(Step7Progress.failedAt) + '</strong><br>' +
+          escapeHtml(Step7Progress.errorMessage) +
+        '</p>' +
+        (completedItems.length
+          ? '<p>以下は作成済です（必要に応じて手動でロールバック・再開してください）：</p>' +
+            '<dl class="completion-list">' +
+              completedItems.map(function (r) {
+                return '<dt>' + escapeHtml(r[0]) + '</dt><dd><code class="break-all">' + escapeHtml(r[1]) + '</code></dd>';
+              }).join('') +
+            '</dl>'
+          : '<p>マスタGAS への呼出は発生していません。Step 6 へ戻って再実行可能です。</p>'
+        ) +
+        '<div class="completion-actions">' +
+          '<a class="btn-secondary" href="dashboard.html">ダッシュボードへ戻る</a>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  // メイン実行関数
+  async function executeStep7() {
+    if (Step7Progress.running) return;
+    if (Step7Progress.completed) return;
+    Step7Progress.running = true;
+    Step7Progress.clientId = '';
+    Step7Progress.spreadsheetId = '';
+    Step7Progress.spreadsheetUrl = '';
+    Step7Progress.repoUrl = '';
+    Step7Progress.gasUrl = '';
+    Step7Progress.deliveryCardBase64 = '';
+    Step7Progress.completed = false;
+    Step7Progress.failedAt = '';
+    Step7Progress.errorMessage = '';
+
+    // UI 初期化
+    step7InitProgressUI();
+    const execBtn = $('btn-execute');
+    if (execBtn) execBtn.disabled = true;
+    const backBtn = $('btn-back');
+    if (backBtn) backBtn.disabled = true;
+    const completionEl = $('step7-completion');
+    if (completionEl) completionEl.innerHTML = '';
+
+    const s1 = RegisterState.data.step1;
+    const s2 = RegisterState.data.step2;
+    const s3 = RegisterState.data.step3;
+    const s4 = RegisterState.data.step4;
+    const s5 = RegisterState.data.step5;
+
+    // 各ステップを順次実行（ok:false で throw して catch で停止）
+    try {
+
+      // ---- 1. generateClientId ----
+      step7SetStatus('clientId', 'running', '採番中...');
+      const r1 = await callGasAction('generateClientId', {});
+      Step7Progress.clientId = String(r1.clientId || '');
+      if (!Step7Progress.clientId) {
+        throw new Error('generateClientId 応答に clientId が含まれていません');
+      }
+      step7SetStatus('clientId', 'done', Step7Progress.clientId);
+
+      // ---- 2. createUserRepository ----
+      step7SetStatus('repo', 'running', 'GitHub テンプレからフォーク中...');
+      const r2 = await callGasAction('createUserRepository', {
+        clientId: Step7Progress.clientId,
+        storeName: s1.storeName
+      });
+      Step7Progress.repoUrl = String(r2.repoUrl || '');
+      step7SetStatus('repo', 'done', Step7Progress.repoUrl || '(URLなし)');
+
+      // ---- 3. uploadUserAsset × 3（選択時のみ）----
+      step7SetStatus('assets', 'running', 'アップロード中...');
+      const assets = [
+        { type: 'store-logo', file: s4.logoFile,    label: 'ロゴ'      },
+        { type: 'icon-192',   file: s4.icon192File, label: 'アイコン192' },
+        { type: 'icon-512',   file: s4.icon512File, label: 'アイコン512' }
+      ];
+      const uploadedLabels = [];
+      const skippedLabels = [];
+      for (let i = 0; i < assets.length; i++) {
+        const a = assets[i];
+        if (!a.file) { skippedLabels.push(a.label); continue; }
+        const b64 = await fileToBase64(a.file);
+        await callGasAction('uploadUserAsset', {
+          clientId: Step7Progress.clientId,
+          assetType: a.type,
+          fileBase64: b64,
+          mimeType: a.file.type
+        });
+        uploadedLabels.push(a.label);
+      }
+      const assetDetail =
+        (uploadedLabels.length ? uploadedLabels.join('・') + ' アップロード済' : '全てスキップ') +
+        (skippedLabels.length  ? '（未選択：' + skippedLabels.join('・') + '）' : '');
+      step7SetStatus('assets', 'done', assetDetail);
+
+      // ---- 4. writeUserRepositoryFiles ----
+      // 注：このステップは createUserGasDeployment 完了後の gasUrl が必要だが、
+      //     マスタGAS 側の writeUserRepositoryFiles は gasUrl を必須要求する仕様。
+      //     順序を入れ替え：5（SS）→ 6（GAS）→ 4（リポファイル）の順で実行する。
+      //     UI 上は「4. リポファイル書込」と表示しつつ、実行順序は SS/GAS 完了後とする。
+      step7SetStatus('repoFiles', 'pending', '（SS・GAS 生成後に実行）');
+
+      // ---- 5. createUserSpreadsheet ----
+      step7SetStatus('spreadsheet', 'running', 'SS 生成中...');
+      const r5 = await callGasAction('createUserSpreadsheet', {
+        clientId:             Step7Progress.clientId,
+        storeName:            s1.storeName,
+        serviceList:          s3.serviceList,
+        costMasterList:       s3.costMasterList,
+        purchaseMasterList:   s3.purchaseMasterList,
+        businessHours:        s1.businessHours,
+        serviceMasterQuota:   s3.serviceMasterQuota,
+        purchaseMasterQuota:  s3.purchaseMasterQuota,
+        costOptionalQuota:    s3.costOptionalQuota
+      });
+      Step7Progress.spreadsheetId = String(r5.spreadsheetId || '');
+      Step7Progress.spreadsheetUrl = String(r5.spreadsheetUrl || '');
+      if (!Step7Progress.spreadsheetId) {
+        throw new Error('createUserSpreadsheet 応答に spreadsheetId が含まれていません');
+      }
+      step7SetStatus('spreadsheet', 'done', Step7Progress.spreadsheetId);
+
+      // ---- 6. createUserGasDeployment ----
+      step7SetStatus('gas', 'running', 'Apps Script API V1 でデプロイ中（30秒〜1分）...');
+      const r6 = await callGasAction('createUserGasDeployment', {
+        clientId:      Step7Progress.clientId,
+        spreadsheetId: Step7Progress.spreadsheetId
+      });
+      Step7Progress.gasUrl = String(r6.gasUrl || '');
+      if (!Step7Progress.gasUrl) {
+        throw new Error('createUserGasDeployment 応答に gasUrl が含まれていません');
+      }
+      step7SetStatus('gas', 'done', 'デプロイ完了');
+
+      // ---- 4 実行（writeUserRepositoryFiles を SS/GAS 後に実行）----
+      step7SetStatus('repoFiles', 'running', 'manifest / theme.css / app.js 書込中...');
+      await callGasAction('writeUserRepositoryFiles', {
+        clientId:    Step7Progress.clientId,
+        gasUrl:      Step7Progress.gasUrl,
+        storeName:   s1.storeName,
+        themeColor:  s4.themeColor,
+        logoBgColor: s4.logoBgColor
+      });
+      step7SetStatus('repoFiles', 'done', '4ファイル書込済');
+
+      // ---- 7. registerNewClient ----
+      step7SetStatus('client', 'running', 'PINハッシュ計算・clients/auth/change_log 投入中...');
+      const pinHashHex = await hashPin(s5.pin, Step7Progress.clientId);
+      await callGasAction('registerNewClient', {
+        clientId: Step7Progress.clientId,
+        pinHash:  pinHashHex,
+        fields: {
+          storeName:           s1.storeName,
+          timecardCount:       s2.timecardCount,
+          spreadsheetId:       Step7Progress.spreadsheetId,
+          gasUrl:              Step7Progress.gasUrl,
+          partnerId:           '',
+          contractStart:       s1.contractStart,
+          contractEnd:         s1.contractEnd,
+          monthlyFee:          s1.monthlyFee,
+          serviceMasterQuota:  s3.serviceMasterQuota,
+          purchaseMasterQuota: s3.purchaseMasterQuota,
+          costOptionalQuota:   s3.costOptionalQuota
+        }
+      });
+      step7SetStatus('client', 'done', '投入完了');
+
+      // ---- 8. generateDeliveryCard ----
+      step7SetStatus('deliveryCard', 'running', 'A6 PDF 生成中...');
+      const r8 = await callGasAction('generateDeliveryCard', {
+        clientId: Step7Progress.clientId,
+        pin:      s5.pin
+      });
+      Step7Progress.deliveryCardBase64 = String(r8.pdfBase64 || '');
+      step7SetStatus('deliveryCard', 'done', '生成完了（' + (Step7Progress.deliveryCardBase64.length) + ' bytes）');
+
+      // ---- 完了 ----
+      Step7Progress.completed = true;
+      Step7Progress.running = false;
+      if (completionEl) completionEl.innerHTML = buildCompletionView();
+      if (execBtn) execBtn.hidden = true;
+      showToast('新規登録が完了しました', 'success');
+
+    } catch (err) {
+      // ---- エラー停止 ----
+      Step7Progress.running = false;
+      Step7Progress.errorMessage = String((err && err.message) || err);
+      // 失敗ステップを特定（進捗UI の running 行）
+      const runningRow = document.querySelector('[data-step-id].progress-running');
+      if (runningRow) {
+        const stageId = runningRow.getAttribute('data-step-id');
+        const stage = STEP7_STAGES.filter(function (s) { return s.id === stageId; })[0];
+        Step7Progress.failedAt = stage ? stage.label : stageId;
+        step7SetStatus(stageId, 'error', Step7Progress.errorMessage);
+      } else {
+        Step7Progress.failedAt = '(不明)';
+      }
+      if (completionEl) completionEl.innerHTML = buildErrorView();
+      if (execBtn) execBtn.disabled = false;
+      if (backBtn) backBtn.disabled = false;
+      showToast('登録処理が中断しました', 'error');
+    }
+  }
+
+
   function bindEvents() {
     // 下部ナビ
     $('btn-next').addEventListener('click', goNext);
     $('btn-back').addEventListener('click', goBack);
     $('btn-execute').addEventListener('click', function () {
-      alert('Step 7 自動処理本体は次フェーズで実装予定です。\n\n本フェーズ（7-C）は Step 3 マスタ件数枠の運営内部管理項目追加までの実装範囲です。');
+      // 7-C：Step 7 自動処理本体を起動
+      // 確認ダイアログ（プロジェクト指示 §3-2 確定操作の3ステップ目）
+      const s1 = RegisterState.data.step1;
+      const okToProceed = confirm(
+        '以下の内容で新規登録を実行します。\n\n' +
+        '店舗名：' + s1.storeName + '\n' +
+        'タイムカード数：' + RegisterState.data.step2.timecardCount + '\n' +
+        '月額：¥' + Number(s1.monthlyFee).toLocaleString('ja-JP') + '\n\n' +
+        '・GitHubリポジトリ生成\n' +
+        '・Googleスプレッドシート生成\n' +
+        '・Apps Script デプロイ\n' +
+        '・clients / auth / change_log 投入\n' +
+        '・納品カードPDF 生成\n\n' +
+        'を一括実行します。所要時間 1〜2 分。よろしいですか？'
+      );
+      if (!okToProceed) return;
+      executeStep7();
     });
 
     // ステッパー円クリック

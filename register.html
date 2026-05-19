@@ -309,20 +309,21 @@
     <!-- ===================== Step 6：確認 ===================== -->
     <section class="step-panel" data-panel="6" hidden>
       <h2 class="step-heading">Step 6：確認</h2>
-      <p class="step-help">入力内容を確認し、問題なければ「登録実行」へ進んでください。Step 7 自動処理本体は次フェーズ実装予定のため、本フェーズでは押下不可です。</p>
+      <p class="step-help">入力内容を確認し、問題なければ「Step 7 へ」を押下してください。Step 7 で「登録実行」ボタンを押した時点で確定処理（リポジトリ生成・SS 生成・GAS デプロイ・clients 投入・納品カードPDF 生成）が一括実行されます。</p>
 
       <div id="summary-container" class="summary-container"><!-- buildSummary() で動的生成 --></div>
 
       <div class="step-error" id="step6-error" hidden></div>
     </section>
 
-    <!-- ===================== Step 7：実行（プレースホルダ） ===================== -->
+    <!-- ===================== Step 7：登録実行（7-C 本実装） ===================== -->
     <section class="step-panel" data-panel="7" hidden>
       <h2 class="step-heading">Step 7：登録実行</h2>
-      <div class="phase-placeholder">
-        <p>Step 7 自動処理は <strong>次フェーズ 7-C</strong> で実装予定です。</p>
-        <p>本フェーズでは Step 1〜6 までの入力UI のみ動作確認します。</p>
-      </div>
+      <p class="step-help">「登録実行」ボタンを押すと以下を自動実行します（所要時間 1〜2 分）。各ステップの進捗が下に表示されます。</p>
+
+      <div id="step7-progress-container" class="step7-progress-container"><!-- step7InitProgressUI() で動的生成 --></div>
+
+      <div id="step7-completion" class="step7-completion"><!-- 完了時 / エラー時に buildCompletionView() / buildErrorView() で組立 --></div>
     </section>
 
   </main>
@@ -332,7 +333,7 @@
     <button type="button" id="btn-back" class="btn-secondary" disabled>戻る</button>
     <span class="footer-step-info" id="footer-step-info">Step 1 / 7</span>
     <button type="button" id="btn-next" class="btn-primary">次へ</button>
-    <button type="button" id="btn-execute" class="btn-primary" hidden disabled title="Step 7 自動処理は次フェーズで実装予定">登録実行（次フェーズ実装予定）</button>
+    <button type="button" id="btn-execute" class="btn-primary" hidden>登録実行</button>
   </div>
 
   <!-- トースト通知 -->

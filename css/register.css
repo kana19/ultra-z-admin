@@ -1,6 +1,9 @@
-/* css/register.css - 第7段階 小段階7-B 新規登録ウィザード用
+/* css/register.css - 第7段階 小段階7-C 新規登録ウィザード用
  * PC専用前提（min-width 1280px）。タブ構造は使わず、Step 1〜7 を縦遷移する。
  * edit.html と統一感のあるスタイルを維持するため、base.css の変数を流用。
+ *
+ * 7-C 改修：Step 7 自動処理本体実装に伴い、プレースホルダCSS（.phase-placeholder）を
+ *           進捗UI / 完了画面 / エラー画面 のスタイルに置換。
  */
 
 html, body { min-width: 1280px; }
@@ -544,16 +547,144 @@ html, body { min-width: 1280px; }
   margin-right: 4px;
 }
 
-/* ============ Step 7 プレースホルダ ============ */
-.phase-placeholder {
-  padding: 24px;
-  background: #fff8e1;
-  border: 1px solid #ffe0a0;
-  border-radius: 6px;
-  color: #5a4400;
-  line-height: 1.7;
+/* ============ Step 7：進捗UI（7-C 本実装） ============ */
+.step7-progress-container {
+  margin: 0 0 24px 0;
+  padding: 16px;
+  background: #f7f8fa;
+  border: 1px solid #e1e5ea;
+  border-radius: 8px;
 }
-.phase-placeholder p { margin: 4px 0; }
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef0f4;
+  transition: background-color 0.2s;
+}
+.progress-row:last-child { border-bottom: none; }
+.progress-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.progress-label {
+  font-weight: 600;
+  color: #2c3540;
+  min-width: 260px;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.progress-detail {
+  color: #6b7480;
+  font-size: 13px;
+  word-break: break-all;
+  flex: 1;
+}
+.progress-pending { opacity: 0.5; }
+.progress-pending .progress-label { color: #9ba3ad; }
+.progress-running { background: #fff8e1; }
+.progress-running .progress-label { color: #b88600; }
+.progress-done { background: #e8f5ec; }
+.progress-done .progress-label { color: #1f6f3c; }
+.progress-error { background: #fdecec; }
+.progress-error .progress-label { color: #b32424; }
+.progress-error .progress-detail { color: #b32424; font-weight: 500; }
+
+/* ============ Step 7：完了画面 / エラー画面（7-C） ============ */
+.step7-completion:empty { display: none; }
+.completion-card {
+  margin: 24px 0 0 0;
+  padding: 24px;
+  border: 2px solid #1f6f3c;
+  border-radius: 12px;
+  background: #f0faf2;
+}
+.completion-card--error {
+  border-color: #b32424;
+  background: #fdf4f4;
+}
+.completion-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.completion-icon { font-size: 32px; line-height: 1; }
+.completion-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #1f6f3c;
+}
+.completion-card--error .completion-header h3 { color: #b32424; }
+.completion-list {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 8px 16px;
+  margin: 16px 0;
+}
+.completion-list dt {
+  font-weight: 600;
+  color: #2c3540;
+  font-size: 13px;
+}
+.completion-list dd {
+  margin: 0;
+  word-break: break-all;
+  font-size: 13px;
+  color: #333;
+}
+.completion-list dd code,
+.completion-list code.break-all {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #fff;
+  border: 1px solid #e1e5ea;
+  border-radius: 4px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  max-width: 100%;
+}
+.completion-list a {
+  color: #1f6f3c;
+  text-decoration: underline;
+}
+.completion-card--error .completion-list a { color: #b32424; }
+.completion-warn {
+  color: #b88600;
+  font-weight: 500;
+  font-size: 12px;
+  margin-left: 8px;
+}
+.completion-error-message {
+  padding: 12px;
+  background: #fff;
+  border-left: 4px solid #b32424;
+  border-radius: 4px;
+  color: #2c3540;
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.completion-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+.completion-actions .btn-primary,
+.completion-actions .btn-secondary {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 20px;
+}
 
 /* ============ 下部 sticky ナビ ============ */
 .register-footer {
