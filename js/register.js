@@ -7,6 +7,8 @@
  *         1. generateClientId       → clientId 採番
  *         2. createUserRepository   → GitHub テンプレからフォーク
  *         3. uploadUserAsset × 3    → logo / icon-192 / icon-512（任意・選択時のみ）
+ *                                     skipClientCheck:true を付与（マスタGAS v0.5.7 対応・
+ *                                     registerNewClient 実行前のため clients シート未登録）
  *         4. writeUserRepositoryFiles → manifest.json / theme.css / app.js
  *         5. createUserSpreadsheet  → ユーザーSS 新規作成＋B17 masterQuota 初期投入
  *         6. createUserGasDeployment → Apps Script API V1 でGAS デプロイ
@@ -17,6 +19,8 @@
  *       完了画面：納品カードPDFダウンロード・各種URL・PINを表示
  *       エラー時：失敗ステップを明示・既に作成された clientId を表示
  *                 （自動ロールバックは実装しない・運営側で個別対応）
+ *       btn-execute クリック時ガード：currentStep !== 7 ならスキップ・
+ *                 多重実行防止（Step7Progress.running / completed チェック）
  *   - 6-F 改修点（継続）：
  *       3-2-①：サービスマスタの smartphoneVisible 列を廃止（4列構成）
  *            登録＝表示固定・業種により非表示にする概念なし（00_原則.md §6-5）
@@ -1235,7 +1239,10 @@
           clientId: Step7Progress.clientId,
           assetType: a.type,
           fileBase64: b64,
-          mimeType: a.file.type
+          mimeType: a.file.type,
+          // v0.5.7：新規登録時は registerNewClient 実行前のため clients シート参照を
+          // バイパスする（マスタGAS v0.5.7 の skipClientCheck 対応）
+          skipClientCheck: true
         });
         uploadedLabels.push(a.label);
       }
@@ -1360,13 +1367,23 @@
     $('btn-back').addEventListener('click', goBack);
     $('btn-execute').addEventListener('click', function () {
       // 7-C：Step 7 自動処理本体を起動
+      // 防御：Step 6 等で誤押下されても動かないガード（フッターボタン表示制御の
+      //       タイミング不整合・CSS上の z-index 競合等を考慮）。
+      //       本来は showStep() で hidden 切替されている想定だが、安全側に寄せる。
+      if (RegisterState.currentStep !== 7) {
+        return;
+      }
+      // 多重実行防止
+      if (Step7Progress.running) return;
+      if (Step7Progress.completed) return;
+
       // 確認ダイアログ（プロジェクト指示 §3-2 確定操作の3ステップ目）
       const s1 = RegisterState.data.step1;
       const okToProceed = confirm(
         '以下の内容で新規登録を実行します。\n\n' +
         '店舗名：' + s1.storeName + '\n' +
         'タイムカード数：' + RegisterState.data.step2.timecardCount + '\n' +
-        '月額：¥' + Number(s1.monthlyFee).toLocaleString('ja-JP') + '\n\n' +
+        '月額:¥' + Number(s1.monthlyFee).toLocaleString('ja-JP') + '\n\n' +
         '・GitHubリポジトリ生成\n' +
         '・Googleスプレッドシート生成\n' +
         '・Apps Script デプロイ\n' +
