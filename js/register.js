@@ -1597,10 +1597,14 @@
       step7SetStatus('client', 'done', '投入完了');
 
       // ---- 8. generateDeliveryCard ----
+      //   注：マスタGAS v0.5.8 で params.pin → params.displayPin に改名済。
+      //   app.js callMasterGas は extra.pin が明示されると accountType を
+      //   自動付与しない仕様のため、「印字する初期PIN」は displayPin で渡す。
+      //   こうすることで運営担当の認証PIN（セッション自動付与）と分離できる。
       step7SetStatus('deliveryCard', 'running', 'A6 PDF 生成中...');
       const r8 = await callGasAction('generateDeliveryCard', {
-        clientId: Step7Progress.clientId,
-        pin:      s5.pin
+        clientId:   Step7Progress.clientId,
+        displayPin: s5.pin
       });
       Step7Progress.deliveryCardBase64 = String(r8.pdfBase64 || '');
       step7SetStatus('deliveryCard', 'done', '生成完了（' + (Step7Progress.deliveryCardBase64.length) + ' bytes）');
