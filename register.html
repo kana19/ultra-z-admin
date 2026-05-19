@@ -14,7 +14,7 @@
   <header class="register-header">
     <a href="dashboard.html" class="back-link">‹ ユーザー一覧へ</a>
     <h1 class="register-title">新規登録ウィザード</h1>
-    <span class="register-stage-badge">第7段階 / 小段階7-C</span>
+    <span class="register-stage-badge">第7段階 / 小段階7-D</span>
   </header>
 
   <!-- ステッパー -->
@@ -316,10 +316,10 @@
       <div class="step-error" id="step6-error" hidden></div>
     </section>
 
-    <!-- ===================== Step 7：登録実行（7-C 本実装） ===================== -->
+    <!-- ===================== Step 7：登録実行（7-D ハイブリッド方式） ===================== -->
     <section class="step-panel" data-panel="7" hidden>
       <h2 class="step-heading">Step 7：登録実行</h2>
-      <p class="step-help">「登録実行」ボタンを押すと以下を自動実行します（所要時間 1〜2 分）。各ステップの進捗が下に表示されます。</p>
+      <p class="step-help">「登録実行」ボタンを押すと自動処理が開始します。途中の「ユーザーGAS デプロイ」工程のみ運営担当の手動操作（約2分）を挟みます。所要時間 約3〜5分。</p>
 
       <div id="step7-progress-container" class="step7-progress-container"><!-- step7InitProgressUI() で動的生成 --></div>
 

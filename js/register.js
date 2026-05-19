@@ -1,17 +1,33 @@
 /* ============================================================
- * ultra-z-admin / 第7段階 小段階7-C 新規登録ウィザード
+ * ultra-z-admin / 第7段階 小段階7-D 新規登録ウィザード（ハイブリッド方式）
  *   - 7ステップ構成（Step 1〜6 入力 + Step 7 自動処理本体）
- *   - 7-C 改修点：
- *       Step 7 自動処理本体を実装（プレースホルダから本実装へ移行）
+ *   - 7-D 改修点（ハイブリッド方式）：
+ *       Step 6（ユーザーGAS デプロイ）を Apps Script API V1 自動化から
+ *       ターゲット社運営担当の手動デプロイ＋マスタGAS 補助型へ変更。
+ *       背景：Google 公式が Apps Script API はサービスアカウントで動作しないと
+ *       明示しており、責任を持って販売可能な商品とするため Google 標準フローへ移行。
+ *
+ *       マスタGAS の action ペア：
+ *         prepareUserGasCode   → SPREADSHEET_ID 差込済の完成 GAS ソースを返却
+ *         registerUserGasUrl   → 手動デプロイで取得した URL の形式検証＋疎通テスト
+ *
+ *       UI フロー：
+ *         Step 5 完了後、Step 6 行にハイブリッドパネル展開
+ *           ├ コード一式コピーボタン（prepareUserGasCode 経由）
+ *           ├ Apps Script エディタ起動リンク
+ *           ├ 手動デプロイ手順チェックリスト
+ *           └ WebアプリURL 入力＋登録ボタン
+ *         URL登録 → registerUserGasUrl で疎通確認 → 成功なら
+ *         Step 4（リポファイル書込）・7（clients投入）・8（納品カードPDF）自動継続
+ *
+ *   - 7-C 改修点（継続・Step 6 以外）：
  *       マスタGAS の 8 action を順次呼出して新規ユーザー環境を構築：
  *         1. generateClientId       → clientId 採番
  *         2. createUserRepository   → GitHub テンプレからフォーク
  *         3. uploadUserAsset × 3    → logo / icon-192 / icon-512（任意・選択時のみ）
- *                                     skipClientCheck:true を付与（マスタGAS v0.5.7 対応・
- *                                     registerNewClient 実行前のため clients シート未登録）
  *         4. writeUserRepositoryFiles → manifest.json / theme.css / app.js
  *         5. createUserSpreadsheet  → ユーザーSS 新規作成＋B17 masterQuota 初期投入
- *         6. createUserGasDeployment → Apps Script API V1 でGAS デプロイ
+ *         6. prepareUserGasCode + 手動デプロイ + registerUserGasUrl ← 7-D 変更
  *         7. registerNewClient      → clients/auth/change_log 一括投入
  *         8. generateDeliveryCard   → 納品カード A6 PDF 生成
  *       PIN ハッシュ化：SHA-256(clientId + '|' + pin) を Web Crypto API で計算
@@ -1004,13 +1020,14 @@
   // 進捗UIの定義（8 ステップ）
   // id: progress-row 要素の data-step-id 属性と一致
   // label: 画面表示ラベル
+  // 7-D：gas ステップは手動デプロイ補助型のため特殊扱い（STEP6_MANUAL に分離）
   const STEP7_STAGES = [
     { id: 'clientId',     label: '1. clientId 発行' },
     { id: 'repo',         label: '2. GitHubリポジトリ生成' },
     { id: 'assets',       label: '3. ロゴ・アイコン アップロード' },
     { id: 'repoFiles',    label: '4. manifest / theme.css / app.js 書込' },
     { id: 'spreadsheet',  label: '5. ユーザーSS 生成・settings 初期化' },
-    { id: 'gas',          label: '6. ユーザーGAS デプロイ' },
+    { id: 'gas',          label: '6. ユーザーGAS デプロイ（運営担当の手動操作）' },
     { id: 'client',       label: '7. clients/auth/change_log 投入' },
     { id: 'deliveryCard', label: '8. 納品カード PDF 生成' }
   ];
@@ -1071,14 +1088,238 @@
     const container = $('step7-progress-container');
     if (!container) return;
     container.innerHTML = STEP7_STAGES.map(function (s) {
+      // gas 行（Step 6）は手動運用パネル展開用の余白を持つため `progress-row-gas` クラス付加
+      const extraCls = (s.id === 'gas') ? ' progress-row-gas' : '';
       return (
-        '<div class="progress-row progress-pending" data-step-id="' + s.id + '">' +
+        '<div class="progress-row progress-pending' + extraCls + '" data-step-id="' + s.id + '">' +
           '<span class="progress-icon">○</span>' +
           '<span class="progress-label">' + escapeHtml(s.label) + '</span>' +
           '<span class="progress-detail"></span>' +
+          (s.id === 'gas'
+            ? '<div class="manual-gas-panel" id="manual-gas-panel" hidden></div>'
+            : ''
+          ) +
         '</div>'
       );
     }).join('');
+  }
+
+  // ============================================================
+  // 7-D：Step 6 手動運用パネル（ハイブリッド方式）
+  //   Step 5 完了後に展開され、運営担当が約2分の手動操作を行う：
+  //     1. 「コード一式をコピー」→ クリップボードへ
+  //     2. 「Apps Script エディタを開く」→ 別タブで script.google.com/home
+  //     3. 新規プロジェクト作成・コード貼付・保存・デプロイ→URL取得
+  //     4. URL を入力欄にペースト → 「URL登録」ボタン
+  //     5. registerUserGasUrl で疎通テスト → 成功なら Step 4/7/8 自動継続
+  // ============================================================
+
+  // 手動運用パネルの状態
+  const ManualGasState = {
+    waiting: false,        // URL 入力待ちか
+    onUrlConfirmed: null,  // URL 確定時に呼ぶコールバック（Promise resolver）
+    gasCode: '',           // prepareUserGasCode で取得した完成コード
+    projectTitle: ''       // Apps Script プロジェクト名（= clientId）
+  };
+
+  function buildManualGasPanelHtml(prepResult) {
+    const editorUrl = (prepResult.manualSteps && prepResult.manualSteps.editorUrl)
+      ? prepResult.manualSteps.editorUrl
+      : 'https://script.google.com/home';
+    const projectTitle = escapeHtml(prepResult.projectTitle || '');
+
+    return (
+      '<div class="manual-gas-box">' +
+        '<p class="manual-gas-intro">' +
+          '<strong>運営担当タスク：</strong>以下の手順でユーザーGAS を作成してください（所要 約2分）。' +
+        '</p>' +
+        '<ol class="manual-gas-steps">' +
+          '<li class="manual-gas-step">' +
+            '<div class="manual-gas-step-title">① コードをコピー</div>' +
+            '<button type="button" class="btn-primary manual-gas-btn" id="manual-gas-copy-btn">' +
+              '📋 コード一式をコピー' +
+            '</button>' +
+            '<span class="manual-gas-copied" id="manual-gas-copied-flag" hidden>✅ コピー済</span>' +
+          '</li>' +
+          '<li class="manual-gas-step">' +
+            '<div class="manual-gas-step-title">② Apps Script エディタを別タブで開く</div>' +
+            '<a class="btn-secondary manual-gas-btn" href="' + escapeHtml(editorUrl) + '" target="_blank" rel="noopener">' +
+              '🔗 Apps Script エディタを開く' +
+            '</a>' +
+          '</li>' +
+          '<li class="manual-gas-step">' +
+            '<div class="manual-gas-step-title">③ 新しいプロジェクトを作成</div>' +
+            '<p class="manual-gas-note">' +
+              '左上「<strong>+ 新しいプロジェクト</strong>」をクリック。<br>' +
+              '左上のタイトル「無題のプロジェクト」をクリックし、以下に変更：' +
+            '</p>' +
+            '<div class="manual-gas-copyable">' +
+              '<code id="manual-gas-title">' + projectTitle + '</code>' +
+              '<button type="button" class="btn-tiny" id="manual-gas-title-copy-btn">コピー</button>' +
+            '</div>' +
+          '</li>' +
+          '<li class="manual-gas-step">' +
+            '<div class="manual-gas-step-title">④ コードを貼り付けて保存</div>' +
+            '<p class="manual-gas-note">' +
+              'コード.gs エディタ内をクリック → <code>Ctrl+A</code> で全選択 → <code>Delete</code> → <code>Ctrl+V</code> でペースト → <code>Ctrl+S</code> で保存' +
+            '</p>' +
+          '</li>' +
+          '<li class="manual-gas-step">' +
+            '<div class="manual-gas-step-title">⑤ ウェブアプリとしてデプロイ</div>' +
+            '<p class="manual-gas-note">' +
+              '右上「<strong>デプロイ</strong>」→「<strong>新しいデプロイ</strong>」→ 歯車⚙ →「<strong>ウェブアプリ</strong>」を選択。<br>' +
+              '「次のユーザーとして実行：<strong>自分</strong>」「アクセスできるユーザー：<strong>全員</strong>」を確認し、「<strong>デプロイ</strong>」を押下。<br>' +
+              '初回は承認ダイアログ → 詳細 →「安全ではないページに移動」→ 許可。' +
+            '</p>' +
+          '</li>' +
+          '<li class="manual-gas-step">' +
+            '<div class="manual-gas-step-title">⑥ ウェブアプリURL を貼り付けて登録</div>' +
+            '<p class="manual-gas-note">' +
+              'デプロイ完了画面に表示された「ウェブアプリ URL」（<code>https://script.google.com/macros/s/.../exec</code>）をコピーして下に貼付：' +
+            '</p>' +
+            '<div class="manual-gas-url-form">' +
+              '<input type="text" id="manual-gas-url-input" class="manual-gas-url-input" ' +
+                'placeholder="https://script.google.com/macros/s/AKfycb.../exec">' +
+              '<button type="button" class="btn-primary" id="manual-gas-submit-btn">URL登録</button>' +
+            '</div>' +
+            '<p class="manual-gas-error" id="manual-gas-error" hidden></p>' +
+          '</li>' +
+        '</ol>' +
+      '</div>'
+    );
+  }
+
+  // クリップボードコピー（execCommand フォールバック付き）
+  function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function () { return true; })
+        .catch(function () { return copyToClipboardFallback(text); });
+    }
+    return Promise.resolve(copyToClipboardFallback(text));
+  }
+  function copyToClipboardFallback(text) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.setAttribute('readonly', '');
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 手動運用パネルのイベントバインド
+  function bindManualGasPanelEvents() {
+    const copyBtn = document.getElementById('manual-gas-copy-btn');
+    const copiedFlag = document.getElementById('manual-gas-copied-flag');
+    const titleCopyBtn = document.getElementById('manual-gas-title-copy-btn');
+    const submitBtn = document.getElementById('manual-gas-submit-btn');
+    const urlInput = document.getElementById('manual-gas-url-input');
+    const errorEl = document.getElementById('manual-gas-error');
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        copyToClipboard(ManualGasState.gasCode).then(function (ok) {
+          if (ok) {
+            if (copiedFlag) copiedFlag.hidden = false;
+            showToast('コードをクリップボードにコピーしました', 'success');
+          } else {
+            showToast('コピーに失敗しました。手動で選択してください', 'error');
+          }
+        });
+      });
+    }
+    if (titleCopyBtn) {
+      titleCopyBtn.addEventListener('click', function () {
+        copyToClipboard(ManualGasState.projectTitle).then(function (ok) {
+          if (ok) showToast('プロジェクト名をコピーしました', 'success');
+        });
+      });
+    }
+    if (submitBtn) {
+      submitBtn.addEventListener('click', function () {
+        const url = urlInput ? String(urlInput.value || '').trim() : '';
+        if (!url) {
+          if (errorEl) {
+            errorEl.textContent = 'URL を入力してください。';
+            errorEl.hidden = false;
+          }
+          return;
+        }
+        if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec(\?.*)?$/.test(url)) {
+          if (errorEl) {
+            errorEl.textContent = 'URL の形式が正しくありません。https://script.google.com/macros/s/.../exec の形式で入力してください。';
+            errorEl.hidden = false;
+          }
+          return;
+        }
+        if (errorEl) errorEl.hidden = true;
+        submitBtn.disabled = true;
+        if (urlInput) urlInput.disabled = true;
+        if (typeof ManualGasState.onUrlConfirmed === 'function') {
+          ManualGasState.onUrlConfirmed(url);
+        }
+      });
+    }
+  }
+
+  // Step 6 の手動運用パネルを開き、ユーザーが URL を確定するまで待つ
+  // Promise<string> を返す（resolve 値が運営担当が入力した gasUrl）
+  function waitForManualGasUrl(prepResult) {
+    return new Promise(function (resolve) {
+      ManualGasState.waiting = true;
+      ManualGasState.gasCode = prepResult.gasCode || '';
+      ManualGasState.projectTitle = prepResult.projectTitle || '';
+
+      const panel = document.getElementById('manual-gas-panel');
+      if (!panel) {
+        // フェイルセーフ：パネルが見当たらない場合はエラー
+        ManualGasState.waiting = false;
+        throw new Error('manual-gas-panel 要素が見つかりません');
+      }
+      panel.innerHTML = buildManualGasPanelHtml(prepResult);
+      panel.hidden = false;
+      bindManualGasPanelEvents();
+
+      ManualGasState.onUrlConfirmed = function (url) {
+        ManualGasState.waiting = false;
+        ManualGasState.onUrlConfirmed = null;
+        resolve(url);
+      };
+
+      // パネル位置にスクロール
+      try {
+        const gasRow = document.querySelector('[data-step-id="gas"]');
+        if (gasRow && gasRow.scrollIntoView) {
+          gasRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      } catch (_e) { /* ignore */ }
+    });
+  }
+
+  // 手動運用パネルをクローズ（成功時）
+  function closeManualGasPanel() {
+    const panel = document.getElementById('manual-gas-panel');
+    if (panel) panel.hidden = true;
+  }
+
+  // URL 検証失敗時に手動運用パネルへエラー表示し、再入力を促す
+  function showManualGasErrorAndRetry(errorMessage) {
+    const errorEl = document.getElementById('manual-gas-error');
+    const submitBtn = document.getElementById('manual-gas-submit-btn');
+    const urlInput = document.getElementById('manual-gas-url-input');
+    if (errorEl) {
+      errorEl.textContent = errorMessage;
+      errorEl.hidden = false;
+    }
+    if (submitBtn) submitBtn.disabled = false;
+    if (urlInput) urlInput.disabled = false;
   }
 
   // 実行中の操作（執行用ヘルパー：応答が ok:false なら例外 throw）
@@ -1278,17 +1519,49 @@
       }
       step7SetStatus('spreadsheet', 'done', Step7Progress.spreadsheetId);
 
-      // ---- 6. createUserGasDeployment ----
-      step7SetStatus('gas', 'running', 'Apps Script API V1 でデプロイ中（30秒〜1分）...');
-      const r6 = await callGasAction('createUserGasDeployment', {
+      // ---- 6. ユーザーGAS デプロイ（7-D ハイブリッド方式・手動操作） ----
+      //   6-a〜6-c：マスタGAS が prepareUserGasCode でテンプレGASコードに
+      //            SPREADSHEET_ID を差し込んで返却
+      //   6-d〜6-g：運営担当が Apps Script エディタで約2分の手動操作
+      //            （新規プロジェクト・コード貼付・デプロイ・URL取得）
+      //   6-h〜6-i：URL を運営ポータルに貼付 → registerUserGasUrl で疎通テスト
+      step7SetStatus('gas', 'running', '運営担当の手動操作を待機中...');
+      const r6prep = await callGasAction('prepareUserGasCode', {
         clientId:      Step7Progress.clientId,
         spreadsheetId: Step7Progress.spreadsheetId
       });
-      Step7Progress.gasUrl = String(r6.gasUrl || '');
-      if (!Step7Progress.gasUrl) {
-        throw new Error('createUserGasDeployment 応答に gasUrl が含まれていません');
+      // 手動運用パネルを展開し、運営担当が URL を確定するまで待つ
+      let manualGasUrl = '';
+      let urlValidated = false;
+      while (!urlValidated) {
+        manualGasUrl = await waitForManualGasUrl(r6prep);
+        // 疎通テスト（registerUserGasUrl）
+        let pingRes;
+        try {
+          pingRes = await window.uzAdmin.callMasterGas('registerUserGasUrl', {
+            clientId: Step7Progress.clientId,
+            gasUrl:   manualGasUrl
+          });
+        } catch (pingErr) {
+          showManualGasErrorAndRetry('疎通テストの呼出でエラー：' + String(pingErr.message || pingErr));
+          continue;
+        }
+        if (window.uzAdmin.handleAuthError && window.uzAdmin.handleAuthError(pingRes)) {
+          throw new Error('セッション失効');
+        }
+        if (!pingRes || pingRes.ok !== true) {
+          const msg = (pingRes && (pingRes.message || pingRes.code))
+            ? pingRes.message || pingRes.code
+            : 'URL の疎通テストに失敗しました';
+          showManualGasErrorAndRetry('疎通テスト失敗：' + msg + '。URL を再確認してください。');
+          continue;
+        }
+        // 検証成功
+        urlValidated = true;
       }
-      step7SetStatus('gas', 'done', 'デプロイ完了');
+      Step7Progress.gasUrl = manualGasUrl;
+      closeManualGasPanel();
+      step7SetStatus('gas', 'done', '手動デプロイ＋疎通確認 完了');
 
       // ---- 4 実行（writeUserRepositoryFiles を SS/GAS 後に実行）----
       step7SetStatus('repoFiles', 'running', 'manifest / theme.css / app.js 書込中...');
@@ -1384,12 +1657,12 @@
         '店舗名：' + s1.storeName + '\n' +
         'タイムカード数：' + RegisterState.data.step2.timecardCount + '\n' +
         '月額:¥' + Number(s1.monthlyFee).toLocaleString('ja-JP') + '\n\n' +
-        '・GitHubリポジトリ生成\n' +
-        '・Googleスプレッドシート生成\n' +
-        '・Apps Script デプロイ\n' +
-        '・clients / auth / change_log 投入\n' +
-        '・納品カードPDF 生成\n\n' +
-        'を一括実行します。所要時間 1〜2 分。よろしいですか？'
+        '・GitHubリポジトリ生成（自動）\n' +
+        '・Googleスプレッドシート生成（自動）\n' +
+        '・ユーザーGAS 作成（手動操作 約2分・運営担当）\n' +
+        '・clients / auth / change_log 投入（自動）\n' +
+        '・納品カードPDF 生成（自動）\n\n' +
+        'を順次実行します。所要時間 約3〜5分。よろしいですか？'
       );
       if (!okToProceed) return;
       executeStep7();

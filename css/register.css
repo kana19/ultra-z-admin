@@ -731,3 +731,158 @@ html, body { min-width: 1280px; }
 .toast--info { background: #2980b9; }
 .toast--success { background: #27ae60; }
 .toast--error { background: #c0392b; }
+
+/* ============================================================
+ * 7-D：Step 6 手動運用パネル（ハイブリッド方式・運営担当による
+ * Apps Script エディタでの手動デプロイ補助 UI）
+ * ============================================================ */
+
+/* 進捗行：gas 行はパネル展開のため block レイアウト化 */
+.progress-row-gas {
+  display: block !important;
+}
+.progress-row-gas .progress-icon,
+.progress-row-gas .progress-label,
+.progress-row-gas .progress-detail {
+  display: inline-block;
+  vertical-align: middle;
+}
+.progress-row-gas .progress-label { margin-right: 12px; }
+.progress-row-gas .progress-detail { color: #555; font-size: 13px; }
+
+/* 手動運用パネル本体 */
+.manual-gas-panel {
+  display: block;
+  margin-top: 16px;
+  padding: 0;
+}
+.manual-gas-panel[hidden] { display: none; }
+
+.manual-gas-box {
+  background: #fff8e1;
+  border: 2px solid #f9a825;
+  border-radius: 8px;
+  padding: 24px 28px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.manual-gas-intro {
+  font-size: 15px;
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  background: #fff;
+  border-left: 4px solid #f9a825;
+  border-radius: 0 4px 4px 0;
+}
+.manual-gas-intro strong { color: #e65100; }
+
+/* 手順リスト */
+.manual-gas-steps {
+  list-style: none;
+  counter-reset: manual-step;
+  padding: 0;
+  margin: 0;
+}
+.manual-gas-step {
+  padding: 16px 0;
+  border-bottom: 1px solid #ffe0b2;
+}
+.manual-gas-step:last-child { border-bottom: none; }
+
+.manual-gas-step-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #2c3e50;
+}
+
+.manual-gas-note {
+  font-size: 13px;
+  color: #555;
+  margin: 6px 0 0;
+  line-height: 1.6;
+}
+.manual-gas-note code {
+  background: #fff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #ddd;
+  font-size: 12px;
+}
+.manual-gas-note strong { color: #d84315; }
+
+/* ボタン類 */
+.manual-gas-btn {
+  display: inline-block;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+.manual-gas-copied {
+  display: inline-block;
+  margin-left: 10px;
+  color: #2e7d32;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* プロジェクト名コピーボックス */
+.manual-gas-copyable {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: fit-content;
+}
+.manual-gas-copyable code {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1565c0;
+}
+.btn-tiny {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.btn-tiny:hover { background: #f5f5f5; }
+
+/* URL 入力フォーム */
+.manual-gas-url-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.manual-gas-url-input {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: monospace;
+  border: 1px solid #999;
+  border-radius: 4px;
+}
+.manual-gas-url-input:focus {
+  border-color: #1976d2;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(25,118,210,0.15);
+}
+.manual-gas-url-input:disabled {
+  background: #f5f5f5;
+  color: #888;
+}
+
+.manual-gas-error {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #ffebee;
+  border-left: 4px solid #c62828;
+  border-radius: 0 4px 4px 0;
+  color: #b71c1c;
+  font-size: 13px;
+}
+.manual-gas-error[hidden] { display: none; }
