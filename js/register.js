@@ -1031,9 +1031,12 @@
     { id: 'repoFiles',    label: '4. manifest / theme.css / app.js 書込' },
     { id: 'spreadsheet',  label: '5. ユーザーSS 生成・settings 初期化' },
     { id: 'gas',          label: '6. ユーザーGAS デプロイ（運営担当の手動操作）' },
-    { id: 'client',       label: '7. clients/auth/change_log 投入' },
-    { id: 'deliveryCard', label: '8. 納品カード PDF 生成' }
+    { id: 'client',       label: '7. clients/auth/change_log 投入' }
   ];
+  // 注：納品カードPDF は登録処理（Step7）から分離した（04_運営ポータル.md §9）。
+  //   「登録」と「納品物生成」は別概念であり、納品カード生成の失敗で登録全体を
+  //   中断させない。納品カードは登録完了後に best-effort で試行し、失敗しても
+  //   登録成功は揺るがない。dashboard / 完了画面から何度でも再発行できる。
 
   // ---- SHA-256（Web Crypto API）-----------------------------------
   // マスタGAS hashPin(pin, salt) と同一仕様：salt + '|' + pin の SHA-256 を16進文字列で返す
@@ -1374,6 +1377,9 @@
               '<a class="btn-secondary" href="dashboard.html">ダッシュボードへ戻る</a>' +
             '</div>'
           : '<div class="completion-actions">' +
+              '<p class="completion-note">📄 納品カードPDFは後から発行できます（ダッシュボードの各店舗から再発行可）。' +
+              (Step7Progress.deliveryCardError ? '<br><span class="completion-warn">生成エラー：' + escapeHtml(Step7Progress.deliveryCardError) + '</span>' : '') +
+              '</p>' +
               '<a class="btn-secondary" href="dashboard.html">ダッシュボードへ戻る</a>' +
             '</div>'
         ) +
@@ -1602,22 +1608,25 @@
       });
       step7SetStatus('client', 'done', '投入完了');
 
-      // ---- 8. generateDeliveryCard ----
-      //   注：マスタGAS v0.5.8 で params.pin → params.displayPin に改名済。
-      //   app.js callMasterGas は extra.pin が明示されると accountType を
-      //   自動付与しない仕様のため、「印字する初期PIN」は displayPin で渡す。
-      //   こうすることで運営担当の認証PIN（セッション自動付与）と分離できる。
-      step7SetStatus('deliveryCard', 'running', 'A6 PDF 生成中...');
-      const r8 = await callGasAction('generateDeliveryCard', {
-        clientId:   Step7Progress.clientId,
-        displayPin: s5.pin
-      });
-      Step7Progress.deliveryCardBase64 = String(r8.pdfBase64 || '');
-      step7SetStatus('deliveryCard', 'done', '生成完了（' + (Step7Progress.deliveryCardBase64.length) + ' bytes）');
-
-      // ---- 完了 ----
+      // ---- 登録はここで成功確定（納品カードは登録工程に含めない）----
       Step7Progress.completed = true;
       Step7Progress.running = false;
+
+      // ---- 納品カード PDF（best-effort・登録成功とは独立）----
+      //   生成に失敗しても登録成功は揺るがない。完了画面のボタン／dashboard から
+      //   後から何度でも再発行できる（04_運営ポータル.md §9）。
+      try {
+        const r8 = await callGasAction('generateDeliveryCard', {
+          clientId:   Step7Progress.clientId,
+          displayPin: s5.pin
+        });
+        Step7Progress.deliveryCardBase64 = String(r8.pdfBase64 || '');
+      } catch (cardErr) {
+        Step7Progress.deliveryCardBase64 = '';
+        Step7Progress.deliveryCardError = String((cardErr && cardErr.message) || cardErr);
+      }
+
+      // ---- 完了表示 ----
       if (completionEl) completionEl.innerHTML = buildCompletionView();
       if (execBtn) execBtn.hidden = true;
       showToast('新規登録が完了しました', 'success');
