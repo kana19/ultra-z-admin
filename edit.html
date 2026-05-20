@@ -383,6 +383,13 @@
           </div>
           <button type="button" id="btn-unlock-auth" class="btn-danger">ロック解除</button>
         </div>
+        <div class="auth-action-row">
+          <div>
+            <h3>ユーザーGASコード再取得（保守用）</h3>
+            <p class="form-note">テンプレートGAS更新時や障害復旧時に、SPREADSHEET_ID 差込済みの最新コードを取得します。取得したコードを当該店舗の Apps Script に全置換（Ctrl+A→Delete→貼付→Ctrl+S）し、デプロイ→新バージョンで反映してください（URLは不変）。</p>
+          </div>
+          <button type="button" id="btn-copy-gas-code" class="btn-secondary">コード一式をコピー</button>
+        </div>
       </div>
     </section>
 

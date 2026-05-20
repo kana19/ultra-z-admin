@@ -900,6 +900,55 @@
     refreshChangeLog();
   }
 
+  // ============ §8 ユーザーGASコード再取得（保守用）============
+  // prepareUserGasCode を呼び、SPREADSHEET_ID 差込済みの完成コードを
+  // クリップボードにコピーする。テンプレGAS更新・障害復旧時の保守導線。
+  async function copyUserGasCode() {
+    const sheetId = state.currentClient && state.currentClient.sheetId
+      ? String(state.currentClient.sheetId) : '';
+    if (!sheetId) {
+      showToast('この店舗の sheetId（ユーザーSS ID）が取得できません', 'error');
+      return;
+    }
+    const btn = document.getElementById('btn-copy-gas-code');
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '取得中...'; }
+    try {
+      const res = await window.uzAdmin.callMasterGas('prepareUserGasCode', {
+        clientId: state.clientId,
+        spreadsheetId: sheetId
+      });
+      if (window.uzAdmin.handleAuthError(res)) return;
+      if (!res || !res.ok || !res.gasCode) {
+        showToast('コード取得失敗: ' + (res && (res.message || res.code) || 'unknown'), 'error');
+        return;
+      }
+      // クリップボードへコピー（失敗時は新規タブに全文表示してフォールバック）
+      try {
+        await navigator.clipboard.writeText(res.gasCode);
+        showToast('ユーザーGASコードをコピーしました（' + res.gasCode.length + '文字）。Apps Script に全置換してください', 'success');
+      } catch (clipErr) {
+        const w = window.open('', '_blank');
+        if (w) {
+          w.document.title = 'ユーザーGASコード ' + state.clientId;
+          const pre = w.document.createElement('pre');
+          pre.style.whiteSpace = 'pre-wrap';
+          pre.style.wordBreak = 'break-all';
+          pre.textContent = res.gasCode;
+          w.document.body.appendChild(pre);
+          showToast('自動コピー不可。新規タブのコードを全選択してコピーしてください', 'info');
+        } else {
+          showToast('コピーできませんでした（ポップアップ許可が必要）', 'error');
+        }
+      }
+      refreshChangeLog();
+    } catch (err) {
+      showToast('コード取得エラー: ' + ((err && err.message) || err), 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = orig; }
+    }
+  }
+
   // ============ モーダル ============
   function confirmModal(opts) {
     opts = opts || {};
@@ -1155,6 +1204,7 @@
     // 認証セクション
     document.getElementById('btn-reset-pin').addEventListener('click', resetPin);
     document.getElementById('btn-unlock-auth').addEventListener('click', unlockAuth);
+    document.getElementById('btn-copy-gas-code').addEventListener('click', copyUserGasCode);
 
     // 変更履歴
     document.getElementById('btn-refresh-change-log').addEventListener('click', function () {
