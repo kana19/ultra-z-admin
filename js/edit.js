@@ -290,7 +290,10 @@
     document.getElementById('preview-store-logo').src = 'https://raw.githubusercontent.com/kana19/' + clientId + '/main/icons/store-logo.png' + buster;
     document.getElementById('preview-icon-192').src = 'https://raw.githubusercontent.com/kana19/' + clientId + '/main/icons/icon-192.png' + buster;
     document.getElementById('preview-icon-512').src = 'https://raw.githubusercontent.com/kana19/' + clientId + '/main/icons/icon-512.png' + buster;
-    ['preview-store-logo', 'preview-icon-192', 'preview-icon-512'].forEach(function (id) {
+    document.getElementById('preview-icon-192-maskable').src = 'https://raw.githubusercontent.com/kana19/' + clientId + '/main/icons/icon-192-maskable.png' + buster;
+    document.getElementById('preview-icon-512-maskable').src = 'https://raw.githubusercontent.com/kana19/' + clientId + '/main/icons/icon-512-maskable.png' + buster;
+    document.getElementById('preview-apple-touch-icon').src = 'https://raw.githubusercontent.com/kana19/' + clientId + '/main/icons/apple-touch-icon.png' + buster;
+    ['preview-store-logo', 'preview-icon-192', 'preview-icon-512', 'preview-icon-192-maskable', 'preview-icon-512-maskable', 'preview-apple-touch-icon'].forEach(function (id) {
       const img = document.getElementById(id);
       img.onerror = function () {
         img.onerror = null;
@@ -341,7 +344,10 @@
     const previewMap = {
       'store-logo': 'preview-store-logo',
       'icon-192': 'preview-icon-192',
-      'icon-512': 'preview-icon-512'
+      'icon-512': 'preview-icon-512',
+      'icon-192-maskable': 'preview-icon-192-maskable',
+      'icon-512-maskable': 'preview-icon-512-maskable',
+      'apple-touch-icon': 'preview-apple-touch-icon'
     };
     const previewId = previewMap[assetType];
     if (previewId) document.getElementById(previewId).src = res.downloadUrl;
@@ -1049,7 +1055,10 @@
     [
       { btn: 'btn-upload-store-logo', file: 'upload-store-logo', type: 'store-logo' },
       { btn: 'btn-upload-icon-192', file: 'upload-icon-192', type: 'icon-192' },
-      { btn: 'btn-upload-icon-512', file: 'upload-icon-512', type: 'icon-512' }
+      { btn: 'btn-upload-icon-512', file: 'upload-icon-512', type: 'icon-512' },
+      { btn: 'btn-upload-icon-192-maskable', file: 'upload-icon-192-maskable', type: 'icon-192-maskable' },
+      { btn: 'btn-upload-icon-512-maskable', file: 'upload-icon-512-maskable', type: 'icon-512-maskable' },
+      { btn: 'btn-upload-apple-touch-icon', file: 'upload-apple-touch-icon', type: 'apple-touch-icon' }
     ].forEach(function (cfg) {
       document.getElementById(cfg.btn).addEventListener('click', function () {
         document.getElementById(cfg.file).click();
