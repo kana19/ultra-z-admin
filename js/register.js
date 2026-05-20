@@ -98,6 +98,9 @@
         logoFile: null,
         icon192File: null,
         icon512File: null,
+        icon192maskFile: null,
+        icon512maskFile: null,
+        appletouchFile: null,
         logoBgColor: '#FFFFFF',
         themeColor: '#0B1842'
       },
@@ -1463,12 +1466,15 @@
       Step7Progress.repoUrl = String(r2.repoUrl || '');
       step7SetStatus('repo', 'done', Step7Progress.repoUrl || '(URLなし)');
 
-      // ---- 3. uploadUserAsset × 3（選択時のみ）----
+      // ---- 3. uploadUserAsset × 6（選択時のみ）----
       step7SetStatus('assets', 'running', 'アップロード中...');
       const assets = [
-        { type: 'store-logo', file: s4.logoFile,    label: 'ロゴ'      },
-        { type: 'icon-192',   file: s4.icon192File, label: 'アイコン192' },
-        { type: 'icon-512',   file: s4.icon512File, label: 'アイコン512' }
+        { type: 'store-logo',        file: s4.logoFile,        label: 'ロゴ'           },
+        { type: 'icon-192',          file: s4.icon192File,     label: 'アイコン192'    },
+        { type: 'icon-512',          file: s4.icon512File,     label: 'アイコン512'    },
+        { type: 'icon-192-maskable', file: s4.icon192maskFile, label: 'マスカブル192'  },
+        { type: 'icon-512-maskable', file: s4.icon512maskFile, label: 'マスカブル512'  },
+        { type: 'apple-touch-icon',  file: s4.appletouchFile,  label: 'AppleTouch'     }
       ];
       const uploadedLabels = [];
       const skippedLabels = [];
@@ -1749,6 +1755,15 @@
     });
     $('btn-pick-icon-512').addEventListener('click', function () {
       pickFile('f4-icon512-file', { field: 'icon512File', previewId: 'preview-icon-512', filenameId: 'f4-icon512-filename' });
+    });
+    $('btn-pick-icon-192-maskable').addEventListener('click', function () {
+      pickFile('f4-icon192mask-file', { field: 'icon192maskFile', previewId: 'preview-icon-192-maskable', filenameId: 'f4-icon192mask-filename' });
+    });
+    $('btn-pick-icon-512-maskable').addEventListener('click', function () {
+      pickFile('f4-icon512mask-file', { field: 'icon512maskFile', previewId: 'preview-icon-512-maskable', filenameId: 'f4-icon512mask-filename' });
+    });
+    $('btn-pick-apple-touch-icon').addEventListener('click', function () {
+      pickFile('f4-appletouch-file', { field: 'appletouchFile', previewId: 'preview-apple-touch-icon', filenameId: 'f4-appletouch-filename' });
     });
 
     // Step 4：色 input ⇔ text 同期 + プリセット
