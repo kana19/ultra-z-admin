@@ -135,11 +135,13 @@
       <div class="step-error" id="step2-error" hidden></div>
     </section>
 
-    <!-- ===================== Step 3：マスタ件数枠付与 ===================== -->
+    <!-- ===================== Step 3：マスタ件数枠＋販管費設定 ===================== -->
     <section class="step-panel" data-panel="3" hidden>
-      <h2 class="step-heading">Step 3：マスタ件数枠付与</h2>
-      <p class="step-help">本店舗に付与するマスタ件数枠を設定します。マスタの中身（サービス品目・仕入科目）はユーザーがアプリ側で登録します。運営ポータルは枠数のみを制御します。</p>
+      <h2 class="step-heading">Step 3：マスタ件数枠＋販管費設定</h2>
+      <p class="step-help">運営内部管理として件数枠（3-1）を設定し、青色申告決算書互換の販管費マスタ（3-2）のアプリ表示・税率を設定します。サービス品目・仕入科目の中身はユーザーがアプリ側で登録します（運営は枠数のみ制御）。</p>
 
+      <!-- 3-1：マスタ件数枠付与（運営内部管理・S/P 2軸編集＋C 固定表示） -->
+      <h3 class="sub-heading">3-1：マスタ件数枠付与（運営内部管理）</h3>
       <div class="quota-box">
         <div class="quota-box-header">
           <span class="quota-box-badge">運営内部管理</span>
@@ -163,6 +165,22 @@
           </div>
         </div>
       </div>
+
+      <!-- 3-2：販管費マスタ設定（青色申告デフォルト24件・アプリ表示/税率） -->
+      <h3 class="sub-heading">3-2：販管費マスタ設定（青色申告デフォルト 24 件）</h3>
+      <p class="step-help">青色申告書互換の販管費科目（コストシート D列='2'）。固定枠（コード8〜25,31の19件）は名称変更不可・税率のみ編集可。任意枠（コード26〜30の5件）は業種固有の販管費科目（団体会費・看板料等）として名称も編集可。<br>「アプリ表示」はユーザーアプリ（スマホ・iPad）のコスト入力モーダル販管費タブでの表示有無。業種により使わない科目を非表示にしてユーザーUIを簡潔化する用途（例：飲食店なら「外注工賃」「税理士等の報酬」を非表示）。PC版コスト入力では本フラグは無視され全科目利用可能。<br>⚠ 仕入原価科目（食材費・商品仕入等）は本マスタではなく、ユーザーがアプリ側で仕入マスタに登録します。</p>
+      <table class="data-table" id="register-cost-table">
+        <thead>
+          <tr>
+            <th style="width: 10%;">コード</th>
+            <th style="width: 35%;">科目名</th>
+            <th style="width: 15%;">税率</th>
+            <th style="width: 15%;">枠</th>
+            <th style="width: 25%;">アプリ表示</th>
+          </tr>
+        </thead>
+        <tbody id="register-cost-tbody"></tbody>
+      </table>
 
       <div class="step-error" id="step3-error" hidden></div>
     </section>

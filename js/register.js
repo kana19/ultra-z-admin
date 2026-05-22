@@ -290,7 +290,7 @@
       $('btn-execute').hidden = true;
     }
     // Step 別の遅延描画
-    if (n === 3) { paintStep3(); }
+    if (n === 3) { renderCostTable(); paintStep3(); }
     if (n === 6) {
       readAllSteps();
       $('summary-container').innerHTML = buildSummary();
@@ -432,6 +432,8 @@
     }
     // C は5固定（編集UI廃止・税務署様式準拠）
     s3.costOptionalQuota = 5;
+    // 販管費マスタの行内編集を state へ最終同期
+    syncCostTableToState();
     hideStepError('step3-error');
     return true;
   }
@@ -515,7 +517,7 @@
     // 現Stepの入力を一旦保存（戻ったら復元可能に）
     if (cur === 1) readStep1AndValidate();
     else if (cur === 2) readStep2AndValidate();
-    else if (cur === 3) { readStep3QuotasSilent(); }
+    else if (cur === 3) { syncCostTableToState(); readStep3QuotasSilent(); }
     else if (cur === 4) readStep4AndValidate();
     else if (cur === 5) readStep5AndValidate();
     const prev = cur - 1;
@@ -535,7 +537,7 @@
     const cur = RegisterState.currentStep;
     if (cur === 1) readStep1AndValidate();
     else if (cur === 2) readStep2AndValidate();
-    else if (cur === 3) { readStep3QuotasSilent(); }
+    else if (cur === 3) { syncCostTableToState(); readStep3QuotasSilent(); }
     else if (cur === 4) readStep4AndValidate();
     else if (cur === 5) readStep5AndValidate();
     showStep(target);
@@ -620,6 +622,68 @@
     }
   }
 
+  // ============ Step 3 販管費マスタテーブル ============
+  // 青色申告決算書互換の販管費科目（コードシート D列='2'・03_データ仕様.md §1-2）。
+  //   固定枠（コード8〜25・31）は名称 readonly・税率と smartphoneVisible のみ編集可。
+  //   任意枠（コード26〜30）は名称も編集可。
+  //   smartphoneVisible はユーザーアプリのコスト入力モーダル販管費タブでの表示制御（00_原則.md §6-5）。
+  function renderCostTable() {
+    const tbody = $('register-cost-tbody');
+    if (!tbody) return true;
+    tbody.innerHTML = '';
+    const list = RegisterState.data.step3.costMasterList.slice();
+    list.sort(function (a, b) { return Number(a.code) - Number(b.code); });
+    list.forEach(function (cm, idx) {
+      const isFixed = FIXED_COST_CODES.indexOf(Number(cm.code)) >= 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + escapeHtml(cm.code) + '</td>' +
+        '<td>' +
+          (isFixed
+            ? '<span class="readonly-text">' + escapeHtml(cm.name) + '</span>'
+            : '<input type="text" data-cm-idx="' + idx + '" data-cm-field="name" value="' + escapeHtml(cm.name || '') + '" maxlength="30" placeholder="（未設定）">'
+          ) +
+        '</td>' +
+        '<td>' +
+          '<select data-cm-idx="' + idx + '" data-cm-field="taxRate">' +
+            '<option value="0"' + (Number(cm.taxRate) === 0 ? ' selected' : '') + '>0%</option>' +
+            '<option value="8"' + (Number(cm.taxRate) === 8 ? ' selected' : '') + '>8%</option>' +
+            '<option value="10"' + (Number(cm.taxRate) === 10 ? ' selected' : '') + '>10%</option>' +
+          '</select>' +
+        '</td>' +
+        '<td>' + (isFixed ? '固定' : '任意') + '</td>' +
+        '<td>' +
+          '<label class="toggle-inline">' +
+            '<input type="checkbox" data-cm-idx="' + idx + '" data-cm-field="smartphoneVisible"' + (cm.smartphoneVisible ? ' checked' : '') + '> 表示' +
+          '</label>' +
+        '</td>';
+      tbody.appendChild(tr);
+    });
+    RegisterState.data.step3.costMasterList = list;
+    return true;
+  }
+  function syncCostTableToState() {
+    const tbody = $('register-cost-tbody');
+    if (!tbody) return true;
+    const updated = JSON.parse(JSON.stringify(RegisterState.data.step3.costMasterList));
+    updated.sort(function (a, b) { return Number(a.code) - Number(b.code); });
+    const inputs = tbody.querySelectorAll('[data-cm-idx]');
+    inputs.forEach(function (el) {
+      const idx = parseInt(el.dataset.cmIdx, 10);
+      const field = el.dataset.cmField;
+      if (!updated[idx]) return;
+      if (field === 'smartphoneVisible') updated[idx][field] = el.checked;
+      else if (field === 'taxRate') updated[idx][field] = parseInt(el.value, 10);
+      else if (field === 'name') {
+        if (FIXED_COST_CODES.indexOf(Number(updated[idx].code)) < 0) {
+          updated[idx][field] = el.value.trim();
+        }
+      }
+    });
+    RegisterState.data.step3.costMasterList = updated;
+    return true;
+  }
+
   // ============ Step 4 補助 ============
   function pickFile(inputId, slot) {
     $(inputId).click();
@@ -681,6 +745,10 @@
 
     const bh = s1.businessHours || {};
     const bhText = (bh.open || '-') + ' 〜 ' + (bh.close || '-') + (bh.closeNextDay ? '（翌日跨ぎ）' : '');
+    const customCostCount = (s3.costMasterList || []).filter(function (cm) {
+      return [26, 27, 28, 29, 30].indexOf(Number(cm.code)) >= 0 && cm.name;
+    }).length;
+    const visibleCount = (s3.costMasterList || []).filter(function (cm) { return cm.smartphoneVisible; }).length;
     const html =
       section('Step 1：基本情報', 1, [
         ['契約者名', s1.contractorName],
@@ -699,10 +767,11 @@
         ['タイムカード数', String(s2.timecardCount)],
         ['グレード派生', grade]
       ]) +
-      section('Step 3：マスタ件数枠付与', 3, [
+      section('Step 3：マスタ件数枠＋販管費設定', 3, [
         ['サービスマスタ枠数', s3.serviceMasterQuota + ' 件'],
         ['仕入マスタ枠数', s3.purchaseMasterQuota + ' 件'],
-        ['販管費マスタ任意枠', '5件固定（税務署様式準拠・編集不可）']
+        ['販管費マスタ任意枠', '5件固定（税務署様式準拠・編集不可）'],
+        ['販管費マスタ', '青色申告デフォルト 24件 / 任意枠使用 ' + customCostCount + ' 件 / アプリ表示 ' + visibleCount + ' 件']
       ]) +
       section('Step 4：ロゴ・テーマ', 4, [
         ['店舗ロゴ', s4.logoFile ? s4.logoFile.name : '（未選択・Step 7 でスキップ）'],
@@ -890,20 +959,13 @@
         '</p>' +
         '<ol class="manual-gas-steps">' +
           '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">① コードをコピー</div>' +
-            '<button type="button" class="btn-primary manual-gas-btn" id="manual-gas-copy-btn">' +
-              '📋 コード一式をコピー' +
-            '</button>' +
-            '<span class="manual-gas-copied" id="manual-gas-copied-flag" hidden>✅ コピー済</span>' +
-          '</li>' +
-          '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">② Apps Script エディタを別タブで開く</div>' +
+            '<div class="manual-gas-step-title">① Apps Script エディタを別タブで開く</div>' +
             '<a class="btn-secondary manual-gas-btn" href="' + escapeHtml(editorUrl) + '" target="_blank" rel="noopener">' +
               '🔗 Apps Script エディタを開く' +
             '</a>' +
           '</li>' +
           '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">③ 新しいプロジェクトを作成</div>' +
+            '<div class="manual-gas-step-title">② 新しいプロジェクトを作成</div>' +
             '<p class="manual-gas-note">' +
               '左上「<strong>+ 新しいプロジェクト</strong>」をクリック。<br>' +
               '左上のタイトル「無題のプロジェクト」をクリックし、以下に変更：' +
@@ -912,6 +974,13 @@
               '<code id="manual-gas-title">' + projectTitle + '</code>' +
               '<button type="button" class="btn-tiny" id="manual-gas-title-copy-btn">コピー</button>' +
             '</div>' +
+          '</li>' +
+          '<li class="manual-gas-step">' +
+            '<div class="manual-gas-step-title">③ コードをコピー</div>' +
+            '<button type="button" class="btn-primary manual-gas-btn" id="manual-gas-copy-btn">' +
+              '📋 コード一式をコピー' +
+            '</button>' +
+            '<span class="manual-gas-copied" id="manual-gas-copied-flag" hidden>✅ コピー済</span>' +
           '</li>' +
           '<li class="manual-gas-step">' +
             '<div class="manual-gas-step-title">④ コードを貼り付けて保存</div>' +
@@ -1465,6 +1534,17 @@
     document.querySelectorAll('input[name="f2-timecard"]').forEach(function (r) {
       r.addEventListener('change', updateGradeDerivation);
     });
+
+    // Step 3：販管費マスタテーブルのイベント委譲（税率・名称・アプリ表示）
+    const cmBody = $('register-cost-tbody');
+    if (cmBody) {
+      cmBody.addEventListener('input', function (e) {
+        if (e.target.dataset.cmIdx !== undefined) syncCostTableToState();
+      });
+      cmBody.addEventListener('change', function (e) {
+        if (e.target.dataset.cmIdx !== undefined) syncCostTableToState();
+      });
+    }
 
     // Step 4：ファイル選択
     $('btn-pick-logo').addEventListener('click', function () {
