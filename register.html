@@ -14,7 +14,6 @@
   <header class="register-header">
     <a href="dashboard.html" class="back-link">‹ ユーザー一覧へ</a>
     <h1 class="register-title">新規登録ウィザード</h1>
-    <span class="register-stage-badge">第7段階 / 小段階7-D</span>
   </header>
 
   <!-- ステッパー -->
@@ -22,7 +21,7 @@
     <ol id="stepper-list" class="stepper-list">
       <li class="step-item" data-step="1"><span class="step-circle">1</span><span class="step-label">基本情報</span></li>
       <li class="step-item" data-step="2"><span class="step-circle">2</span><span class="step-label">TC数</span></li>
-      <li class="step-item" data-step="3"><span class="step-circle">3</span><span class="step-label">マスタ</span></li>
+      <li class="step-item" data-step="3"><span class="step-circle">3</span><span class="step-label">枠数</span></li>
       <li class="step-item" data-step="4"><span class="step-circle">4</span><span class="step-label">ロゴ</span></li>
       <li class="step-item" data-step="5"><span class="step-circle">5</span><span class="step-label">PIN</span></li>
       <li class="step-item" data-step="6"><span class="step-circle">6</span><span class="step-label">確認</span></li>
@@ -70,10 +69,9 @@
           <input type="time" id="f1-business-open" value="18:00">
           <span>〜</span>
           <input type="time" id="f1-business-close" value="02:00">
-          <label class="checkbox-inline">
-            <input type="checkbox" id="f1-close-next-day" checked> 翌日跨ぎ
-          </label>
+          <span id="f1-next-day-badge" hidden style="display:inline-block;padding:2px 10px;border-radius:10px;background:#0B1842;color:#fff;font-size:12px;font-weight:600;">翌日跨ぎ</span>
         </div>
+        <p class="form-note">終了時刻が開始時刻以前のとき翌日跨ぎと自動判定します</p>
       </div>
       <div class="form-row">
         <label>契約開始日 <span class="required">*</span></label>
@@ -137,13 +135,11 @@
       <div class="step-error" id="step2-error" hidden></div>
     </section>
 
-    <!-- ===================== Step 3：マスタ件数枠＋3種マスタ雛形（6-D：2段構成に再編） ===================== -->
+    <!-- ===================== Step 3：マスタ件数枠付与 ===================== -->
     <section class="step-panel" data-panel="3" hidden>
-      <h2 class="step-heading">Step 3：マスタ件数枠＋3種マスタ雛形</h2>
-      <p class="step-help">運営内部管理として件数枠（3-1）を設定し、ユーザーが日次入力で使う3種マスタ（3-2 サービス／仕入／販管費）の初期雛形を投入します。後から運営ポータルでも編集可。<br>⚠ 取引先・仕入先は customers シート（ユーザー領域）で日々追加するもの。ここでは設定しません。</p>
+      <h2 class="step-heading">Step 3：マスタ件数枠付与</h2>
+      <p class="step-help">本店舗に付与するマスタ件数枠を設定します。マスタの中身（サービス品目・仕入科目）はユーザーがアプリ側で登録します。運営ポータルは枠数のみを制御します。</p>
 
-      <!-- 3-1：マスタ件数枠付与（運営内部管理・S/P 2軸編集＋C 固定表示） -->
-      <h3 class="sub-heading">3-1：マスタ件数枠付与（運営内部管理）</h3>
       <div class="quota-box">
         <div class="quota-box-header">
           <span class="quota-box-badge">運営内部管理</span>
@@ -158,7 +154,7 @@
           </div>
           <div class="quota-field">
             <label for="f3-purchase-master-quota">仕入マスタ枠数</label>
-            <input type="number" id="f3-purchase-master-quota" min="1" step="1" value="3">
+            <input type="number" id="f3-purchase-master-quota" min="1" step="1" value="5">
             <span class="quota-unit">件</span>
           </div>
           <div class="quota-field quota-field--fixed">
@@ -167,57 +163,6 @@
           </div>
         </div>
       </div>
-
-      <!-- 3-2：3種マスタ雛形投入 -->
-      <h3 class="sub-heading">3-2：3種マスタ雛形投入</h3>
-
-      <!-- 3-2-① サービスマスタ -->
-      <h4 class="sub-heading-2">サービスマスタ（売上品目）</h4>
-      <p class="step-help">空のままでも登録可。後でユーザー側スマホからも追加できます。業種に合わせてターゲット社が納品時に雛形投入（例：飲食店「ボトル代・セット料金」／サロン「カット・カラー」等）。各科目には sv001〜の連番ID（コード）が自動採番される。登録した時点でアプリ側に表示されます（業種により非表示にする概念なし）。</p>
-      <table class="data-table" id="register-service-table">
-        <thead>
-          <tr>
-            <th style="width: 12%;">コード</th>
-            <th style="width: 60%;">サービス名</th>
-            <th style="width: 20%;">税率</th>
-            <th style="width: 8%;">操作</th>
-          </tr>
-        </thead>
-        <tbody id="register-service-tbody"></tbody>
-      </table>
-      <button type="button" id="btn-add-service" class="btn-secondary">＋ サービスを追加</button>
-
-      <!-- 3-2-② 仕入マスタ（6-D 新設） -->
-      <h4 class="sub-heading-2">仕入マスタ（仕入原価科目）</h4>
-      <p class="step-help">業種固有の仕入原価科目を登録。コストシート D列='1'（仕入原価）として記録され、青色申告決算書の「売上原価」に集計されます。空のままでも登録可（運営ポータルから後で投入可）。例：飲食店「食材費・酒類仕入・包材費」／スナック「仕入(酒類・食材)・仕入(消耗品)」／サロン「薬剤費・販売商材」等。登録した時点でアプリ側に表示されます（業種により非表示にする概念なし）。</p>
-      <table class="data-table" id="register-purchase-table">
-        <thead>
-          <tr>
-            <th style="width: 12%;">コード</th>
-            <th style="width: 60%;">科目名</th>
-            <th style="width: 20%;">税率</th>
-            <th style="width: 8%;">操作</th>
-          </tr>
-        </thead>
-        <tbody id="register-purchase-tbody"></tbody>
-      </table>
-      <button type="button" id="btn-add-purchase" class="btn-secondary">＋ 仕入科目を追加</button>
-
-      <!-- 3-2-③ 販管費マスタ（6-D：「科目マスタ」→「販管費マスタ」改名） -->
-      <h4 class="sub-heading-2">販管費マスタ（青色申告デフォルト 24 件）</h4>
-      <p class="step-help">青色申告書互換の販管費科目（コストシート D列='2'）。固定枠（コード8〜25,31の19件）は名称変更不可・税率のみ編集可。任意枠（コード26〜30の5件）は業種固有の販管費科目（団体会費・看板料等）として名称も編集可。<br>「アプリ表示」はユーザーアプリ（スマホ・iPad）のコスト入力モーダル販管費タブでの表示有無。業種により使わない科目を非表示にしてユーザーUIを簡潔化する用途（例：飲食店なら「外注工賃」「税理士等の報酬」を非表示）。PC版コスト入力では本フラグは無視され全科目利用可能。<br>⚠ 仕入原価科目は本マスタではなく上の <strong>仕入マスタ</strong> に登録してください。</p>
-      <table class="data-table" id="register-cost-table">
-        <thead>
-          <tr>
-            <th style="width: 10%;">コード</th>
-            <th style="width: 35%;">科目名</th>
-            <th style="width: 15%;">税率</th>
-            <th style="width: 15%;">枠</th>
-            <th style="width: 25%;">アプリ表示</th>
-          </tr>
-        </thead>
-        <tbody id="register-cost-tbody"></tbody>
-      </table>
 
       <div class="step-error" id="step3-error" hidden></div>
     </section>
@@ -339,7 +284,7 @@
     <!-- ===================== Step 6：確認 ===================== -->
     <section class="step-panel" data-panel="6" hidden>
       <h2 class="step-heading">Step 6：確認</h2>
-      <p class="step-help">入力内容を確認し、問題なければ「Step 7 へ」を押下してください。Step 7 で「登録実行」ボタンを押した時点で確定処理（リポジトリ生成・SS 生成・GAS デプロイ・clients 投入・納品カードPDF 生成）が一括実行されます。</p>
+      <p class="step-help">入力内容を確認し、問題なければ「次へ」を押下してください。Step 7 で「登録実行」ボタンを押した時点で確定処理（リポジトリ生成・SS 生成・GAS デプロイ・clients 投入・納品カードPDF 生成）が一括実行されます。</p>
 
       <div id="summary-container" class="summary-container"><!-- buildSummary() で動的生成 --></div>
 
