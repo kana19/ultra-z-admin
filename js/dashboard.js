@@ -140,7 +140,7 @@
     switch (status) {
       case 'active':     return '稼働中';
       case 'suspended':  return '停止中';
-      case 'terminated': return '終了';
+      case 'terminated': return '解約済';
       default:           return status || '-';
     }
   }
@@ -238,8 +238,29 @@
       var urlCell = '<td class="td-app-url">'
         + '<button type="button" class="btn-url-expand" data-toggle-url-list="' + safeId + '" aria-expanded="false">展開▼</button>'
         + '</td>';
+      // 備考メモ列（インライン編集）
+      var memoCell = '<td class="td-memo">'
+        + '<input type="text" class="memo-input" data-memo-client="' + safeId + '" '
+        + 'value="' + escapeHTML(c.memo || '') + '" placeholder="メモ" maxlength="100">'
+        + '</td>';
+      // 操作列：編集＋状態トグル（停止/再開）＋完全削除
+      var statusBtns = '';
+      if (status === 'active') {
+        statusBtns += '<button type="button" class="btn-status btn-status--suspend" data-action-suspend="' + safeId + '">停止</button>';
+      } else if (status === 'suspended') {
+        statusBtns += '<button type="button" class="btn-status btn-status--resume" data-action-resume="' + safeId + '">再開</button>';
+      }
+      if (status !== 'terminated') {
+        statusBtns += '<button type="button" class="btn-status btn-status--delete" data-action-delete="' + safeId + '">完全削除</button>';
+      }
+      var actionCell = '<td class="td-action">'
+        + '<a href="edit.html?clientId=' + encodeURIComponent(c.clientId) + '" class="btn-edit">編集</a>'
+        + statusBtns
+        + '</td>';
+      var trClass = status === 'suspended' ? ' class="tr-client--suspended"'
+                  : (status === 'terminated' ? ' class="tr-client--terminated"' : '');
       var clientRow = [
-        '<tr>',
+        '<tr' + trClass + '>',
           '<td class="td-clientId">' + safeId + '</td>',
           '<td>' + escapeHTML(c.storeName) + '</td>',
           '<td class="td-grade td-grade--' + escapeHTML(grade) + '">' + escapeHTML(grade) + '</td>',
@@ -249,7 +270,8 @@
           '<td>' + escapeHTML(c.contractStart) + '</td>',
           quotaCell,
           urlCell,
-          '<td class="td-action"><a href="edit.html?clientId=' + encodeURIComponent(c.clientId) + '" class="btn-edit">編集</a></td>',
+          memoCell,
+          actionCell,
         '</tr>'
       ].join('');
       var urlListRow = buildUrlListRowHtml(c.clientId, c.timecardCount);
@@ -257,6 +279,8 @@
     });
     tbody.innerHTML = rows.join('');
     bindUrlListEvents();
+    bindMemoEvents();
+    bindStatusEvents();
   }
 
   // 6-H：URL展開ボタン・コピーボタンのイベント委譲
@@ -355,17 +379,158 @@
     document.getElementById('clients-retry-btn').addEventListener('click', loadClients);
   }
 
+  // 全件キャッシュ（フィルタ/検索/ソートはフロント側で適用）
+  var allClients = [];
+
+  function getViewState() {
+    var searchEl = document.getElementById('clients-search');
+    var sortEl = document.getElementById('clients-sort');
+    var filterEl = document.getElementById('clients-filter');
+    return {
+      search: (searchEl && searchEl.value ? searchEl.value.trim().toLowerCase() : ''),
+      sort: (sortEl ? sortEl.value : 'contractStart-desc'),
+      filter: (filterEl ? filterEl.value : 'active')
+    };
+  }
+
+  function applyViewAndRender() {
+    var v = getViewState();
+    var list = allClients.slice();
+
+    // フィルタ（契約状態）。'all' は terminated を除く active+suspended、'terminated' のみ解約済
+    list = list.filter(function (c) {
+      var st = c.contractStatus || 'active';
+      if (v.filter === 'active') return st === 'active';
+      if (v.filter === 'suspended') return st === 'suspended';
+      if (v.filter === 'terminated') return st === 'terminated';
+      if (v.filter === 'all') return st !== 'terminated';
+      return true;
+    });
+
+    // 検索（店舗名・clientId 部分一致）
+    if (v.search) {
+      list = list.filter(function (c) {
+        var name = String(c.storeName || '').toLowerCase();
+        var id = String(c.clientId || '').toLowerCase();
+        return name.indexOf(v.search) >= 0 || id.indexOf(v.search) >= 0;
+      });
+    }
+
+    // ソート
+    if (v.sort === 'contractStart-desc') {
+      list.sort(function (a, b) { return String(b.contractStart || '').localeCompare(String(a.contractStart || '')); });
+    } else if (v.sort === 'contractStart-asc') {
+      list.sort(function (a, b) { return String(a.contractStart || '').localeCompare(String(b.contractStart || '')); });
+    } else if (v.sort === 'storeName') {
+      list.sort(function (a, b) { return String(a.storeName || '').localeCompare(String(b.storeName || ''), 'ja'); });
+    }
+    // 'registered' は listClients の返却順（=登録順）をそのまま使う
+
+    var elEmpty = document.getElementById('clients-empty');
+    var elTableWrap = document.getElementById('clients-table-wrap');
+    var elResult = document.getElementById('clients-result-count');
+
+    if (list.length === 0) {
+      elTableWrap.hidden = true;
+      elEmpty.hidden = false;
+    } else {
+      renderClientsTable(list);
+      elTableWrap.hidden = false;
+      elEmpty.hidden = true;
+    }
+    if (elResult) {
+      elResult.textContent = '表示 ' + list.length + ' / 全 ' + allClients.length + ' 件';
+    }
+  }
+
+  // 備考メモのインライン編集（blur で保存）
+  function bindMemoEvents() {
+    var tbody = document.getElementById('clients-tbody');
+    if (!tbody) return;
+    tbody.querySelectorAll('[data-memo-client]').forEach(function (input) {
+      input.addEventListener('blur', function () {
+        var clientId = input.getAttribute('data-memo-client');
+        var original = (function () {
+          var c = allClients.filter(function (x) { return x.clientId === clientId; })[0];
+          return c ? (c.memo || '') : '';
+        })();
+        var next = input.value.trim();
+        if (next === original) return; // 変更なし
+        saveMemo(clientId, next, input);
+      });
+    });
+  }
+
+  async function saveMemo(clientId, memo, inputEl) {
+    inputEl.classList.add('memo-input--saving');
+    var res = await AdminApp.updateClient(clientId, { memo: memo });
+    inputEl.classList.remove('memo-input--saving');
+    if (AdminApp.handleAuthError(res)) return;
+    if (!res || !res.ok) {
+      alert('メモの保存に失敗しました：' + ((res && (res.message || res.code || res.error)) || 'unknown'));
+      return;
+    }
+    // キャッシュ更新
+    allClients.forEach(function (c) { if (c.clientId === clientId) c.memo = memo; });
+    inputEl.classList.add('memo-input--saved');
+    setTimeout(function () { inputEl.classList.remove('memo-input--saved'); }, 1200);
+  }
+
+  // 状態トグル（停止/再開）・完全削除
+  function bindStatusEvents() {
+    var tbody = document.getElementById('clients-tbody');
+    if (!tbody) return;
+    tbody.querySelectorAll('[data-action-suspend]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        changeStatus(btn.getAttribute('data-action-suspend'), 'suspended',
+          'この店舗を「停止中」にします。一覧（稼働中のみ）から非表示になります。よろしいですか？');
+      });
+    });
+    tbody.querySelectorAll('[data-action-resume]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        changeStatus(btn.getAttribute('data-action-resume'), 'active',
+          'この店舗を「稼働中」に戻します。よろしいですか？');
+      });
+    });
+    tbody.querySelectorAll('[data-action-delete]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var clientId = btn.getAttribute('data-action-delete');
+        var c = allClients.filter(function (x) { return x.clientId === clientId; })[0];
+        var name = c ? (c.storeName || clientId) : clientId;
+        // 二重確認（自動確定禁止）
+        if (!confirm('「' + name + '」（' + clientId + '）を完全削除（解約済）にします。\n一覧から完全に除外されます（データは保持・物理削除はしません）。\n\n続行しますか？')) return;
+        if (!confirm('本当によろしいですか？\nこの操作は「解約済」状態にします。')) return;
+        changeStatus(clientId, 'terminated', null);
+      });
+    });
+  }
+
+  async function changeStatus(clientId, newStatus, confirmMsg) {
+    if (confirmMsg && !confirm(confirmMsg)) return;
+    var res = await AdminApp.updateClient(clientId, { contractStatus: newStatus });
+    if (AdminApp.handleAuthError(res)) return;
+    if (!res || !res.ok) {
+      alert('状態変更に失敗しました：' + ((res && (res.message || res.code || res.error)) || 'unknown'));
+      return;
+    }
+    // キャッシュ更新して再描画
+    allClients.forEach(function (c) { if (c.clientId === clientId) c.contractStatus = newStatus; });
+    applyViewAndRender();
+  }
+
   async function loadClients() {
     var elLoading   = document.getElementById('clients-loading');
     var elError     = document.getElementById('clients-error');
     var elEmpty     = document.getElementById('clients-empty');
     var elTableWrap = document.getElementById('clients-table-wrap');
     var elCount     = document.getElementById('clients-count');
+    var elToolbar   = document.getElementById('clients-toolbar');
 
     elError.hidden = true;
     elEmpty.hidden = true;
     elTableWrap.hidden = true;
     elCount.hidden = true;
+    if (elToolbar) elToolbar.hidden = true;
     elLoading.hidden = false;
 
     var session = AdminAuth.getSession();
@@ -386,15 +551,17 @@
       return;
     }
 
-    if (!res.clients || res.clients.length === 0) {
+    allClients = (res.clients || []).slice();
+
+    if (allClients.length === 0) {
       elEmpty.hidden = false;
       return;
     }
 
-    renderClientsTable(res.clients);
-    elTableWrap.hidden = false;
-    elCount.textContent = res.clients.length + '件';
+    if (elToolbar) elToolbar.hidden = false;
+    elCount.textContent = allClients.length + '件';
     elCount.hidden = false;
+    applyViewAndRender();
   }
 
   function initClientsList() {
@@ -407,6 +574,14 @@
         location.href = 'register.html';
       });
     }
+
+    // 表示設定ツールバー（検索・並び順・フィルタ）→ 再描画
+    var searchEl = document.getElementById('clients-search');
+    var sortEl = document.getElementById('clients-sort');
+    var filterEl = document.getElementById('clients-filter');
+    if (searchEl) searchEl.addEventListener('input', applyViewAndRender);
+    if (sortEl) sortEl.addEventListener('change', applyViewAndRender);
+    if (filterEl) filterEl.addEventListener('change', applyViewAndRender);
 
     (async function () {
       if (!AdminAuth.isSessionValid()) {

@@ -199,6 +199,93 @@
     .copy-toast[hidden] {
       display: none;
     }
+
+    /* ============ 表示設定ツールバー ============ */
+    .clients-toolbar {
+      display: flex;
+      align-items: flex-end;
+      gap: 18px;
+      flex-wrap: wrap;
+      padding: 14px 0 16px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid var(--color-border, #e5e5e5);
+    }
+    .clients-toolbar[hidden] { display: none; }
+    .toolbar-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .toolbar-field label {
+      font-size: 11px;
+      color: var(--color-text-muted, #777);
+      letter-spacing: 0.06em;
+    }
+    .toolbar-field input,
+    .toolbar-field select {
+      padding: 6px 10px;
+      font-size: 13px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+    .toolbar-field input { min-width: 240px; }
+    .toolbar-result {
+      font-size: 12px;
+      color: var(--color-text-muted, #777);
+      margin-bottom: 6px;
+    }
+
+    /* ============ 備考メモ列（インライン編集） ============ */
+    .td-memo { min-width: 160px; }
+    .memo-input {
+      width: 100%;
+      padding: 4px 8px;
+      font-size: 12px;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      background: transparent;
+      font-family: inherit;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .memo-input:hover { border-color: #ddd; background: #fff; }
+    .memo-input:focus {
+      outline: none;
+      border-color: var(--color-space, #0B1842);
+      background: #fff;
+    }
+    .memo-input--saving { background: #fff8e1; }
+    .memo-input--saved { background: #d4edda; }
+
+    /* ============ 操作列（停止/再開/完全削除トグル） ============ */
+    .td-action {
+      white-space: nowrap;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .btn-status {
+      padding: 4px 10px;
+      font-size: 11px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      border: 1px solid #ccc;
+      background: #fff;
+      transition: background 0.15s;
+    }
+    .btn-status--suspend { border-color: #d4a017; color: #8a6d00; }
+    .btn-status--suspend:hover { background: #fdf4dc; }
+    .btn-status--resume { border-color: #27ae60; color: #1a7d44; }
+    .btn-status--resume:hover { background: #e3f6e8; }
+    .btn-status--delete { border-color: #c0392b; color: #a02820; }
+    .btn-status--delete:hover { background: #fbe6e3; }
+
+    /* 停止中・解約済の行を視覚的に区別 */
+    .tr-client--suspended { background: #fdf9ef; }
+    .tr-client--suspended td { opacity: 0.78; }
+    .tr-client--terminated { background: #f4f4f4; }
+    .tr-client--terminated td { opacity: 0.6; }
   </style>
 </head>
 <body>
@@ -228,6 +315,33 @@
         </div>
       </div>
 
+      <!-- 表示設定ツールバー -->
+      <div class="clients-toolbar" id="clients-toolbar" hidden>
+        <div class="toolbar-field">
+          <label for="clients-search">検索</label>
+          <input type="text" id="clients-search" placeholder="店舗名・clientId 部分一致">
+        </div>
+        <div class="toolbar-field">
+          <label for="clients-sort">並び順</label>
+          <select id="clients-sort">
+            <option value="contractStart-desc">契約開始（新しい順）</option>
+            <option value="contractStart-asc">契約開始（古い順）</option>
+            <option value="registered">登録順</option>
+            <option value="storeName">店舗名順</option>
+          </select>
+        </div>
+        <div class="toolbar-field">
+          <label for="clients-filter">表示</label>
+          <select id="clients-filter">
+            <option value="active">稼働中のみ</option>
+            <option value="suspended">停止中</option>
+            <option value="terminated">解約済</option>
+            <option value="all">全て</option>
+          </select>
+        </div>
+        <span class="toolbar-result" id="clients-result-count"></span>
+      </div>
+
       <!-- ローディング表示 -->
       <div class="clients-loading" id="clients-loading">読み込み中…</div>
 
@@ -254,6 +368,7 @@
               <th>契約開始</th>
               <th title="売上品目マスタ / 仕入原価マスタ の付与枠数（販管費マスタ任意枠は5件固定・税務署様式準拠）">マスタ枠<br><span class="th-sub">S / P</span></th>
               <th title="オーナーアプリ（スマホ・iPad・PC）／スタッフ子アカウントのURL一覧">アプリURL</th>
+              <th title="同名店舗の識別・管理メモ（クリックで編集）">備考</th>
               <th>操作</th>
             </tr>
           </thead>

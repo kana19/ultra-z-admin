@@ -275,6 +275,23 @@
     }
   }
 
+  /**
+   * clients の指定フィールドを更新する（契約状態・備考メモ等）。
+   * 破壊的操作のためリトライは行わない。
+   * @param {string} clientId
+   * @param {Object} fields - 更新するフィールド（contractStatus / memo 等）
+   */
+  async function updateClient(clientId, fields) {
+    try {
+      return await callMasterGas('updateClient', {
+        clientId: clientId,
+        fields: fields
+      });
+    } catch (err) {
+      return _wrapNetworkError_(err);
+    }
+  }
+
   // ---- 公開 --------------------------------------------------
   global.AdminApp = {
     MASTER_GAS_URL: MASTER_GAS_URL,
@@ -292,6 +309,7 @@
     fetchClientsList: fetchClientsList,
     fetchClient: fetchClient,
     fetchClientWithRetry: fetchClientWithRetry,
+    updateClient: updateClient,
     // 注：fetchUserStaffList / fetchUserStaffListWithRetry / updateUserStaffList は
     // v0.4.0 で誤実装された staffList 系の残骸。v0.4.1 ではマスタGAS から該当 action
     // が削除されており、呼び出すと unknown action が返る。新規コードからは使用しない。
