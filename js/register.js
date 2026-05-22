@@ -278,11 +278,11 @@
     // ナビ表示
     // hidden 属性が CSS で上書きされるケースに備え style.display で確実に制御する
     if (n === 7) {
-      // Step7：登録実行のみ表示（戻る・次へ・step-info は非表示）。
-      //   修正は上部ステッパー円で戻れるため戻るボタンは不要。
-      //   実行開始後はステッパーもロックされ、完了後は completion 内の「ダッシュボードへ戻る」へ。
+      // Step7：登録実行を右下（Step1〜6の「次へ」と同位置）に置く。
+      //   戻る・次へは非表示。step-info を残して左右に分離（実行ボタンが右端）。
+      //   修正は上部ステッパー円で戻れる。完了後は completion 内の「ダッシュボードへ戻る」。
       $('btn-back').style.display = 'none';
-      $('footer-step-info').style.display = 'none';
+      $('footer-step-info').style.display = '';
       $('btn-next').hidden = true;
       $('btn-next').style.display = 'none';
       $('btn-execute').hidden = false;
@@ -758,6 +758,30 @@
       return [26, 27, 28, 29, 30].indexOf(Number(cm.code)) >= 0 && cm.name;
     }).length;
     const visibleCount = (s3.costMasterList || []).filter(function (cm) { return cm.smartphoneVisible; }).length;
+    // 販管費マスタの詳細テーブル（コード・科目名・税率・アプリ表示）
+    const costRows = (s3.costMasterList || []).slice().sort(function (a, b) {
+      return Number(a.code) - Number(b.code);
+    });
+    const costTableHtml =
+      '<table class="summary-cost-table" style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px">' +
+        '<thead><tr>' +
+          '<th style="text-align:left;border-bottom:1px solid #ccc;padding:4px">コード</th>' +
+          '<th style="text-align:left;border-bottom:1px solid #ccc;padding:4px">科目名</th>' +
+          '<th style="text-align:left;border-bottom:1px solid #ccc;padding:4px">税率</th>' +
+          '<th style="text-align:left;border-bottom:1px solid #ccc;padding:4px">アプリ表示</th>' +
+        '</tr></thead>' +
+        '<tbody>' +
+        costRows.map(function (cm) {
+          const name = cm.name && cm.name !== '' ? cm.name : '（未設定）';
+          return '<tr>' +
+                 '<td style="padding:3px 4px">' + escapeHtml(String(cm.code)) + '</td>' +
+                 '<td style="padding:3px 4px">' + escapeHtml(name) + '</td>' +
+                 '<td style="padding:3px 4px">' + (Number(cm.taxRate) || 0) + '%</td>' +
+                 '<td style="padding:3px 4px">' + (cm.smartphoneVisible ? '✅ 表示' : '—') + '</td>' +
+                 '</tr>';
+        }).join('') +
+        '</tbody>' +
+      '</table>';
     const html =
       section('Step 1：基本情報', 1, [
         ['契約者名', s1.contractorName],
@@ -780,7 +804,8 @@
         ['サービスマスタ枠数', s3.serviceMasterQuota + ' 件'],
         ['仕入マスタ枠数', s3.purchaseMasterQuota + ' 件'],
         ['販管費マスタ任意枠', '5件固定（税務署様式準拠・編集不可）'],
-        ['販管費マスタ', '青色申告デフォルト 24件 / 任意枠使用 ' + customCostCount + ' 件 / アプリ表示 ' + visibleCount + ' 件']
+        ['販管費マスタ', '青色申告デフォルト 24件 / 任意枠使用 ' + customCostCount + ' 件 / アプリ表示 ' + visibleCount + ' 件'],
+        ['販管費マスタ詳細', costTableHtml, 'html']
       ]) +
       section('Step 4：ロゴ・テーマ', 4, [
         ['店舗ロゴ', s4.logoFile ? s4.logoFile.name : '（未選択・Step 7 でスキップ）'],
