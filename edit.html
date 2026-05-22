@@ -261,50 +261,44 @@
     <!-- §5 サービスマスタ -->
     <section class="edit-section" data-section="service-master">
       <div class="section-header">
-        <h2>5. サービスマスタ</h2>
-        <span class="dirty-indicator" hidden>● 変更あり</span>
+        <h2>5. サービスマスタ（閲覧専用）</h2>
       </div>
       <div class="section-body">
-        <p class="section-description">ユーザーが売上入力で使うサービス一覧。ユーザー自身がスマホ設定からも編集可能。各科目には sv001〜の連番ID（コード）が自動採番される。登録した時点でアプリ側に表示されます（業種により非表示にする概念なし）。<br><span class="quota-status" id="service-master-quota-status"></span></p>
+        <p class="section-description">ユーザーが売上入力で使うサービス一覧。中身の登録・編集はユーザーがアプリ側で行います（運営は閲覧のみ・枠数は §2 で管理）。各科目には sv001〜の連番IDが自動採番されます。<br><span class="quota-status" id="service-master-quota-status"></span></p>
         <table class="data-table" id="service-table">
           <thead>
             <tr>
-              <th style="width: 12%;">コード</th>
-              <th style="width: 60%;">サービス名</th>
+              <th style="width: 15%;">コード</th>
+              <th style="width: 65%;">サービス名</th>
               <th style="width: 20%;">税率</th>
-              <th style="width: 8%;">操作</th>
             </tr>
           </thead>
           <tbody id="service-table-body">
-            <!-- JS で動的生成 -->
+            <!-- JS で動的生成（読み取り専用） -->
           </tbody>
         </table>
-        <button type="button" id="btn-add-service" class="btn-secondary">＋ サービスを追加</button>
       </div>
     </section>
 
     <!-- §5-2 仕入マスタ -->
     <section class="edit-section" data-section="purchase-master">
       <div class="section-header">
-        <h2>5-2. 仕入マスタ</h2>
-        <span class="dirty-indicator" hidden>● 変更あり</span>
+        <h2>5-2. 仕入マスタ（閲覧専用）</h2>
       </div>
       <div class="section-body">
-        <p class="section-description">業種固有の仕入原価科目を登録します。コストシート D列='1'（仕入原価）として記録され、青色申告決算書の「売上原価」に集計されます。基本枠：3件（運営付与）・ユーザーもスマホ設定から枠内で追加可能。登録した時点でアプリ側に表示されます（業種により非表示にする概念なし）。<br><span class="quota-status" id="purchase-master-quota-status"></span></p>
+        <p class="section-description">業種固有の仕入原価科目（コストシート D列='1'・青色申告決算書の「売上原価」に集計）。中身の登録・編集はユーザーがアプリ側で行います（運営は閲覧のみ・枠数は §2 で管理）。<br><span class="quota-status" id="purchase-master-quota-status"></span></p>
         <table class="data-table" id="purchase-master-table">
           <thead>
             <tr>
-              <th style="width: 12%;">コード</th>
-              <th style="width: 60%;">科目名</th>
+              <th style="width: 15%;">コード</th>
+              <th style="width: 65%;">科目名</th>
               <th style="width: 20%;">税率</th>
-              <th style="width: 8%;">操作</th>
             </tr>
           </thead>
           <tbody id="purchase-master-table-body">
-            <!-- JS で動的生成 -->
+            <!-- JS で動的生成（読み取り専用） -->
           </tbody>
         </table>
-        <button type="button" id="btn-add-purchase" class="btn-secondary">＋ 仕入科目を追加</button>
       </div>
     </section>
 

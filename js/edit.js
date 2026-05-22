@@ -127,11 +127,11 @@
   function renderBasicInfo() {
     document.getElementById('f-client-id').value = state.currentClient.clientId;
     document.getElementById('f-store-name').value = state.currentClient.storeName || '';
-    document.getElementById('f-contractor-name').value = state.currentSettings.contractorName || '';
-    document.getElementById('f-representative-name').value = state.currentSettings.representativeName || '';
-    document.getElementById('f-address').value = state.currentSettings.address || '';
-    document.getElementById('f-phone').value = state.currentSettings.phone || '';
-    document.getElementById('f-email').value = state.currentSettings.email || '';
+    document.getElementById('f-contractor-name').value = state.currentClient.contractorName || '';
+    document.getElementById('f-representative-name').value = state.currentClient.representativeName || '';
+    document.getElementById('f-address').value = state.currentClient.address || '';
+    document.getElementById('f-phone').value = state.currentClient.phone || '';
+    document.getElementById('f-email').value = state.currentClient.email || '';
     const bh = state.currentSettings.businessHours || {};
     document.getElementById('f-business-open').value = bh.open || '';
     document.getElementById('f-business-close').value = bh.close || '';
@@ -140,11 +140,11 @@
 
   function readBasicInfo() {
     state.currentClient.storeName = document.getElementById('f-store-name').value.trim();
-    state.currentSettings.contractorName = document.getElementById('f-contractor-name').value.trim();
-    state.currentSettings.representativeName = document.getElementById('f-representative-name').value.trim();
-    state.currentSettings.address = document.getElementById('f-address').value.trim();
-    state.currentSettings.phone = document.getElementById('f-phone').value.trim();
-    state.currentSettings.email = document.getElementById('f-email').value.trim();
+    state.currentClient.contractorName = document.getElementById('f-contractor-name').value.trim();
+    state.currentClient.representativeName = document.getElementById('f-representative-name').value.trim();
+    state.currentClient.address = document.getElementById('f-address').value.trim();
+    state.currentClient.phone = document.getElementById('f-phone').value.trim();
+    state.currentClient.email = document.getElementById('f-email').value.trim();
     state.currentSettings.businessHours = {
       open: document.getElementById('f-business-open').value,
       close: document.getElementById('f-business-close').value,
@@ -399,26 +399,17 @@
     tbody.innerHTML = '';
     const list = state.currentSettings.serviceList || [];
     if (list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty-row">サービスが登録されていません</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-row">ユーザーが未登録（アプリ側で登録されると表示されます）</td></tr>';
       return;
     }
-    const quota = getServiceQuotaValue();
-    list.forEach(function (svc, idx) {
+    // B案：運営は中身を編集しない（確定仕様F・ユーザー主権）。閲覧のみの読み取り専用表示。
+    list.forEach(function (svc) {
       const idDisplay = svc.id || '(未割当)';
-      const isOver = (idx + 1) > quota;  // 枠を超えた N+1 行目以降
       const tr = document.createElement('tr');
-      if (isOver) tr.setAttribute('data-over-quota', 'true');
       tr.innerHTML =
         '<td><span class="readonly-text">' + escapeHtml(idDisplay) + '</span></td>' +
-        '<td><input type="text" data-svc-idx="' + idx + '" data-svc-field="name" value="' + escapeHtml(svc.name || '') + '" maxlength="30"></td>' +
-        '<td>' +
-          '<select data-svc-idx="' + idx + '" data-svc-field="taxRate">' +
-            '<option value="0"' + (Number(svc.taxRate) === 0 ? ' selected' : '') + '>0%</option>' +
-            '<option value="8"' + (Number(svc.taxRate) === 8 ? ' selected' : '') + '>8%</option>' +
-            '<option value="10"' + (Number(svc.taxRate) === 10 ? ' selected' : '') + '>10%</option>' +
-          '</select>' +
-        '</td>' +
-        '<td><button type="button" class="btn-icon-delete" data-svc-del="' + idx + '">🗑️</button></td>';
+        '<td><span class="readonly-text">' + escapeHtml(svc.name || '') + '</span></td>' +
+        '<td><span class="readonly-text">' + (Number(svc.taxRate) || 0) + '%</span></td>';
       tbody.appendChild(tr);
     });
   }
@@ -498,27 +489,18 @@
     }
     const list = state.currentSettings.purchaseMasterList;
     if (list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty-row">仕入科目が登録されていません。「＋ 仕入科目を追加」から追加してください。</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-row">ユーザーが未登録（アプリ側で登録されると表示されます）</td></tr>';
       return;
     }
-    const quota = getPurchaseQuotaValue();
-    list.forEach(function (p, idx) {
+    // B案：運営は中身を編集しない（確定仕様F・ユーザー主権）。閲覧のみの読み取り専用表示。
+    list.forEach(function (p) {
       const tr = document.createElement('tr');
       const idDisplay = p.id || '(未割当)';
       const taxRate = (p.defaultTaxRate != null ? p.defaultTaxRate : (p.taxRate != null ? p.taxRate : 10));
-      const isOver = (idx + 1) > quota;  // 6-G：枠超過行
-      if (isOver) tr.setAttribute('data-over-quota', 'true');
       tr.innerHTML =
         '<td><span class="readonly-text">' + escapeHtml(idDisplay) + '</span></td>' +
-        '<td><input type="text" data-pm-idx="' + idx + '" data-pm-field="name" value="' + escapeHtml(p.name || '') + '" maxlength="30" placeholder="（例：仕入(酒類・食材)）"></td>' +
-        '<td>' +
-          '<select data-pm-idx="' + idx + '" data-pm-field="defaultTaxRate">' +
-            '<option value="0"'  + (Number(taxRate) === 0  ? ' selected' : '') + '>0%</option>' +
-            '<option value="8"'  + (Number(taxRate) === 8  ? ' selected' : '') + '>8%</option>' +
-            '<option value="10"' + (Number(taxRate) === 10 ? ' selected' : '') + '>10%</option>' +
-          '</select>' +
-        '</td>' +
-        '<td><button type="button" class="btn-icon-delete" data-pm-del="' + idx + '">🗑️</button></td>';
+        '<td><span class="readonly-text">' + escapeHtml(p.name || '') + '</span></td>' +
+        '<td><span class="readonly-text">' + (Number(taxRate) || 0) + '%</span></td>';
       tbody.appendChild(tr);
     });
   }
@@ -826,16 +808,22 @@
     if (Number(state.currentClient.purchaseMasterQuota) !== Number(state.initialClient.purchaseMasterQuota)) {
       fields.purchaseMasterQuota = state.currentClient.purchaseMasterQuota;
     }
+    // 基本情報（契約者名・代表者名・住所・電話・メール）は clients が正本（03_データ仕様.md §1-0-4）
+    ['contractorName', 'representativeName', 'address', 'phone', 'email'].forEach(function (k) {
+      if (state.currentClient[k] !== state.initialClient[k]) fields[k] = state.currentClient[k];
+    });
     return fields;
   }
 
   function diffSettings() {
     const fields = {};
-    const scalarKeys = ['storeName', 'contractorName', 'representativeName', 'address', 'phone', 'email', 'themeColor', 'logoBackgroundColor'];
+    const scalarKeys = ['storeName', 'themeColor', 'logoBackgroundColor'];
     scalarKeys.forEach(function (k) {
       if (state.currentSettings[k] !== state.initialSettings[k]) fields[k] = state.currentSettings[k];
     });
-    const objKeys = ['businessHours', 'featureVisibility', 'serviceList', 'costMasterList', 'purchaseMasterList'];
+    // serviceList / purchaseMasterList は運営側では読み取り専用（確定仕様F・ユーザー主権）。
+    // 保存対象に含めない。販管費 costMasterList は運営編集対象のため残す。
+    const objKeys = ['businessHours', 'featureVisibility', 'costMasterList'];
     objKeys.forEach(function (k) {
       if (JSON.stringify(state.currentSettings[k]) !== JSON.stringify(state.initialSettings[k])) {
         fields[k] = state.currentSettings[k];
@@ -1143,10 +1131,13 @@
         deleteService(parseInt(e.target.dataset.svcDel, 10));
       }
     });
-    document.getElementById('btn-add-service').addEventListener('click', function () {
-      readServiceMaster();
-      addService();
-    });
+    const btnAddService = document.getElementById('btn-add-service');
+    if (btnAddService) {
+      btnAddService.addEventListener('click', function () {
+        readServiceMaster();
+        addService();
+      });
+    }
 
     // 仕入マスタ操作（イベント委譲）
     const pmBody = document.getElementById('purchase-master-table-body');

@@ -276,18 +276,27 @@
       p.hidden = (parseInt(p.getAttribute('data-panel'), 10) !== n);
     });
     // ナビ表示
-    $('btn-back').disabled = (n === 1);
-    if (n === 6) {
-      $('btn-next').textContent = '次へ';
-      $('btn-next').hidden = false;
-      $('btn-execute').hidden = true;
-    } else if (n === 7) {
+    // hidden 属性が CSS で上書きされるケースに備え style.display で確実に制御する
+    if (n === 7) {
+      // Step7：登録実行のみ表示（戻る・次へ・step-info は非表示）。
+      //   修正は上部ステッパー円で戻れるため戻るボタンは不要。
+      //   実行開始後はステッパーもロックされ、完了後は completion 内の「ダッシュボードへ戻る」へ。
+      $('btn-back').style.display = 'none';
+      $('footer-step-info').style.display = 'none';
       $('btn-next').hidden = true;
+      $('btn-next').style.display = 'none';
       $('btn-execute').hidden = false;
+      $('btn-execute').style.display = '';
     } else {
+      // Step1〜6：戻る＋step-info＋次へ。登録実行は誤押下防止のため完全非表示。
+      $('btn-back').style.display = '';
+      $('btn-back').disabled = (n === 1);
+      $('footer-step-info').style.display = '';
       $('btn-next').textContent = '次へ';
       $('btn-next').hidden = false;
+      $('btn-next').style.display = '';
       $('btn-execute').hidden = true;
+      $('btn-execute').style.display = 'none';
     }
     // Step 別の遅延描画
     if (n === 3) { renderCostTable(); paintStep3(); }
@@ -1412,6 +1421,11 @@
         pinHash:  pinHashHex,
         fields: {
           storeName:           s1.storeName,
+          contractorName:      s1.contractorName,
+          representativeName:  s1.representativeName,
+          address:             s1.address,
+          phone:               s1.phone,
+          email:               s1.email,
           timecardCount:       s2.timecardCount,
           spreadsheetId:       Step7Progress.spreadsheetId,
           gasUrl:              Step7Progress.gasUrl,
@@ -1508,6 +1522,8 @@
     // ステッパー円クリック
     document.querySelectorAll('.step-item').forEach(function (li) {
       li.addEventListener('click', function () {
+        // Step7 実行開始後・完了後はステッパー移動を禁止（処理破壊防止）
+        if (Step7Progress.running || Step7Progress.completed) return;
         const step = parseInt(li.getAttribute('data-step'), 10);
         gotoStep(step);
       });
