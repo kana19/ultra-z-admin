@@ -1014,7 +1014,6 @@
             '<button type="button" class="btn-primary manual-gas-btn" id="manual-gas-copy-btn">' +
               '📋 コード一式をコピー' +
             '</button>' +
-            '<span class="manual-gas-copied" id="manual-gas-copied-flag" hidden>✅ コピー済</span>' +
           '</li>' +
           '<li class="manual-gas-step">' +
             '<div class="manual-gas-step-title">④ コードを貼り付けて保存</div>' +
@@ -1075,7 +1074,6 @@
   // 手動運用パネルのイベントバインド
   function bindManualGasPanelEvents() {
     const copyBtn = document.getElementById('manual-gas-copy-btn');
-    const copiedFlag = document.getElementById('manual-gas-copied-flag');
     const titleCopyBtn = document.getElementById('manual-gas-title-copy-btn');
     const submitBtn = document.getElementById('manual-gas-submit-btn');
     const urlInput = document.getElementById('manual-gas-url-input');
@@ -1085,7 +1083,6 @@
       copyBtn.addEventListener('click', function () {
         copyToClipboard(ManualGasState.gasCode).then(function (ok) {
           if (ok) {
-            if (copiedFlag) copiedFlag.hidden = false;
             showToast('コードをクリップボードにコピーしました', 'success');
           } else {
             showToast('コピーに失敗しました。手動で選択してください', 'error');

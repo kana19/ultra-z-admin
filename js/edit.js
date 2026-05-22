@@ -124,18 +124,33 @@
   }
 
   // ============ §1 基本情報 ============
+  // 営業時間：終了時刻が開始時刻以前のとき翌日跨ぎと自動判定（register と統一）
+  function isCloseNextDay(open, close) {
+    if (!open || !close) return false;
+    return close <= open;
+  }
+  function updateNextDayBadge() {
+    const badge = document.getElementById('f-next-day-badge');
+    if (!badge) return;
+    const cross = isCloseNextDay(
+      document.getElementById('f-business-open').value,
+      document.getElementById('f-business-close').value
+    );
+    badge.hidden = !cross;
+    badge.style.display = cross ? 'inline-block' : 'none';
+  }
   function renderBasicInfo() {
     document.getElementById('f-client-id').value = state.currentClient.clientId;
     document.getElementById('f-store-name').value = state.currentClient.storeName || '';
     document.getElementById('f-contractor-name').value = state.currentClient.contractorName || '';
     document.getElementById('f-representative-name').value = state.currentClient.representativeName || '';
     document.getElementById('f-address').value = state.currentClient.address || '';
-    document.getElementById('f-phone').value = state.currentClient.phone || '';
+    document.getElementById('f-phone').value = state.currentClient.phone != null ? String(state.currentClient.phone) : '';
     document.getElementById('f-email').value = state.currentClient.email || '';
     const bh = state.currentSettings.businessHours || {};
     document.getElementById('f-business-open').value = bh.open || '';
     document.getElementById('f-business-close').value = bh.close || '';
-    document.getElementById('f-close-next-day').checked = !!bh.closeNextDay;
+    updateNextDayBadge();
   }
 
   function readBasicInfo() {
@@ -148,7 +163,7 @@
     state.currentSettings.businessHours = {
       open: document.getElementById('f-business-open').value,
       close: document.getElementById('f-business-close').value,
-      closeNextDay: document.getElementById('f-close-next-day').checked
+      closeNextDay: isCloseNextDay(document.getElementById('f-business-open').value, document.getElementById('f-business-close').value)
     };
   }
 
@@ -1036,7 +1051,7 @@
     const dirtyMap = {
       'f-store-name': 'basic-info', 'f-contractor-name': 'basic-info', 'f-representative-name': 'basic-info',
       'f-address': 'basic-info', 'f-phone': 'basic-info', 'f-email': 'basic-info',
-      'f-business-open': 'basic-info', 'f-business-close': 'basic-info', 'f-close-next-day': 'basic-info',
+      'f-business-open': 'basic-info', 'f-business-close': 'basic-info',
       'f-timecard-count': 'timecard',
       'f-service-master-quota': 'timecard',
       'f-purchase-master-quota': 'timecard',
@@ -1057,6 +1072,10 @@
     });
 
     document.getElementById('f-timecard-count').addEventListener('change', updateGradeDisplay);
+
+    // 営業時間：翌日跨ぎ自動判定バッジ更新
+    document.getElementById('f-business-open').addEventListener('change', updateNextDayBadge);
+    document.getElementById('f-business-close').addEventListener('change', updateNextDayBadge);
 
     // 6-G：件数枠 input 変更で §2 表示＋§5/§5-2/§6 ステータス＋テーブル行強調も更新
     document.getElementById('f-service-master-quota').addEventListener('input', function () {
