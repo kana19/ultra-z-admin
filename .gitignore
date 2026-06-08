@@ -21,3 +21,6 @@ gas/
 
 # Claude Code 段階別プロンプト原稿（運用ログ・コミット対象外）
 claude_code_prompt_phase*.md
+
+# 廃止ファイル退避先（ローカル保管・コミット対象外）
+_trash/
