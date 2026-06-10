@@ -132,6 +132,19 @@
         <span class="grade-derivation-desc">PC版4項目構造（タイムカード・売上・コスト・出勤）</span>
       </div>
 
+      <!-- レオ対象オプション（段2/段3・納品時ON/OFF・→ 01_商品体系.md §4-6 / 03_データ仕様.md §6）-->
+      <div id="f2-stage-options" style="margin-top:16px;padding:16px;border:1px solid #d9dee8;border-radius:10px;background:#f7f9fc;">
+        <div style="font-size:13px;font-weight:700;color:#334;margin-bottom:10px;">レオ対象オプション（納品時ON/OFF・導入後は運営ポータルでフラグ追加）</div>
+        <label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;cursor:pointer;">
+          <input type="checkbox" id="f2-qr-proof" style="margin-top:3px;">
+          <span style="font-size:13px;line-height:1.5;"><strong>段2 QR現地証明</strong>（qrProofEnabled）<br><span style="color:#667;">出勤時にアプリ内カメラで店舗QRを読取り📍を記録。読取不可時は📍なしで打刻（非ブロッキング）。</span></span>
+        </label>
+        <label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;cursor:pointer;">
+          <input type="checkbox" id="f2-shift-schedule" style="margin-top:3px;">
+          <span style="font-size:13px;line-height:1.5;"><strong>段3 シフト登録</strong>（shiftScheduleEnabled）<br><span style="color:#667;">希望・予定登録とシフト実績突合（Phase A完了後に実装・枠とフラグのみ）。</span></span>
+        </label>
+      </div>
+
       <div class="step-error" id="step2-error" hidden></div>
     </section>
 

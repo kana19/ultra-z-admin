@@ -387,6 +387,7 @@
     const fv = state.currentSettings.featureVisibility || {};
     document.getElementById('fv-clockin-menu').checked = fv.clockin_menu !== false;
     document.getElementById('fv-payroll-menu').checked = fv.payroll_menu !== false;
+    document.getElementById('fv-qr-proof').checked = !!fv.qrProofEnabled;
     document.getElementById('fv-shift-schedule').checked = !!fv.shiftScheduleEnabled;
     document.getElementById('fv-receipt-ocr').checked = !!fv.receipt_ocr;
     document.getElementById('fv-bank-csv').checked = !!fv.bank_csv;
@@ -398,6 +399,7 @@
     state.currentSettings.featureVisibility = {
       clockin_menu: document.getElementById('fv-clockin-menu').checked,
       payroll_menu: document.getElementById('fv-payroll-menu').checked,
+      qrProofEnabled: document.getElementById('fv-qr-proof').checked,
       shiftScheduleEnabled: document.getElementById('fv-shift-schedule').checked,
       receipt_ocr: document.getElementById('fv-receipt-ocr').checked,
       bank_csv: document.getElementById('fv-bank-csv').checked,

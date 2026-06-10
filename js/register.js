@@ -83,7 +83,7 @@
         contractEnd: '',
         monthlyFee: 4980
       },
-      step2: { timecardCount: 5 },
+      step2: { timecardCount: 5, qrProofEnabled: false, shiftScheduleEnabled: false },
       step3: {
         // マスタ件数枠（運営側内部管理項目・01_商品体系.md §4-2）
         // 基本枠：S=5 / P=5 / C=5・UI硬制限なし・拡張オプション販売時は edit 画面でも変更可
@@ -332,6 +332,8 @@
   function paintStep2() {
     const radios = document.querySelectorAll('input[name="f2-timecard"]');
     radios.forEach(function (r) { r.checked = (parseInt(r.value, 10) === RegisterState.data.step2.timecardCount); });
+    const qr = $('f2-qr-proof'); if (qr) qr.checked = !!RegisterState.data.step2.qrProofEnabled;
+    const sh = $('f2-shift-schedule'); if (sh) sh.checked = !!RegisterState.data.step2.shiftScheduleEnabled;
     updateGradeDerivation();
   }
   function paintStep3() {
@@ -413,6 +415,11 @@
       return false;
     }
     RegisterState.data.step2.timecardCount = parseInt(checked.value, 10);
+    // 段2/段3トグル（アストラ=TC0 では強制OFF）
+    const isLeo = RegisterState.data.step2.timecardCount >= 5;
+    const qr = $('f2-qr-proof'), sh = $('f2-shift-schedule');
+    RegisterState.data.step2.qrProofEnabled       = isLeo && !!(qr && qr.checked);
+    RegisterState.data.step2.shiftScheduleEnabled = isLeo && !!(sh && sh.checked);
     hideStepError('step2-error');
     return true;
   }
@@ -616,6 +623,16 @@
     const n = checked ? parseInt(checked.value, 10) : 5;
     const grade = (n === 0) ? 'アストラ' : (n >= 5 ? 'レオ' : 'unknown');
     const display = $('f2-grade-display');
+    // 段2/段3オプションはレオ（TC≧5）のときのみ表示。アストラではOFF固定で隠す。
+    const stageOpts = $('f2-stage-options');
+    if (stageOpts) {
+      const isLeo = (n >= 5);
+      stageOpts.style.display = isLeo ? '' : 'none';
+      if (!isLeo) {
+        const qr = $('f2-qr-proof'); if (qr) qr.checked = false;
+        const sh = $('f2-shift-schedule'); if (sh) sh.checked = false;
+      }
+    }
     if (grade === 'アストラ') {
       display.innerHTML =
         '<span class="grade-derivation-badge grade-derivation-badge--astra">アストラ判定</span>' +
@@ -798,7 +815,9 @@
       ]) +
       section('Step 2：タイムカード数', 2, [
         ['タイムカード数', String(s2.timecardCount)],
-        ['グレード派生', grade]
+        ['グレード派生', grade],
+        ['段2 QR現地証明', (s2.timecardCount >= 5 && s2.qrProofEnabled) ? '✅ ON（qrProofEnabled）' : '— OFF'],
+        ['段3 シフト登録', (s2.timecardCount >= 5 && s2.shiftScheduleEnabled) ? '✅ ON（shiftScheduleEnabled）' : '— OFF']
       ]) +
       section('Step 3：マスタ件数枠＋販管費設定', 3, [
         ['サービスマスタ枠数', s3.serviceMasterQuota + ' 件'],
@@ -1371,7 +1390,14 @@
         businessHours:        s1.businessHours,
         serviceMasterQuota:   s3.serviceMasterQuota,
         purchaseMasterQuota:  s3.purchaseMasterQuota,
-        costOptionalQuota:    s3.costOptionalQuota
+        costOptionalQuota:    s3.costOptionalQuota,
+        // 機能ON/OFF（settings B16・段2/段3は納品時トグル・→ 03_データ仕様.md §6）
+        featureVisibility: {
+          clockin_menu:         s2.timecardCount >= 5,
+          payroll_menu:         s2.timecardCount >= 5,
+          qrProofEnabled:       s2.timecardCount >= 5 && !!s2.qrProofEnabled,
+          shiftScheduleEnabled: s2.timecardCount >= 5 && !!s2.shiftScheduleEnabled
+        }
       });
       Step7Progress.spreadsheetId = String(r5.spreadsheetId || '');
       Step7Progress.spreadsheetUrl = String(r5.spreadsheetUrl || '');
