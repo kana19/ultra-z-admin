@@ -286,6 +286,80 @@
     .tr-client--suspended td { opacity: 0.78; }
     .tr-client--terminated { background: #f4f4f4; }
     .tr-client--terminated td { opacity: 0.6; }
+
+    /* ============ 登録日時列 ============ */
+    .td-created {
+      font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      color: var(--color-text-muted, #777);
+      white-space: nowrap;
+    }
+
+    /* ============ 納品カード再発行ボタン ============ */
+    .btn-card {
+      padding: 4px 10px;
+      font-size: 11px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      border: 1px solid #4a6fa5;
+      background: #fff;
+      color: #2c4a73;
+      transition: background 0.15s;
+    }
+    .btn-card:hover { background: #eaf1fb; }
+    .btn-card:disabled { opacity: 0.5; cursor: default; }
+
+    /* ============ ダッシュボード サマリー帯 ============ */
+    .dash-summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .dash-summary[hidden] { display: none; }
+    .summary-card {
+      padding: 14px 16px;
+      background: #fff;
+      border: 1px solid var(--color-border, #e5e5e5);
+      border-radius: var(--radius, 8px);
+    }
+    .summary-card__label {
+      font-size: 11px;
+      color: var(--color-text-muted, #777);
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+    .summary-card__value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--color-space, #0B1842);
+      font-variant-numeric: tabular-nums;
+    }
+    .summary-card__unit { font-size: 12px; font-weight: 400; color: var(--color-text-muted, #777); margin-left: 3px; }
+    .summary-card--alert .summary-card__value { color: #c0392b; }
+    .summary-card--muted .summary-card__value { color: #999; font-size: 18px; }
+
+    /* 期限60日以内 通知リスト */
+    .deadline-notice {
+      margin-bottom: 18px;
+      padding: 12px 16px;
+      background: #fdf4dc;
+      border: 1px solid #e6c84a;
+      border-radius: var(--radius, 8px);
+    }
+    .deadline-notice[hidden] { display: none; }
+    .deadline-notice__title {
+      font-size: 12px; font-weight: 700; color: #8a6d00;
+      margin: 0 0 8px 0; letter-spacing: 0.04em;
+    }
+    .deadline-notice__item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 4px 0; font-size: 12px;
+    }
+    .deadline-notice__store { font-weight: 600; min-width: 160px; }
+    .deadline-notice__days { color: #c0392b; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .deadline-notice__date { color: #777; font-family: "SFMono-Regular", Menlo, Consolas, monospace; }
   </style>
 </head>
 <body>
@@ -304,6 +378,32 @@
   <main class="app-main">
     <h2 class="page-title">ダッシュボード</h2>
     <p class="page-subtitle">レオ・アストラユーザー管理コンソール</p>
+
+    <!-- 全体サマリー帯（→ 04_運営ポータル.md §1/§134）-->
+    <div class="dash-summary" id="dash-summary" hidden>
+      <div class="summary-card">
+        <div class="summary-card__label">稼働中</div>
+        <div class="summary-card__value" id="sum-active">0<span class="summary-card__unit">店</span></div>
+      </div>
+      <div class="summary-card summary-card--alert">
+        <div class="summary-card__label">契約期限 60日以内</div>
+        <div class="summary-card__value" id="sum-deadline">0<span class="summary-card__unit">店</span></div>
+      </div>
+      <div class="summary-card summary-card--muted">
+        <div class="summary-card__label">入金遅延</div>
+        <div class="summary-card__value" id="sum-overdue" title="入金管理は後フェーズで実装">—</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card__label">今月の月額合計（稼働中）</div>
+        <div class="summary-card__value" id="sum-revenue">¥0</div>
+      </div>
+    </div>
+
+    <!-- 契約期限 60日以内 通知リスト -->
+    <div class="deadline-notice" id="deadline-notice" hidden>
+      <p class="deadline-notice__title">⚠ 契約期限が近い店舗（60日以内）</p>
+      <div id="deadline-list"></div>
+    </div>
 
     <section class="card" aria-labelledby="users-card-title">
       <div class="card__header">
@@ -324,9 +424,10 @@
         <div class="toolbar-field">
           <label for="clients-sort">並び順</label>
           <select id="clients-sort">
+            <option value="registered-desc">登録（新しい順）</option>
+            <option value="registered-asc">登録（古い順）</option>
             <option value="contractStart-desc">契約開始（新しい順）</option>
             <option value="contractStart-asc">契約開始（古い順）</option>
-            <option value="registered">登録順</option>
             <option value="storeName">店舗名順</option>
           </select>
         </div>
@@ -366,6 +467,7 @@
               <th>契約状態</th>
               <th>月額</th>
               <th>契約開始</th>
+              <th>登録日時</th>
               <th title="売上品目マスタ / 仕入原価マスタ の付与枠数（販管費マスタ任意枠は5件固定・税務署様式準拠）">マスタ枠<br><span class="th-sub">S / P</span></th>
               <th title="オーナーアプリ（スマホ・iPad・PC）／スタッフ子アカウントのURL一覧">アプリURL</th>
               <th title="同名店舗の識別・管理メモ（クリックで編集）">備考</th>

@@ -194,7 +194,7 @@
 
     return [
       '<tr class="tr-url-list" data-url-list-for="' + safeClientId + '" hidden>',
-        '<td colspan="10" class="url-list-cell">',
+        '<td colspan="12" class="url-list-cell">',
           '<div class="url-list-group">',
             '<h4 class="url-list-group-title">オーナーアプリ</h4>',
             '<div class="url-list-item">',
@@ -253,10 +253,15 @@
       if (status !== 'terminated') {
         statusBtns += '<button type="button" class="btn-status btn-status--delete" data-action-delete="' + safeId + '">完全削除</button>';
       }
+      // 納品カード再発行ボタン（→ 04_運営ポータル.md §2-2/§9・いつでも何度でも再発行可）
+      var cardBtn = '<button type="button" class="btn-card" data-action-card="' + safeId + '">📄 納品カード</button>';
       var actionCell = '<td class="td-action">'
         + '<a href="edit.html?clientId=' + encodeURIComponent(c.clientId) + '" class="btn-edit">編集</a>'
+        + cardBtn
         + statusBtns
         + '</td>';
+      // 登録日時（createdAt・空は '—'：createdAt 列導入前の旧データ）
+      var createdCell = '<td class="td-created">' + escapeHTML(c.createdAt ? c.createdAt : '—') + '</td>';
       var trClass = status === 'suspended' ? ' class="tr-client--suspended"'
                   : (status === 'terminated' ? ' class="tr-client--terminated"' : '');
       var clientRow = [
@@ -268,6 +273,7 @@
           '<td class="td-status td-status--' + escapeHTML(status) + '">' + escapeHTML(statusLabel(status)) + '</td>',
           '<td class="td-fee">' + escapeHTML(formatFee(c.monthlyFee)) + '</td>',
           '<td>' + escapeHTML(c.contractStart) + '</td>',
+          createdCell,
           quotaCell,
           urlCell,
           memoCell,
@@ -281,6 +287,113 @@
     bindUrlListEvents();
     bindMemoEvents();
     bindStatusEvents();
+    bindCardEvents();
+  }
+
+  // 納品カード再発行（generateDeliveryCard → PDF ダウンロード）
+  function bindCardEvents() {
+    var tbody = document.getElementById('clients-tbody');
+    if (!tbody) return;
+    tbody.querySelectorAll('[data-action-card]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        reissueDeliveryCard(btn.getAttribute('data-action-card'), btn);
+      });
+    });
+  }
+
+  async function reissueDeliveryCard(clientId, btn) {
+    var c = allClients.filter(function (x) { return x.clientId === clientId; })[0];
+    var name = c ? (c.storeName || clientId) : clientId;
+    var origText = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
+    try {
+      // displayPin は渡さない（再発行時は平文PIN非保持＝カードは「別途連絡」表記）。
+      var res = await AdminApp.callMasterGas('generateDeliveryCard', { clientId: clientId });
+      if (AdminApp.handleAuthError(res)) return;
+      if (!res || res.ok === false || !res.pdfBase64) {
+        alert('納品カードの生成に失敗しました：' + ((res && (res.message || res.code || res.error)) || 'unknown'));
+        return;
+      }
+      downloadBase64Pdf(res.pdfBase64, 'delivery_card_' + clientId + '.pdf');
+      showCopyToast();
+    } catch (e) {
+      alert('納品カードの生成に失敗しました：' + ((e && e.message) || e));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = origText || '📄 納品カード'; }
+    }
+  }
+
+  function downloadBase64Pdf(base64, filename) {
+    try {
+      var bin = atob(base64);
+      var len = bin.length;
+      var bytes = new Uint8Array(len);
+      for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+      var blob = new Blob([bytes], { type: 'application/pdf' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    } catch (e) {
+      console.warn('pdf download failed', e);
+      alert('PDFのダウンロードに失敗しました：' + ((e && e.message) || e));
+    }
+  }
+
+  // ============================================================
+  // 全体サマリー帯＋契約期限60日通知（→ 04_運営ポータル.md §1/§134）
+  // ============================================================
+  function _daysUntil(dateStr) {
+    if (!dateStr) return null;
+    var d = new Date(String(dateStr) + 'T00:00:00');
+    if (isNaN(d.getTime())) return null;
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((d.getTime() - today.getTime()) / 86400000);
+  }
+
+  function renderSummary() {
+    var summaryEl = document.getElementById('dash-summary');
+    var active = allClients.filter(function (c) { return (c.contractStatus || 'active') === 'active'; });
+    // 期限60日以内（稼働中・期限日が今日以降60日以内）
+    var nearList = active.filter(function (c) {
+      var dleft = _daysUntil(c.contractEnd);
+      return dleft != null && dleft >= 0 && dleft <= 60;
+    }).sort(function (a, b) { return _daysUntil(a.contractEnd) - _daysUntil(b.contractEnd); });
+    var revenue = active.reduce(function (sum, c) {
+      var f = Number(c.monthlyFee);
+      return sum + (isNaN(f) ? 0 : f);
+    }, 0);
+
+    var setText = function (id, txt) { var el = document.getElementById(id); if (el) el.innerHTML = txt; };
+    setText('sum-active', active.length + '<span class="summary-card__unit">店</span>');
+    setText('sum-deadline', nearList.length + '<span class="summary-card__unit">店</span>');
+    setText('sum-revenue', '¥' + revenue.toLocaleString('ja-JP'));
+    if (summaryEl) summaryEl.hidden = false;
+
+    // 期限60日通知リスト
+    var noticeEl = document.getElementById('deadline-notice');
+    var listEl = document.getElementById('deadline-list');
+    if (noticeEl && listEl) {
+      if (nearList.length === 0) {
+        noticeEl.hidden = true;
+        listEl.innerHTML = '';
+      } else {
+        listEl.innerHTML = nearList.map(function (c) {
+          var dleft = _daysUntil(c.contractEnd);
+          return '<div class="deadline-notice__item">'
+            + '<span class="deadline-notice__store">' + escapeHTML(c.storeName || c.clientId) + '</span>'
+            + '<span class="deadline-notice__days">あと' + dleft + '日</span>'
+            + '<span class="deadline-notice__date">' + escapeHTML(c.contractEnd || '') + '</span>'
+            + '</div>';
+        }).join('');
+        noticeEl.hidden = false;
+      }
+    }
   }
 
   // 6-H：URL展開ボタン・コピーボタンのイベント委譲
@@ -388,7 +501,7 @@
     var filterEl = document.getElementById('clients-filter');
     return {
       search: (searchEl && searchEl.value ? searchEl.value.trim().toLowerCase() : ''),
-      sort: (sortEl ? sortEl.value : 'contractStart-desc'),
+      sort: (sortEl ? sortEl.value : 'registered-desc'),
       filter: (filterEl ? filterEl.value : 'active')
     };
   }
@@ -417,14 +530,18 @@
     }
 
     // ソート
-    if (v.sort === 'contractStart-desc') {
+    if (v.sort === 'registered-desc') {
+      // 登録（新しい順）＝原順インデックス降順（既定）
+      list.sort(function (a, b) { return (b._idx || 0) - (a._idx || 0); });
+    } else if (v.sort === 'registered-asc') {
+      list.sort(function (a, b) { return (a._idx || 0) - (b._idx || 0); });
+    } else if (v.sort === 'contractStart-desc') {
       list.sort(function (a, b) { return String(b.contractStart || '').localeCompare(String(a.contractStart || '')); });
     } else if (v.sort === 'contractStart-asc') {
       list.sort(function (a, b) { return String(a.contractStart || '').localeCompare(String(b.contractStart || '')); });
     } else if (v.sort === 'storeName') {
       list.sort(function (a, b) { return String(a.storeName || '').localeCompare(String(b.storeName || ''), 'ja'); });
     }
-    // 'registered' は listClients の返却順（=登録順）をそのまま使う
 
     var elEmpty = document.getElementById('clients-empty');
     var elTableWrap = document.getElementById('clients-table-wrap');
@@ -515,6 +632,7 @@
     }
     // キャッシュ更新して再描画
     allClients.forEach(function (c) { if (c.clientId === clientId) c.contractStatus = newStatus; });
+    renderSummary();
     applyViewAndRender();
   }
 
@@ -552,8 +670,12 @@
     }
 
     allClients = (res.clients || []).slice();
+    // 登録順の正本＝listClients 返却順（シート追記順）。原順インデックスを保持し
+    // 「登録（新しい順/古い順）」ソートで参照する（createdAt 欠落の旧データにも頑健）。
+    allClients.forEach(function (c, i) { c._idx = i; });
 
     if (allClients.length === 0) {
+      renderSummary();
       elEmpty.hidden = false;
       return;
     }
@@ -561,6 +683,7 @@
     if (elToolbar) elToolbar.hidden = false;
     elCount.textContent = allClients.length + '件';
     elCount.hidden = false;
+    renderSummary();
     applyViewAndRender();
   }
 
