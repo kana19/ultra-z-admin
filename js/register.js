@@ -197,10 +197,12 @@
 
   // ============ Step1 既定値 ============
   function initStep1Defaults() {
+    // 契約開始は手動入力。既定は「翌月1日」（当月途中契約の起算を翌月頭に揃える運用）。
     const today = new Date();
-    const todayIso = isoDate(today);
-    $('f1-contract-start').value = todayIso;
-    RegisterState.data.step1.contractStart = todayIso;
+    const nextMonth1 = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const startIso = isoDate(nextMonth1);
+    $('f1-contract-start').value = startIso;
+    RegisterState.data.step1.contractStart = startIso;
     recomputeContractEnd();
   }
 
@@ -1483,7 +1485,10 @@
           monthlyFee:          s1.monthlyFee,
           serviceMasterQuota:  s3.serviceMasterQuota,
           purchaseMasterQuota: s3.purchaseMasterQuota,
-          costOptionalQuota:   s3.costOptionalQuota
+          costOptionalQuota:   s3.costOptionalQuota,
+          // 段2/段3フラグ（dashboard 一覧表示用に master clients へ複製・正本はユーザーSS B16）
+          qrProofEnabled:       s2.timecardCount >= 5 && !!s2.qrProofEnabled,
+          shiftScheduleEnabled: s2.timecardCount >= 5 && !!s2.shiftScheduleEnabled
         }
       });
       step7SetStatus('client', 'done', '投入完了');

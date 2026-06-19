@@ -103,6 +103,7 @@
       renderPurchaseMaster();
       renderCostMaster();
       renderContract();
+      renderOps();
       // 認証セクションはボタンのみ・描画不要
       renderChangeLog();
       // 表示切替
@@ -764,6 +765,14 @@
       const taskLabels = [];
 
       const clientFields = diffClient();
+      const settingsFieldsPre = diffSettings();
+      // 段2/段3フラグは user SS B16 が正本だが、dashboard 一覧表示用に master clients にも複製する。
+      // featureVisibility が変更された保存時のみ、clients 側の複製も更新する。
+      if (settingsFieldsPre.featureVisibility) {
+        const fv = settingsFieldsPre.featureVisibility;
+        clientFields.qrProofEnabled = !!fv.qrProofEnabled;
+        clientFields.shiftScheduleEnabled = !!fv.shiftScheduleEnabled;
+      }
       if (Object.keys(clientFields).length > 0) {
         tasks.push(window.uzAdmin.callMasterGas('updateClient', {
           clientId: state.clientId,
@@ -952,6 +961,95 @@
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = orig; }
     }
+  }
+
+  // ============ 操作（納品カード再発行・停止/再開・完全削除）============
+  // 停止/再開ボタンのラベルを現在の契約状態で更新する。
+  function renderOps() {
+    const btn = document.getElementById('btn-toggle-suspend');
+    if (!btn) return;
+    const st = (state.currentClient && state.currentClient.contractStatus) || 'active';
+    btn.textContent = (st === 'suspended') ? '再開' : '停止';
+    btn.disabled = (st === 'terminated');
+  }
+
+  async function reissueDeliveryCard() {
+    const btn = document.getElementById('btn-reissue-card');
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
+    try {
+      // displayPin は渡さない（再発行時は平文PIN非保持＝カードは「別途連絡」表記）
+      const res = await window.uzAdmin.callMasterGas('generateDeliveryCard', { clientId: state.clientId });
+      if (window.uzAdmin.handleAuthError(res)) return;
+      if (!res || res.ok === false || !res.pdfBase64) {
+        showToast('納品カード生成失敗: ' + ((res && (res.message || res.code || res.error)) || 'unknown'), 'error');
+        return;
+      }
+      downloadBase64Pdf(res.pdfBase64, 'delivery_card_' + state.clientId + '.pdf');
+      showToast('納品カードPDFをダウンロードしました', 'success');
+    } catch (err) {
+      showToast('納品カード生成エラー: ' + ((err && err.message) || err), 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = orig || '📄 納品カード再発行'; }
+    }
+  }
+
+  function downloadBase64Pdf(base64, filename) {
+    try {
+      const bin = atob(base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    } catch (e) {
+      showToast('PDFダウンロード失敗: ' + ((e && e.message) || e), 'error');
+    }
+  }
+
+  async function toggleSuspend() {
+    const cur = (state.currentClient && state.currentClient.contractStatus) || 'active';
+    if (cur === 'terminated') return;
+    const next = (cur === 'suspended') ? 'active' : 'suspended';
+    const label = (next === 'suspended') ? '停止' : '再開';
+    const ok = await confirmModal({
+      title: label + 'の確認',
+      body: 'この店舗を「' + (next === 'suspended' ? '停止中' : '稼働中') + '」にします。よろしいですか？'
+    });
+    if (!ok) return;
+    await _applyStatusChange(next, label + 'しました');
+  }
+
+  async function terminateClient() {
+    const ok = await confirmModal({
+      title: '完全削除（解約済）の確認',
+      body: 'この店舗を「解約済」にし、一覧から除外します（データは保持・物理削除はしません）。本当に実行しますか？'
+    });
+    if (!ok) return;
+    await _applyStatusChange('terminated', '解約済にしました');
+  }
+
+  async function _applyStatusChange(newStatus, successMsg) {
+    const res = await window.uzAdmin.callMasterGas('updateClient', {
+      clientId: state.clientId,
+      fields: { contractStatus: newStatus }
+    });
+    if (window.uzAdmin.handleAuthError(res)) return;
+    if (!res || !res.ok) {
+      showToast('状態変更失敗: ' + ((res && (res.message || res.code || res.error)) || 'unknown'), 'error');
+      return;
+    }
+    state.currentClient.contractStatus = newStatus;
+    if (state.initialClient) state.initialClient.contractStatus = newStatus;
+    const sel = document.getElementById('f-contract-status');
+    if (sel) sel.value = newStatus;
+    renderOps();
+    renderHeader();
+    refreshChangeLog();
+    showToast(successMsg, 'success');
   }
 
   // ============ モーダル ============
@@ -1217,6 +1315,14 @@
     document.getElementById('btn-reset-pin').addEventListener('click', resetPin);
     document.getElementById('btn-unlock-auth').addEventListener('click', unlockAuth);
     document.getElementById('btn-copy-gas-code').addEventListener('click', copyUserGasCode);
+
+    // 操作（dashboard 操作列から集約）：納品カード再発行・停止/再開・完全削除
+    var reissueBtn = document.getElementById('btn-reissue-card');
+    if (reissueBtn) reissueBtn.addEventListener('click', reissueDeliveryCard);
+    var suspendBtn = document.getElementById('btn-toggle-suspend');
+    if (suspendBtn) suspendBtn.addEventListener('click', toggleSuspend);
+    var terminateBtn = document.getElementById('btn-terminate');
+    if (terminateBtn) terminateBtn.addEventListener('click', terminateClient);
 
     // 変更履歴
     document.getElementById('btn-refresh-change-log').addEventListener('click', function () {

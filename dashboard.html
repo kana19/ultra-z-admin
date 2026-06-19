@@ -287,13 +287,22 @@
     .tr-client--terminated { background: #f4f4f4; }
     .tr-client--terminated td { opacity: 0.6; }
 
-    /* ============ 登録日時列 ============ */
+    /* ============ 行は1行表示（登録日時のみ2行）============ */
+    .clients-table th,
+    .clients-table td { white-space: nowrap; }
+
+    /* ============ 登録日時列（西暦月日＋時刻の2行）============ */
     .td-created {
       font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
       font-size: 11px;
       color: var(--color-text-muted, #777);
-      white-space: nowrap;
+      line-height: 1.35;
     }
+    .td-created__time { color: #999; }
+
+    /* 段2/段3 フラグ列（中央寄せ） */
+    .td-feat { text-align: center; font-size: 13px; }
+    .td-feat--off { color: #ccc; }
 
     /* ============ 納品カード再発行ボタン ============ */
     .btn-card {
@@ -463,8 +472,10 @@
               <th>clientId</th>
               <th>店舗名</th>
               <th>グレード</th>
-              <th>タイムカード</th>
-              <th>契約状態</th>
+              <th title="タイムカード数">🕘</th>
+              <th title="段2 QR現地証明（qrProofEnabled）">📍QR</th>
+              <th title="段3 シフト登録（shiftScheduleEnabled）">🗓</th>
+              <th>状態</th>
               <th>月額</th>
               <th>契約開始</th>
               <th>登録日時</th>

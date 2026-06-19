@@ -194,7 +194,7 @@
 
     return [
       '<tr class="tr-url-list" data-url-list-for="' + safeClientId + '" hidden>',
-        '<td colspan="12" class="url-list-cell">',
+        '<td colspan="14" class="url-list-cell">',
           '<div class="url-list-group">',
             '<h4 class="url-list-group-title">オーナーアプリ</h4>',
             '<div class="url-list-item">',
@@ -243,25 +243,24 @@
         + '<input type="text" class="memo-input" data-memo-client="' + safeId + '" '
         + 'value="' + escapeHTML(c.memo || '') + '" placeholder="メモ" maxlength="100">'
         + '</td>';
-      // 操作列：編集＋状態トグル（停止/再開）＋完全削除
-      var statusBtns = '';
-      if (status === 'active') {
-        statusBtns += '<button type="button" class="btn-status btn-status--suspend" data-action-suspend="' + safeId + '">停止</button>';
-      } else if (status === 'suspended') {
-        statusBtns += '<button type="button" class="btn-status btn-status--resume" data-action-resume="' + safeId + '">再開</button>';
-      }
-      if (status !== 'terminated') {
-        statusBtns += '<button type="button" class="btn-status btn-status--delete" data-action-delete="' + safeId + '">完全削除</button>';
-      }
-      // 納品カード再発行ボタン（→ 04_運営ポータル.md §2-2/§9・いつでも何度でも再発行可）
-      var cardBtn = '<button type="button" class="btn-card" data-action-card="' + safeId + '">📄 納品カード</button>';
+      // 操作列：編集のみ（納品カード再発行・停止/再開・完全削除は編集画面に集約）
       var actionCell = '<td class="td-action">'
         + '<a href="edit.html?clientId=' + encodeURIComponent(c.clientId) + '" class="btn-edit">編集</a>'
-        + cardBtn
-        + statusBtns
         + '</td>';
-      // 登録日時（createdAt・空は '—'：createdAt 列導入前の旧データ）
-      var createdCell = '<td class="td-created">' + escapeHTML(c.createdAt ? c.createdAt : '—') + '</td>';
+      // 登録日時（createdAt・西暦月日＋時刻の2行。空は '—'：createdAt 列導入前の旧データ）
+      var createdCell;
+      if (c.createdAt) {
+        var ca = String(c.createdAt).split(' ');
+        createdCell = '<td class="td-created"><div>' + escapeHTML(ca[0] || '')
+          + '</div><div class="td-created__time">' + escapeHTML(ca[1] || '') + '</div></td>';
+      } else {
+        createdCell = '<td class="td-created">—</td>';
+      }
+      // 段2 証明QR / 段3 シフト（master clients の複製フラグ・未設定は '—'）
+      var qrCell = '<td class="td-feat' + (c.qrProofEnabled ? '' : ' td-feat--off') + '">'
+        + (c.qrProofEnabled ? '📍' : '—') + '</td>';
+      var shiftCell = '<td class="td-feat' + (c.shiftScheduleEnabled ? '' : ' td-feat--off') + '">'
+        + (c.shiftScheduleEnabled ? '🗓' : '—') + '</td>';
       var trClass = status === 'suspended' ? ' class="tr-client--suspended"'
                   : (status === 'terminated' ? ' class="tr-client--terminated"' : '');
       var clientRow = [
@@ -270,6 +269,8 @@
           '<td>' + escapeHTML(c.storeName) + '</td>',
           '<td class="td-grade td-grade--' + escapeHTML(grade) + '">' + escapeHTML(grade) + '</td>',
           '<td class="td-num">' + (c.timecardCount != null && c.timecardCount !== '' ? escapeHTML(c.timecardCount) : '-') + '</td>',
+          qrCell,
+          shiftCell,
           '<td class="td-status td-status--' + escapeHTML(status) + '">' + escapeHTML(statusLabel(status)) + '</td>',
           '<td class="td-fee">' + escapeHTML(formatFee(c.monthlyFee)) + '</td>',
           '<td>' + escapeHTML(c.contractStart) + '</td>',
@@ -286,62 +287,6 @@
     tbody.innerHTML = rows.join('');
     bindUrlListEvents();
     bindMemoEvents();
-    bindStatusEvents();
-    bindCardEvents();
-  }
-
-  // 納品カード再発行（generateDeliveryCard → PDF ダウンロード）
-  function bindCardEvents() {
-    var tbody = document.getElementById('clients-tbody');
-    if (!tbody) return;
-    tbody.querySelectorAll('[data-action-card]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        reissueDeliveryCard(btn.getAttribute('data-action-card'), btn);
-      });
-    });
-  }
-
-  async function reissueDeliveryCard(clientId, btn) {
-    var c = allClients.filter(function (x) { return x.clientId === clientId; })[0];
-    var name = c ? (c.storeName || clientId) : clientId;
-    var origText = btn ? btn.textContent : '';
-    if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
-    try {
-      // displayPin は渡さない（再発行時は平文PIN非保持＝カードは「別途連絡」表記）。
-      var res = await AdminApp.callMasterGas('generateDeliveryCard', { clientId: clientId });
-      if (AdminApp.handleAuthError(res)) return;
-      if (!res || res.ok === false || !res.pdfBase64) {
-        alert('納品カードの生成に失敗しました：' + ((res && (res.message || res.code || res.error)) || 'unknown'));
-        return;
-      }
-      downloadBase64Pdf(res.pdfBase64, 'delivery_card_' + clientId + '.pdf');
-      showCopyToast();
-    } catch (e) {
-      alert('納品カードの生成に失敗しました：' + ((e && e.message) || e));
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = origText || '📄 納品カード'; }
-    }
-  }
-
-  function downloadBase64Pdf(base64, filename) {
-    try {
-      var bin = atob(base64);
-      var len = bin.length;
-      var bytes = new Uint8Array(len);
-      for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
-      var blob = new Blob([bytes], { type: 'application/pdf' });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-    } catch (e) {
-      console.warn('pdf download failed', e);
-      alert('PDFのダウンロードに失敗しました：' + ((e && e.message) || e));
-    }
   }
 
   // ============================================================
@@ -593,48 +538,7 @@
     setTimeout(function () { inputEl.classList.remove('memo-input--saved'); }, 1200);
   }
 
-  // 状態トグル（停止/再開）・完全削除
-  function bindStatusEvents() {
-    var tbody = document.getElementById('clients-tbody');
-    if (!tbody) return;
-    tbody.querySelectorAll('[data-action-suspend]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        changeStatus(btn.getAttribute('data-action-suspend'), 'suspended',
-          'この店舗を「停止中」にします。一覧（稼働中のみ）から非表示になります。よろしいですか？');
-      });
-    });
-    tbody.querySelectorAll('[data-action-resume]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        changeStatus(btn.getAttribute('data-action-resume'), 'active',
-          'この店舗を「稼働中」に戻します。よろしいですか？');
-      });
-    });
-    tbody.querySelectorAll('[data-action-delete]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var clientId = btn.getAttribute('data-action-delete');
-        var c = allClients.filter(function (x) { return x.clientId === clientId; })[0];
-        var name = c ? (c.storeName || clientId) : clientId;
-        // 二重確認（自動確定禁止）
-        if (!confirm('「' + name + '」（' + clientId + '）を完全削除（解約済）にします。\n一覧から完全に除外されます（データは保持・物理削除はしません）。\n\n続行しますか？')) return;
-        if (!confirm('本当によろしいですか？\nこの操作は「解約済」状態にします。')) return;
-        changeStatus(clientId, 'terminated', null);
-      });
-    });
-  }
-
-  async function changeStatus(clientId, newStatus, confirmMsg) {
-    if (confirmMsg && !confirm(confirmMsg)) return;
-    var res = await AdminApp.updateClient(clientId, { contractStatus: newStatus });
-    if (AdminApp.handleAuthError(res)) return;
-    if (!res || !res.ok) {
-      alert('状態変更に失敗しました：' + ((res && (res.message || res.code || res.error)) || 'unknown'));
-      return;
-    }
-    // キャッシュ更新して再描画
-    allClients.forEach(function (c) { if (c.clientId === clientId) c.contractStatus = newStatus; });
-    renderSummary();
-    applyViewAndRender();
-  }
+  // 状態変更（停止/再開・完全削除）は編集画面に集約（dashboard 操作列は「編集」のみ）。
 
   async function loadClients() {
     var elLoading   = document.getElementById('clients-loading');

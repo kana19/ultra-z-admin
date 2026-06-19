@@ -390,6 +390,36 @@
       </div>
     </section>
 
+    <!-- 操作（納品カード再発行・停止/再開・完全削除）。dashboard 操作列から集約 -->
+    <section class="edit-section" data-section="ops">
+      <div class="section-header">
+        <h2>操作</h2>
+      </div>
+      <div class="section-body">
+        <div class="auth-action-row">
+          <div>
+            <h3>納品カード再発行</h3>
+            <p class="form-note">納品カードPDF（A6）を再生成してダウンロードします。再発行では初期PINは印字されません（セキュリティ上 別途連絡）。何度でも発行できます。</p>
+          </div>
+          <button type="button" id="btn-reissue-card" class="btn-secondary">📄 納品カード再発行</button>
+        </div>
+        <div class="auth-action-row">
+          <div>
+            <h3>稼働状態の変更（停止 / 再開）</h3>
+            <p class="form-note">この店舗を停止／再開します（契約状態 active ⇔ suspended）。詳細な契約状態は「7. 契約情報」でも変更できます。</p>
+          </div>
+          <button type="button" id="btn-toggle-suspend" class="btn-danger">停止</button>
+        </div>
+        <div class="auth-action-row">
+          <div>
+            <h3>完全削除（解約済）</h3>
+            <p class="form-note">一覧から除外し「解約済」状態にします（データは保持・物理削除はしません）。</p>
+          </div>
+          <button type="button" id="btn-terminate" class="btn-danger">完全削除</button>
+        </div>
+      </div>
+    </section>
+
     <!-- §9 変更履歴 -->
     <section class="edit-section" data-section="change-log">
       <div class="section-header">
