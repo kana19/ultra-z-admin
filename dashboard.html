@@ -291,6 +291,22 @@
     .clients-table th,
     .clients-table td { white-space: nowrap; }
 
+    /* 横スクロール時も clientId（左端）と 操作=編集（右端）を固定して常時表示 */
+    .clients-table thead th:first-child,
+    .clients-table tbody td.td-clientId {
+      position: sticky; left: 0; z-index: 2;
+      box-shadow: 4px 0 6px -5px rgba(0,0,0,0.18);
+    }
+    .clients-table thead th:last-child,
+    .clients-table tbody td.td-action {
+      position: sticky; right: 0; z-index: 2;
+      box-shadow: -4px 0 6px -5px rgba(0,0,0,0.18);
+    }
+    .clients-table tbody td.td-clientId,
+    .clients-table tbody td.td-action { background: #fff; }
+    .clients-table thead th:first-child,
+    .clients-table thead th:last-child { background: #f5f6f8; z-index: 3; }
+
     /* ============ 登録日時列（西暦月日＋時刻の2行）============ */
     .td-created {
       font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
