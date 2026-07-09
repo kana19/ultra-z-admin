@@ -7,7 +7,7 @@
 
 ## repo固有情報
 
-- 公開URL：<https://kana19.github.io/ultra-z-admin/>
+- 公開URL：<https://app.ultra7.pw/ultra-z-admin/>
 - 認証基盤：マスタスプレッドシート `ultra-z-master`（k@tgx.jp 所有）＋ マスタGAS（`gas/master_v0_6_6.gs`）
 - 対象端末：PC専用（最低幅 1280px・`@media` 不使用・viewport `width=1280` 固定）
 - 基調色：宇宙色 `#0B1842`
