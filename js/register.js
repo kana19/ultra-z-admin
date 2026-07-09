@@ -1218,7 +1218,7 @@
   // 完了画面の組立
   function buildCompletionView() {
     const s1 = RegisterState.data.step1;
-    const ownerUrl = 'https://kana19.github.io/' + Step7Progress.clientId + '/';
+    const ownerUrl = 'https://app.ultra7.pw/' + Step7Progress.clientId + '/';
     const staffUrl = ownerUrl + 'staff-clockin.html';
     const pdfBase64 = Step7Progress.deliveryCardBase64;
     const pdfHref = pdfBase64

@@ -4,10 +4,10 @@
  * 第7段階 6-H：dashboard アプリURL列・展開▼ボタン
  *   - clients-table に「アプリURL」列を追加（マスタ枠列と操作列の間）
  *   - 「展開▼」ボタンで以下を行下にインライン展開：
- *       オーナーアプリ（スマホ・iPad）：https://kana19.github.io/{clientId}/
- *       オーナーアプリ（PC版）：https://kana19.github.io/{clientId}/pc/
+ *       オーナーアプリ（スマホ・iPad）：https://app.ultra7.pw/{clientId}/
+ *       オーナーアプリ（PC版）：https://app.ultra7.pw/{clientId}/pc/
  *       スタッフ子アカウント（タイムカード数分・TC=0 アストラでは非表示）：
- *         https://kana19.github.io/{clientId}/staff-clockin.html?staff=sNNN
+ *         https://app.ultra7.pw/{clientId}/staff-clockin.html?staff=sNNN
  *   - 各URLにコピーボタン
  *   - 代理ログインURL（一時URL）は本テーブル外・別操作で発行（QR表示は将来拡張）
  *   - 04_運営ポータル.md §2-2 / 06_環境.md §2-1 に整合
@@ -27,8 +27,8 @@
   // セッション無ければ index.html へ
   AdminAuth.bootstrapDashboardPage();
 
-  // GitHub Pages のユーザー側公開URL ベース
-  var USER_PWA_BASE = 'https://kana19.github.io/';
+  // ユーザー側公開URL ベース（app.ultra7.pw＝GitHub Pages カスタムドメイン・2026-07-09〜。旧 kana19.github.io は自動リダイレクト。→ 04_運営ポータル.md §1-0）
+  var USER_PWA_BASE = 'https://app.ultra7.pw/';
 
   // ---- DEBUG表示・ヘッダー初期化 --------
   function initEnvInfo() {
