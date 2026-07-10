@@ -394,6 +394,7 @@
     document.getElementById('fv-bank-csv').checked = !!fv.bank_csv;
     document.getElementById('fv-payment-calendar').checked = !!fv.payment_calendar;
     document.getElementById('fv-doc-automation').checked = !!fv.doc_automation;
+    document.getElementById('fv-fax-order-ocr').checked = !!fv.fax_order_ocr;
   }
 
   function readFeatureVisibility() {
@@ -405,7 +406,8 @@
       receipt_ocr: document.getElementById('fv-receipt-ocr').checked,
       bank_csv: document.getElementById('fv-bank-csv').checked,
       payment_calendar: document.getElementById('fv-payment-calendar').checked,
-      doc_automation: document.getElementById('fv-doc-automation').checked
+      doc_automation: document.getElementById('fv-doc-automation').checked,
+      fax_order_ocr: document.getElementById('fv-fax-order-ocr').checked
     };
   }
 
