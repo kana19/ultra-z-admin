@@ -1160,9 +1160,10 @@
       'f-theme-color': 'logo-icon', 'f-theme-color-text': 'logo-icon',
       'f-logo-background-color': 'logo-icon', 'f-logo-background-color-text': 'logo-icon',
       'fv-clockin-menu': 'feature-visibility', 'fv-payroll-menu': 'feature-visibility',
+      'fv-qr-proof': 'feature-visibility',
       'fv-shift-schedule': 'feature-visibility', 'fv-receipt-ocr': 'feature-visibility',
       'fv-bank-csv': 'feature-visibility', 'fv-payment-calendar': 'feature-visibility',
-      'fv-doc-automation': 'feature-visibility',
+      'fv-doc-automation': 'feature-visibility', 'fv-fax-order-ocr': 'feature-visibility',
       'f-contract-start': 'contract', 'f-contract-end': 'contract',
       'f-monthly-fee': 'contract', 'f-contract-status': 'contract'
     };
