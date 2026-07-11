@@ -99,6 +99,7 @@
       renderTimecard();
       renderLogoIcon();
       renderFeatureVisibility();
+      renderFaxPatterns();
       renderServiceMaster();
       renderPurchaseMaster();
       renderCostMaster();
@@ -409,6 +410,92 @@
       doc_automation: document.getElementById('fv-doc-automation').checked,
       fax_order_ocr: document.getElementById('fv-fax-order-ocr').checked
     };
+  }
+
+  // ============ §6 FAX取引先ひな形（第5隊員 fax_order_ocr・→ 05§8-7） ============
+  // ひな形＝取引先ごとの「AI読み取り指示書」。発注書は各社で書式が千差万別のため、固定の座標
+  // マッピングでなく instructions＋展開ルール＋商品エイリアスで表現し、settings.faxPatterns(配列)へ
+  // 保存する。書込は既存の updateUserSettings レール（featureVisibility と同型）で顧客SSへ。
+  const FP_EXPANSION_OPTS = [
+    { v: 'auto',         t: '自動判定（書式に応じて）' },
+    { v: 'per_block',    t: '1ブロック＝1注文（産直ギフト型など）' },
+    { v: 'per_row',      t: '表の各行＝1明細' },
+    { v: 'matrix_store', t: '店舗マトリクス（商品行×店舗列を店舗ごとに展開）' }
+  ];
+
+  function fpField(i, field, label, value, ph) {
+    return '<label class="fp-f" style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#333;">'
+      + '<span>' + escapeHtml(label) + '</span>'
+      + '<input type="text" style="width:100%;" data-fp-idx="' + i + '" data-fp-field="' + field + '" value="'
+      + escapeHtml(value || '') + '" placeholder="' + escapeHtml(ph || '') + '"></label>';
+  }
+  function fpTextarea(i, field, label, value, ph) {
+    return '<label class="fp-f" style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#333;margin-top:10px;">'
+      + '<span>' + escapeHtml(label) + '</span>'
+      + '<textarea rows="3" style="width:100%;" data-fp-idx="' + i + '" data-fp-field="' + field + '" placeholder="'
+      + escapeHtml(ph || '') + '">' + escapeHtml(value || '') + '</textarea></label>';
+  }
+  function fpSelect(i, field, label, value) {
+    const opts = FP_EXPANSION_OPTS.map(function (o) {
+      return '<option value="' + o.v + '"' + ((value || 'auto') === o.v ? ' selected' : '') + '>' + escapeHtml(o.t) + '</option>';
+    }).join('');
+    return '<label class="fp-f" style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#333;">'
+      + '<span>' + escapeHtml(label) + '</span>'
+      + '<select style="width:100%;" data-fp-idx="' + i + '" data-fp-field="' + field + '">' + opts + '</select></label>';
+  }
+
+  function renderFaxPatterns() {
+    const wrap = document.getElementById('fax-patterns-list');
+    if (!wrap) return;
+    const list = Array.isArray(state.currentSettings.faxPatterns) ? state.currentSettings.faxPatterns : [];
+    if (list.length === 0) {
+      wrap.innerHTML = '<p class="fp-empty" style="color:#777;font-size:13px;">取引先ひな形は未登録です。「＋取引先ひな形を追加」から、この取引先の発注書の読み取り方を初期設定します（未登録の取引先は汎用AI抽出にフォールバックします）。</p>';
+      return;
+    }
+    wrap.innerHTML = list.map(function (p, i) {
+      return '<div class="fp-card" data-fp-card="' + i + '" style="border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:12px;">'
+        + '<div class="fp-card-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+        +   '<label style="font-size:13px;"><input type="checkbox" data-fp-idx="' + i + '" data-fp-field="enabled"' + (p.enabled !== false ? ' checked' : '') + '> 有効</label>'
+        +   '<button type="button" class="fp-del" data-fp-del="' + i + '" style="font-size:12px;">削除</button>'
+        + '</div>'
+        + '<div class="fp-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+        +   fpField(i, 'supplierName', '取引先名', p.supplierName, '例：シャディ株式会社')
+        +   fpField(i, 'senderFax', '先方FAX番号（照合キー・カンマ区切り可）', p.senderFax, '例：028-633-1664')
+        +   fpField(i, 'layoutType', 'レイアウト種別', p.layoutType, '例：産直ギフト／店舗マトリクス')
+        +   fpSelect(i, 'expansion', '明細の展開ルール', p.expansion)
+        + '</div>'
+        + fpTextarea(i, 'instructions', '読み取り指示（この発注書の読み方をAIへ）', p.instructions, '例：1ブロック=1注文。商品名はカタログNo横。お届け先氏名・配達指定日も備考へ。')
+        + fpTextarea(i, 'aliases', '商品名の読み替え（1行1対応「表記 => 商品マスタ名/コード」）', p.aliases, 'F335 => ウドン3コセット\n特上まぐろ => sv003')
+        + '</div>';
+    }).join('');
+  }
+
+  function readFaxPatterns() {
+    const wrap = document.getElementById('fax-patterns-list');
+    if (!wrap) return;
+    const prev = Array.isArray(state.currentSettings.faxPatterns) ? state.currentSettings.faxPatterns : [];
+    const list = [];
+    wrap.querySelectorAll('[data-fp-card]').forEach(function (card) {
+      const idx = Number(card.getAttribute('data-fp-card'));
+      const get = function (field) {
+        const el = card.querySelector('[data-fp-field="' + field + '"]');
+        if (!el) return '';
+        return el.type === 'checkbox' ? el.checked : el.value;
+      };
+      const old = prev[idx] || {};
+      list.push({
+        id: old.id || ('pat-' + Date.now() + '-' + idx),
+        supplierName: String(get('supplierName') || '').trim(),
+        senderFax: String(get('senderFax') || '').trim(),
+        layoutType: String(get('layoutType') || '').trim(),
+        instructions: String(get('instructions') || '').trim(),
+        expansion: String(get('expansion') || 'auto'),
+        aliases: String(get('aliases') || '').trim(),
+        enabled: get('enabled') !== false,
+        updatedAt: old.updatedAt || ''
+      });
+    });
+    state.currentSettings.faxPatterns = list;
   }
 
   // ============ §5 サービスマスタ ============
@@ -737,6 +824,7 @@
     readTimecard();
     readLogoIcon();
     readFeatureVisibility();
+    readFaxPatterns();
     readServiceMaster();
     readPurchaseMaster();
     readCostMaster();
@@ -851,7 +939,7 @@
     });
     // serviceList / purchaseMasterList は運営側では読み取り専用（確定仕様F・ユーザー主権）。
     // 保存対象に含めない。販管費 costMasterList は運営編集対象のため残す。
-    const objKeys = ['businessHours', 'featureVisibility', 'costMasterList'];
+    const objKeys = ['businessHours', 'featureVisibility', 'costMasterList', 'faxPatterns'];
     objKeys.forEach(function (k) {
       if (JSON.stringify(state.currentSettings[k]) !== JSON.stringify(state.initialSettings[k])) {
         fields[k] = state.currentSettings[k];
@@ -1338,6 +1426,38 @@
       confirmModal({ title: '変更を破棄', body: '編集中の変更を全て破棄して元に戻します。よろしいですか？' })
         .then(function (ok) { if (ok) discardAll(); });
     });
+    // FAX取引先ひな形（イベント委譲・→ §6）
+    const fpList = document.getElementById('fax-patterns-list');
+    if (fpList) {
+      fpList.addEventListener('input', function (e) {
+        if (e.target.dataset && e.target.dataset.fpIdx !== undefined) markDirty('fax-patterns');
+      });
+      fpList.addEventListener('change', function (e) {
+        if (e.target.dataset && e.target.dataset.fpIdx !== undefined) markDirty('fax-patterns');
+      });
+      fpList.addEventListener('click', function (e) {
+        if (e.target.dataset && e.target.dataset.fpDel !== undefined) {
+          readFaxPatterns();
+          state.currentSettings.faxPatterns.splice(Number(e.target.dataset.fpDel), 1);
+          renderFaxPatterns();
+          markDirty('fax-patterns');
+        }
+      });
+    }
+    const fpAdd = document.getElementById('fp-add');
+    if (fpAdd) {
+      fpAdd.addEventListener('click', function () {
+        readFaxPatterns();
+        if (!Array.isArray(state.currentSettings.faxPatterns)) state.currentSettings.faxPatterns = [];
+        state.currentSettings.faxPatterns.push({
+          id: 'pat-' + Date.now(), supplierName: '', senderFax: '', layoutType: '',
+          instructions: '', expansion: 'auto', aliases: '', enabled: true, updatedAt: ''
+        });
+        renderFaxPatterns();
+        markDirty('fax-patterns');
+      });
+    }
+
     document.getElementById('btn-save').addEventListener('click', saveAll);
 
     // エラー状態の再読み込み

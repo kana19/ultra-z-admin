@@ -265,6 +265,21 @@
       </div>
     </section>
 
+    <!-- §6 FAX取引先ひな形（第5隊員 fax_order_ocr の初期設定・→ 05§8-7） -->
+    <section class="edit-section" data-section="fax-patterns">
+      <div class="section-header">
+        <h2>6. FAX取引先ひな形</h2>
+        <span class="dirty-indicator" hidden>● 変更あり</span>
+      </div>
+      <div class="section-body">
+        <p class="section-description">発注書は取引先ごとに書式が千差万別（産直ギフト型・店舗マトリクス型など）。取引先ごとに「読み取り指示」を初期設定すると、その書式に合わせて自動で受注を抽出します（第5隊員 <code>fax_order_ocr</code> ON 時に有効）。顧客ごとに何件でも登録できます。</p>
+        <div id="fax-patterns-list"></div>
+        <div style="margin-top:12px;">
+          <button type="button" id="fp-add" class="btn-secondary">＋取引先ひな形を追加</button>
+        </div>
+      </div>
+    </section>
+
     <!-- §5 サービスマスタ -->
     <section class="edit-section" data-section="service-master">
       <div class="section-header">
