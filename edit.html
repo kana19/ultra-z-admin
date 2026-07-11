@@ -272,7 +272,7 @@
         <span class="dirty-indicator" hidden>● 変更あり</span>
       </div>
       <div class="section-body">
-        <p class="section-description">発注書は取引先ごとに書式が千差万別（産直ギフト型・店舗マトリクス型など）。取引先ごとに「読み取り指示」を初期設定すると、その書式に合わせて自動で受注を抽出します（第5隊員 <code>fax_order_ocr</code> ON 時に有効）。顧客ごとに何件でも登録できます。</p>
+        <p class="section-description">発注書は取引先ごとに書式が千差万別（産直ギフト型・店舗マトリクス型など）ですが、取引先ごとに書式は毎回同じです。サンプル1枚から確定した「読み取り方」を初期設定すると、以降その取引先の発注書は自動で受注を抽出します（第5隊員 <code>fax_order_ocr</code> ON 時に有効）。読み取り方の試写はアプリ「FAX受注」の<b>「試し読み（保存しない）」</b>で行えます。顧客ごとに何件でも登録でき、未登録の取引先は汎用抽出（要確認）にフォールバックします。</p>
         <div id="fax-patterns-list"></div>
         <div style="margin-top:12px;">
           <button type="button" id="fp-add" class="btn-secondary">＋取引先ひな形を追加</button>
