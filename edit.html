@@ -265,6 +265,53 @@
       </div>
     </section>
 
+    <!-- 商品マスタ（第4隊員 doc_automation の納品時初期投入・→ 05§8-5 / 03§1-6） -->
+    <section class="edit-section" data-section="product-master">
+      <div class="section-header">
+        <h2>商品マスタ（書類発行・FAX受注の名寄せ先）</h2>
+      </div>
+      <div class="section-body">
+        <p class="section-description">帳票（見積書・請求書・納品書）の明細と、FAX受注（第5隊員）の商品名寄せに使う商品台帳です。<b>大分類→中分類→小分類</b>の3段カテゴリで数百SKUを絞り込み・集計します。<b>ターゲット社が納品時に業種雛形を初期投入</b>し、ユーザーは枠内で日々補完追加できます（第4隊員 <code>doc_automation</code> ON 時に有効）。突合キー <code>productCode</code>（pr001〜）は不変で、受注・帳票明細・履歴集計がこのコードで名寄せされます。<br>※ 顧客マスタ（宛名・先方FAX）はユーザー主権のため、この画面ではなくユーザーアプリ側で管理します。</p>
+        <div id="pm-doc-automation-notice" class="warning-box" hidden style="margin-bottom:12px;">
+          <p>⚠ 第4隊員「書類発行自動化（<code>doc_automation</code>）」が OFF です。商品マスタの投入は可能ですが、ユーザーアプリで書類発行・商品マスタUIが表示されるのは §4 で <code>doc_automation</code> を ON にして保存した後です。</p>
+        </div>
+        <div class="pm-toolbar" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+          <button type="button" id="pm-load" class="btn-secondary">この店舗の商品マスタを読み込む</button>
+          <span id="pm-status" class="footer-status"></span>
+        </div>
+        <div id="pm-editor" hidden>
+          <table class="data-table" id="pm-table">
+            <thead>
+              <tr>
+                <th style="width:8%;">コード</th>
+                <th style="width:11%;">大分類</th>
+                <th style="width:11%;">中分類</th>
+                <th style="width:11%;">小分類</th>
+                <th style="width:19%;">商品名 <span class="required">*</span></th>
+                <th style="width:9%;">単価(税抜)</th>
+                <th style="width:8%;">税率%</th>
+                <th style="width:7%;">単位</th>
+                <th style="width:12%;">エイリアス</th>
+                <th style="width:4%;">有効</th>
+                <th style="width:6%;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="pm-table-body"></tbody>
+          </table>
+          <datalist id="pm-cat-l1"></datalist>
+          <datalist id="pm-cat-l2"></datalist>
+          <datalist id="pm-cat-l3"></datalist>
+          <p class="form-note">エイリアス＝FAX受注などでの表記ゆれ（1商品に複数可・カンマ区切り）。単価は税抜の標準単価で、発行時に上書きできます。</p>
+          <div class="pm-actions" style="display:flex;gap:8px;align-items:center;margin-top:12px;">
+            <button type="button" id="pm-add" class="btn-secondary">＋商品を追加</button>
+            <button type="button" id="pm-save" class="btn-primary">商品マスタを保存</button>
+            <span id="pm-count" class="footer-status"></span>
+          </div>
+          <p class="form-note">「保存」でこの店舗の商品マスタ全体を反映します（一括置換）。読み込み→編集→保存の往復で、ユーザーが追加した商品も保全されます。</p>
+        </div>
+      </div>
+    </section>
+
     <!-- §6 FAX取引先ひな形（第5隊員 fax_order_ocr の初期設定・→ 05§8-7） -->
     <section class="edit-section" data-section="fax-patterns">
       <div class="section-header">

@@ -42,6 +42,7 @@
     currentClient: null,        // 編集中の clients 側の値
     currentSettings: null,      // 編集中の settings 側の値
     changeLog: [],
+    products: null,             // 商品マスタ（doc_automation・専用シート＝settings とは独立レール）
     dirtySections: new Set(),   // どのセクションが編集されているか
     saving: false
   };
@@ -100,6 +101,7 @@
       renderLogoIcon();
       renderFeatureVisibility();
       renderFaxPatterns();
+      pmSyncDocAutomationNotice();
       renderServiceMaster();
       renderPurchaseMaster();
       renderCostMaster();
@@ -531,6 +533,191 @@
       });
     });
     state.currentSettings.faxPatterns = list;
+  }
+
+  // ============ 商品マスタ（第4隊員 doc_automation・→ 05§8-5 / 03§1-6） ============
+  // 商品マスタは settings JSON ではなく専用シート（products）＝独立の読込/保存レール
+  // （master プロキシ getProductsForClient/saveProductsForClient → ユーザーGAS products CRUD）。
+  // ゆえにグローバル footer 保存（updateUserSettings）とは切り離し、本セクション専用の
+  // 「読み込む／保存」ボタンで反映する。運営は納品時に業種雛形（3段カテゴリ）を一括投入する。
+  const PM = { loaded: false };
+
+  function pmSetStatus(msg) {
+    const el = document.getElementById('pm-status');
+    if (el) el.textContent = msg || '';
+  }
+
+  // §4 doc_automation トグル状態を商品マスタ側の注意書きへ反映（ON＝注意非表示）。
+  function pmSyncDocAutomationNotice() {
+    const notice = document.getElementById('pm-doc-automation-notice');
+    if (!notice) return;
+    const toggle = document.getElementById('fv-doc-automation');
+    notice.hidden = !!(toggle && toggle.checked);
+  }
+
+  // クライアント側で pr001〜 を採番（既存最大＋1）。saveProducts は与えた productCode を
+  // 保持するため、新規行に採番しておけば一括置換でもコードが安定する（index衝突回避）。
+  function pmNextCode() {
+    let max = 0;
+    (state.products || []).forEach(function (p) {
+      const m = String(p.productCode || '').match(/^pr(\d+)$/);
+      if (m) max = Math.max(max, Number(m[1]));
+    });
+    return 'pr' + ('000' + (max + 1)).slice(-3);
+  }
+
+  function pmRenderCategoryLists() {
+    const sets = { l1: {}, l2: {}, l3: {} };
+    (state.products || []).forEach(function (p) {
+      if (p.categoryL1) sets.l1[p.categoryL1] = 1;
+      if (p.categoryL2) sets.l2[p.categoryL2] = 1;
+      if (p.categoryL3) sets.l3[p.categoryL3] = 1;
+    });
+    function fill(id, obj) {
+      const dl = document.getElementById(id);
+      if (dl) dl.innerHTML = Object.keys(obj).map(function (v) { return '<option value="' + escapeHtml(v) + '">'; }).join('');
+    }
+    fill('pm-cat-l1', sets.l1); fill('pm-cat-l2', sets.l2); fill('pm-cat-l3', sets.l3);
+  }
+
+  function pmCell(i, field, value, opts) {
+    opts = opts || {};
+    const attrs = 'data-prm-idx="' + i + '" data-prm-field="' + field + '"';
+    if (opts.type === 'number') {
+      return '<input type="number" ' + attrs + ' value="' + escapeHtml(String(value == null ? '' : value)) +
+        '" min="0" step="' + (opts.step || '1') + '" style="width:100%;">';
+    }
+    if (opts.list) {
+      return '<input type="text" list="' + opts.list + '" ' + attrs + ' value="' + escapeHtml(value || '') + '" style="width:100%;">';
+    }
+    return '<input type="text" ' + attrs + ' value="' + escapeHtml(value || '') + '" style="width:100%;"' +
+      (opts.ph ? ' placeholder="' + escapeHtml(opts.ph) + '"' : '') + '>';
+  }
+
+  function pmRender() {
+    const tbody = document.getElementById('pm-table-body');
+    if (!tbody) return;
+    const list = state.products || [];
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="11" class="empty-row">商品が未登録です。「＋商品を追加」から業種雛形を投入してください。</td></tr>';
+    } else {
+      tbody.innerHTML = list.map(function (p, i) {
+        return '<tr>'
+          + '<td><span class="readonly-text">' + escapeHtml(p.productCode || '(自動)') + '</span></td>'
+          + '<td>' + pmCell(i, 'categoryL1', p.categoryL1, { list: 'pm-cat-l1' }) + '</td>'
+          + '<td>' + pmCell(i, 'categoryL2', p.categoryL2, { list: 'pm-cat-l2' }) + '</td>'
+          + '<td>' + pmCell(i, 'categoryL3', p.categoryL3, { list: 'pm-cat-l3' }) + '</td>'
+          + '<td>' + pmCell(i, 'productName', p.productName) + '</td>'
+          + '<td>' + pmCell(i, 'unitPrice', p.unitPrice, { type: 'number' }) + '</td>'
+          + '<td>' + pmCell(i, 'taxRate', p.taxRate, { type: 'number' }) + '</td>'
+          + '<td>' + pmCell(i, 'unit', p.unit, { ph: '個' }) + '</td>'
+          + '<td>' + pmCell(i, 'aliases', p.aliases) + '</td>'
+          + '<td style="text-align:center;"><input type="checkbox" data-prm-idx="' + i + '" data-prm-field="enabled"' + (p.enabled !== false ? ' checked' : '') + '></td>'
+          + '<td><button type="button" class="btn-secondary" data-prm-del="' + i + '" style="font-size:12px;">削除</button></td>'
+          + '</tr>';
+      }).join('');
+    }
+    pmRenderCategoryLists();
+    const cnt = document.getElementById('pm-count');
+    if (cnt) cnt.textContent = list.length + ' 件';
+  }
+
+  // 表 → state.products（表示中の入力値を回収。productCode は編集不可＝旧値を保持）。
+  function pmRead() {
+    const tbody = document.getElementById('pm-table-body');
+    if (!tbody) return;
+    const prev = state.products || [];
+    const rows = [];
+    tbody.querySelectorAll('tr').forEach(function (tr) {
+      const idxEl = tr.querySelector('[data-prm-idx]');
+      if (!idxEl) return; // empty-row（データ行なし）
+      const i = Number(idxEl.getAttribute('data-prm-idx'));
+      const get = function (field) {
+        const el = tr.querySelector('[data-prm-field="' + field + '"]');
+        if (!el) return '';
+        return el.type === 'checkbox' ? el.checked : el.value;
+      };
+      const old = prev[i] || {};
+      rows.push({
+        productCode: old.productCode || '',
+        categoryL1: String(get('categoryL1') || '').trim(),
+        categoryL2: String(get('categoryL2') || '').trim(),
+        categoryL3: String(get('categoryL3') || '').trim(),
+        productName: String(get('productName') || '').trim(),
+        unitPrice: Number(get('unitPrice')) || 0,
+        taxRate: Number(get('taxRate')) || 0,
+        unit: String(get('unit') || '').trim(),
+        aliases: String(get('aliases') || '').trim(),
+        enabled: get('enabled') !== false
+      });
+    });
+    state.products = rows;
+  }
+
+  async function pmLoad() {
+    const loadBtn = document.getElementById('pm-load');
+    if (loadBtn) loadBtn.disabled = true;
+    pmSetStatus('読み込み中…');
+    try {
+      const res = await window.uzAdmin.callMasterGas('getProductsForClient', { clientId: state.clientId });
+      if (window.uzAdmin.handleAuthError(res)) return;
+      if (!res.ok) {
+        pmSetStatus('');
+        showToast('商品マスタの読み込みに失敗: ' + (res.message || res.code || res.error || 'unknown'), 'error');
+        return;
+      }
+      state.products = (res.products || []).map(function (p) {
+        return {
+          productCode: p.productCode || '',
+          categoryL1: p.categoryL1 || '', categoryL2: p.categoryL2 || '', categoryL3: p.categoryL3 || '',
+          productName: p.productName || '', unitPrice: Number(p.unitPrice) || 0, taxRate: Number(p.taxRate) || 0,
+          unit: p.unit || '', aliases: p.aliases || '', enabled: p.enabled !== false
+        };
+      });
+      PM.loaded = true;
+      const editor = document.getElementById('pm-editor');
+      if (editor) editor.hidden = false;
+      pmRender();
+      pmSyncDocAutomationNotice();
+      pmSetStatus('読み込み完了');
+    } catch (err) {
+      pmSetStatus('');
+      showToast('商品マスタの読み込みに失敗: ' + (err && err.message ? err.message : String(err)), 'error');
+    } finally {
+      if (loadBtn) loadBtn.disabled = false;
+    }
+  }
+
+  async function pmSave() {
+    pmRead();
+    const invalid = (state.products || []).filter(function (p) { return !p.productName; });
+    if (invalid.length) {
+      showToast('商品名が空の行があります（' + invalid.length + '件）。入力するか削除してください。', 'error');
+      return;
+    }
+    const saveBtn = document.getElementById('pm-save');
+    if (saveBtn) saveBtn.disabled = true;
+    pmSetStatus('保存中…');
+    try {
+      const res = await window.uzAdmin.callMasterGas('saveProductsForClient', {
+        clientId: state.clientId,
+        products: state.products
+      });
+      if (window.uzAdmin.handleAuthError(res)) return;
+      if (!res.ok) {
+        pmSetStatus('');
+        showToast('商品マスタの保存に失敗: ' + (res.message || res.code || res.error || 'unknown'), 'error');
+        return;
+      }
+      showToast('商品マスタを保存しました', 'success');
+      await pmLoad(); // 採番済みコードをサーバー正で反映
+      pmSetStatus('保存しました（' + (state.products ? state.products.length : 0) + ' 件）');
+    } catch (err) {
+      pmSetStatus('');
+      showToast('商品マスタの保存に失敗: ' + (err && err.message ? err.message : String(err)), 'error');
+    } finally {
+      if (saveBtn) saveBtn.disabled = false;
+    }
   }
 
   // ============ §5 サービスマスタ ============
@@ -1494,6 +1681,37 @@
         markDirty('fax-patterns');
       });
     }
+
+    // 商品マスタ（第4隊員 doc_automation・→ 05§8-5）：settings とは独立の専用レール
+    const pmLoadBtn = document.getElementById('pm-load');
+    if (pmLoadBtn) pmLoadBtn.addEventListener('click', pmLoad);
+    const pmAddBtn = document.getElementById('pm-add');
+    if (pmAddBtn) {
+      pmAddBtn.addEventListener('click', function () {
+        pmRead();
+        if (!Array.isArray(state.products)) state.products = [];
+        state.products.push({
+          productCode: pmNextCode(), categoryL1: '', categoryL2: '', categoryL3: '',
+          productName: '', unitPrice: 0, taxRate: 10, unit: '', aliases: '', enabled: true
+        });
+        pmRender();
+      });
+    }
+    const pmSaveBtn = document.getElementById('pm-save');
+    if (pmSaveBtn) pmSaveBtn.addEventListener('click', pmSave);
+    const prmBody = document.getElementById('pm-table-body');
+    if (prmBody) {
+      prmBody.addEventListener('click', function (e) {
+        if (e.target.dataset && e.target.dataset.prmDel !== undefined) {
+          pmRead();
+          state.products.splice(Number(e.target.dataset.prmDel), 1);
+          pmRender();
+        }
+      });
+    }
+    // doc_automation トグルの変更を商品マスタ側の注意書きへ即時反映
+    const fvDoc = document.getElementById('fv-doc-automation');
+    if (fvDoc) fvDoc.addEventListener('change', pmSyncDocAutomationNotice);
 
     document.getElementById('btn-save').addEventListener('click', saveAll);
 
