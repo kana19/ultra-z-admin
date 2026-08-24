@@ -64,6 +64,11 @@
         <p class="form-note">屋号・呼称・店舗名のいずれでも可（PWA タイトル等で使用）</p>
       </div>
       <div class="form-row">
+        <label>店舗コード（任意・確定後変更不可）</label>
+        <input type="text" id="f1-client-code" maxlength="20" placeholder="osafune（→ uz-osafune）">
+        <p class="form-note">repo/URL/Drive/名簿に使う識別子 uz-□□□ の □□□ 部分。半角英数字と - ・2〜20字（例 osafune）。空欄なら自動発行。正式店名は上の「店舗名」（日本語）。</p>
+      </div>
+      <div class="form-row">
         <label>営業時間</label>
         <div class="business-hours">
           <input type="time" id="f1-business-open" value="18:00">

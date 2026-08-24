@@ -81,7 +81,8 @@
         contractStart: '',
         contractDuration: '1',
         contractEnd: '',
-        monthlyFee: 4980
+        monthlyFee: 4980,
+        clientCode: ''
       },
       step2: { timecardCount: 5, qrProofEnabled: false, shiftScheduleEnabled: false },
       step3: {
@@ -322,6 +323,7 @@
     $('f1-phone').value = s.phone;
     $('f1-email').value = s.email;
     $('f1-store-name').value = s.storeName;
+    $('f1-client-code').value = s.clientCode || '';
     $('f1-business-open').value = s.businessHours.open;
     $('f1-business-close').value = s.businessHours.close;
     updateNextDayBadge();
@@ -379,6 +381,7 @@
     s.phone = $('f1-phone').value.trim();
     s.email = $('f1-email').value.trim();
     s.storeName = $('f1-store-name').value.trim();
+    s.clientCode = $('f1-client-code').value.trim().toLowerCase();
     s.businessHours = {
       open: $('f1-business-open').value,
       close: $('f1-business-close').value,
@@ -401,6 +404,12 @@
     if (!s.contractStart) errors.push('契約開始日');
     if (!s.contractEnd) errors.push('契約終了日');
     if (!s.monthlyFee || s.monthlyFee < 0) errors.push('月額（0以上の整数）');
+    if (s.clientCode) {
+      var cc = s.clientCode.indexOf('uz-') === 0 ? s.clientCode.slice(3) : s.clientCode;
+      if (cc.length < 2 || cc.length > 20 || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(cc)) {
+        errors.push('店舗コード（半角英数字と - ・2〜20字）');
+      }
+    }
 
     if (errors.length) {
       showStepError('step1-error', '入力エラー：' + errors.join(' / '));
@@ -1224,7 +1233,7 @@
     const pdfHref = pdfBase64
       ? 'data:application/pdf;base64,' + pdfBase64
       : '#';
-    const pdfFilename = 'delivery_card_' + Step7Progress.clientId + '.pdf';
+    const pdfFilename = Step7Progress.clientId + '-card.pdf';
 
     return (
       '<div class="completion-card">' +
@@ -1326,7 +1335,7 @@
 
       // ---- 1. generateClientId ----
       step7SetStatus('clientId', 'running', '採番中...');
-      const r1 = await callGasAction('generateClientId', {});
+      const r1 = await callGasAction('generateClientId', { code: RegisterState.data.step1.clientCode || '' });
       Step7Progress.clientId = String(r1.clientId || '');
       if (!Step7Progress.clientId) {
         throw new Error('generateClientId 応答に clientId が含まれていません');
