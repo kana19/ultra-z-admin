@@ -84,7 +84,7 @@
         monthlyFee: 4980,
         clientCode: ''
       },
-      step2: { timecardCount: 5, qrProofEnabled: false, shiftScheduleEnabled: false },
+      step2: { timecardCount: 5, qrProofEnabled: false, shiftScheduleEnabled: false, reuseSpreadsheetId: '' },
       step3: {
         // マスタ件数枠（運営側内部管理項目・01_商品体系.md §4-2）
         // 基本枠：S=5 / P=5 / C=5・UI硬制限なし・拡張オプション販売時は edit 画面でも変更可
@@ -96,7 +96,10 @@
         costOptionalQuota: 5,
         serviceList: [],
         purchaseMasterList: [],
-        costMasterList: []
+        costMasterList: [],
+        // 大分類マスタ（2026-08-27・→ 03§1-1-2 / §1-3-2・任意設定）
+        serviceChannelList: [],
+        purchaseCategoryList: []
       },
       step4: {
         logoFile: null,
@@ -431,6 +434,9 @@
     const qr = $('f2-qr-proof'), sh = $('f2-shift-schedule');
     RegisterState.data.step2.qrProofEnabled       = isLeo && !!(qr && qr.checked);
     RegisterState.data.step2.shiftScheduleEnabled = isLeo && !!(sh && sh.checked);
+    // 既存SS 再利用モード（2026-08-27・→ 金光指示・空欄なら新規SS作成）
+    const reuseEl = $('f2-reuse-ssid');
+    RegisterState.data.step2.reuseSpreadsheetId = reuseEl ? String(reuseEl.value || '').trim() : '';
     hideStepError('step2-error');
     return true;
   }
@@ -459,6 +465,30 @@
     }
     // C は5固定（編集UI廃止・税務署様式準拠）
     s3.costOptionalQuota = 5;
+    // 大分類マスタを textarea から state へ（2026-08-27・任意設定・空配列で無害運転）
+    const scEl = $('f3-service-channel-list');
+    if (scEl) {
+      s3.serviceChannelList = String(scEl.value || '').split(/\r?\n/)
+        .map(function (line) {
+          const parts = line.split(',').map(function (x) { return String(x).trim(); });
+          if (!parts[0]) return null;
+          const rate = parseInt(parts[1], 10);
+          return {
+            id: '', // サーバ側で sc001〜採番（createUserSpreadsheet は配列をそのまま入れるだけ・追番は運用開始後）
+            name: parts[0],
+            taxRate: [0, 8, 10].indexOf(rate) >= 0 ? rate : 10
+          };
+        })
+        .filter(function (x) { return !!x; })
+        .map(function (it, i) { it.id = 'sc' + ('000' + (i + 1)).slice(-3); return it; });
+    }
+    const pcEl = $('f3-purchase-category-list');
+    if (pcEl) {
+      s3.purchaseCategoryList = String(pcEl.value || '').split(/\r?\n/)
+        .map(function (line) { return String(line).trim(); })
+        .filter(function (x) { return !!x; })
+        .map(function (name, i) { return { id: 'pc' + ('000' + (i + 1)).slice(-3), name: name }; });
+    }
     // 販管費マスタの行内編集を state へ最終同期
     syncCostTableToState();
     hideStepError('step3-error');
@@ -828,12 +858,19 @@
         ['タイムカード数', String(s2.timecardCount)],
         ['グレード派生', grade],
         ['段2 QR現地証明', (s2.timecardCount >= 5 && s2.qrProofEnabled) ? '✅ ON（qrProofEnabled）' : '— OFF'],
-        ['段3 シフト登録', (s2.timecardCount >= 5 && s2.shiftScheduleEnabled) ? '✅ ON（shiftScheduleEnabled）' : '— OFF']
+        ['段3 シフト登録', (s2.timecardCount >= 5 && s2.shiftScheduleEnabled) ? '✅ ON（shiftScheduleEnabled）' : '— OFF'],
+        // 2026-08-27：アストラのUI改修＝勤怠系メニュー撤廃の初期化結果
+        ['勤怠系メニュー（初期化）', s2.timecardCount >= 5 ? '✅ ON（attendance/clockin/payroll 全て true）' : '— OFF（アストラ想定＝勤怠系メニュー撤廃）'],
+        // 2026-08-27：既存SS 再利用モード
+        ['SS 方式', s2.reuseSpreadsheetId ? '既存SS 再利用（' + s2.reuseSpreadsheetId + '）' : '新規SS 作成']
       ]) +
       section('Step 3：マスタ件数枠＋販管費設定', 3, [
         ['サービスマスタ枠数', s3.serviceMasterQuota + ' 件'],
         ['仕入マスタ枠数', s3.purchaseMasterQuota + ' 件'],
         ['販管費マスタ任意枠', '5件固定（税務署様式準拠・編集不可）'],
+        // 2026-08-27：大分類マスタ（→ 03§1-1-2 / §1-3-2・任意設定）
+        ['サービス販売チャネル大分類', (s3.serviceChannelList || []).length ? (s3.serviceChannelList.map(function (c) { return c.name + '(' + c.taxRate + '%)'; }).join(' / ')) : '未設定（入力モーダルにチャネル選択が出ない＝後方互換）'],
+        ['仕入原価大分類', (s3.purchaseCategoryList || []).length ? (s3.purchaseCategoryList.map(function (c) { return c.name; }).join(' / ')) : '未設定（品目マスタで categoryId 紐付けのみ）'],
         ['販管費マスタ', '青色申告デフォルト 24件 / 任意枠使用 ' + customCostCount + ' 件 / アプリ表示 ' + visibleCount + ' 件'],
         ['販管費マスタ詳細', costTableHtml, 'html']
       ]) +
@@ -899,7 +936,8 @@
     deliveryCardBase64: '',
     completed: false,
     failedAt: '',
-    errorMessage: ''
+    errorMessage: '',
+    reuseSpreadsheetId: ''   // 2026-08-27：既存SS 再利用モード
   };
 
   // 進捗UIの定義（8 ステップ）
@@ -1314,6 +1352,8 @@
     Step7Progress.completed = false;
     Step7Progress.failedAt = '';
     Step7Progress.errorMessage = '';
+    // 2026-08-27：既存SS 再利用モード（step2 で指定されていれば Step7Progress へ引き継ぐ）
+    Step7Progress.reuseSpreadsheetId = String(RegisterState.data.step2.reuseSpreadsheetId || '');
 
     // UI 初期化
     step7InitProgressUI();
@@ -1391,7 +1431,10 @@
       step7SetStatus('repoFiles', 'pending', '（SS・GAS 生成後に実行）');
 
       // ---- 5. createUserSpreadsheet ----
-      step7SetStatus('spreadsheet', 'running', 'SS 生成中...');
+      // 2026-08-27：既存SS再利用モード（reuseSpreadsheetId が指定されていれば openById で
+      // 既存SSに suppliers シート生成＋B8/B9 初期化＋masterQuota 拡張のみ実行。SS 内容は保全）
+      step7SetStatus('spreadsheet', 'running',
+        Step7Progress.reuseSpreadsheetId ? '既存SS へマイグレ中...' : 'SS 生成中...');
       const r5 = await callGasAction('createUserSpreadsheet', {
         clientId:             Step7Progress.clientId,
         storeName:            s1.storeName,
@@ -1402,13 +1445,22 @@
         serviceMasterQuota:   s3.serviceMasterQuota,
         purchaseMasterQuota:  s3.purchaseMasterQuota,
         costOptionalQuota:    s3.costOptionalQuota,
+        // 大分類マスタ（2026-08-27・→ 03§1-1-2 / §1-3-2・任意設定・空配列で無害運転）
+        serviceChannelList:   s3.serviceChannelList || [],
+        purchaseCategoryList: s3.purchaseCategoryList || [],
+        serviceChannelQuota:  5,
+        purchaseCategoryQuota: 3,
         // 機能ON/OFF（settings B16・段2/段3は納品時トグル・→ 03_データ仕様.md §6）
+        // アストラ（timecardCount=0）は勤怠系メニュー撤廃（attendance/clockin/payroll 全て false）
         featureVisibility: {
+          attendance_menu:      s2.timecardCount >= 5,
           clockin_menu:         s2.timecardCount >= 5,
           payroll_menu:         s2.timecardCount >= 5,
           qrProofEnabled:       s2.timecardCount >= 5 && !!s2.qrProofEnabled,
           shiftScheduleEnabled: s2.timecardCount >= 5 && !!s2.shiftScheduleEnabled
-        }
+        },
+        // 既存SS 再利用モード（2026-08-27・→ 金光指示「既存PWA アップデート時は新規PWA＋既存SS紐付け」）
+        reuseSpreadsheetId:   Step7Progress.reuseSpreadsheetId || ''
       });
       Step7Progress.spreadsheetId = String(r5.spreadsheetId || '');
       Step7Progress.spreadsheetUrl = String(r5.spreadsheetUrl || '');

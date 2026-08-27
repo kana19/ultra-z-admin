@@ -371,6 +371,62 @@
       </div>
     </section>
 
+    <!-- §5-3 サービス販売チャネル大分類（2026-08-27・→ 03§1-1-2） -->
+    <section class="edit-section" data-section="service-channel">
+      <div class="section-header">
+        <h2>5-3. サービス販売チャネル大分類（任意）</h2>
+        <span class="dirty-indicator" hidden>● 変更あり</span>
+      </div>
+      <div class="section-body">
+        <p class="section-description">同じサービスを違うチャネル（店内／テイクアウト／委託／卸し等）・違う税率で売り分けるための大分類。<strong>設定した場合のみ</strong>ユーザーアプリの売上入力モーダルに選択チップが出現し、選択時は大分類の税率がサービス個別 taxRate より優先されます。空欄で無害運転（既存動作を壊さない）。</p>
+        <table class="data-table" id="service-channel-table">
+          <thead>
+            <tr>
+              <th style="width: 15%;">ID</th>
+              <th style="width: 55%;">チャネル名</th>
+              <th style="width: 15%;">税率</th>
+              <th style="width: 15%;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="service-channel-table-body"><!-- JS 動的生成 --></tbody>
+        </table>
+        <div class="form-row" style="margin-top:10px;align-items:center;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="service-channel-add-name" placeholder="チャネル名（例：店内）" maxlength="30" style="flex:2;min-width:160px;padding:8px;border:1px solid #ccc;border-radius:6px;">
+          <select id="service-channel-add-tax" style="width:120px;padding:8px;border:1px solid #ccc;border-radius:6px;">
+            <option value="10">10%</option>
+            <option value="8">8%（軽減）</option>
+            <option value="0">0%（非課税）</option>
+          </select>
+          <button id="service-channel-add-btn" class="btn-primary" type="button">＋ 追加</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5-4 仕入原価大分類（2026-08-27・→ 03§1-3-2） -->
+    <section class="edit-section" data-section="purchase-category">
+      <div class="section-header">
+        <h2>5-4. 仕入原価大分類（任意）</h2>
+        <span class="dirty-indicator" hidden>● 変更あり</span>
+      </div>
+      <div class="section-body">
+        <p class="section-description">仕入原価品目を大分類でまとめるグルーピング軸（食材／酒類／包材など）。品目マスタの categoryId で紐付けます（入力モーダルにはタグは出ません＝品目に紐付いた大分類が集計で自動使用）。税率は品目側 defaultTaxRate が正。空欄で無害運転。</p>
+        <table class="data-table" id="purchase-category-table">
+          <thead>
+            <tr>
+              <th style="width: 15%;">ID</th>
+              <th style="width: 70%;">大分類名</th>
+              <th style="width: 15%;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="purchase-category-table-body"><!-- JS 動的生成 --></tbody>
+        </table>
+        <div class="form-row" style="margin-top:10px;align-items:center;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="purchase-category-add-name" placeholder="大分類名（例：食材）" maxlength="30" style="flex:2;min-width:160px;padding:8px;border:1px solid #ccc;border-radius:6px;">
+          <button id="purchase-category-add-btn" class="btn-primary" type="button">＋ 追加</button>
+        </div>
+      </div>
+    </section>
+
     <!-- §6 販管費マスタ -->
     <section class="edit-section" data-section="cost-master">
       <div class="section-header">

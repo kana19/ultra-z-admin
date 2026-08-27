@@ -104,6 +104,8 @@
       pmSyncDocAutomationNotice();
       renderServiceMaster();
       renderPurchaseMaster();
+      renderServiceChannel();
+      renderPurchaseCategory();
       renderCostMaster();
       renderContract();
       renderOps();
@@ -1049,6 +1051,8 @@
     readFaxPatterns();
     readServiceMaster();
     readPurchaseMaster();
+    readServiceChannel();
+    readPurchaseCategory();
     readCostMaster();
     readContract();
 
@@ -1161,7 +1165,8 @@
     });
     // serviceList / purchaseMasterList は運営側では読み取り専用（確定仕様F・ユーザー主権）。
     // 保存対象に含めない。販管費 costMasterList は運営編集対象のため残す。
-    const objKeys = ['businessHours', 'featureVisibility', 'costMasterList', 'faxPatterns'];
+    // 2026-08-27：serviceChannelList / purchaseCategoryList（大分類マスタ）は運営が納品時投入可＝保存対象。
+    const objKeys = ['businessHours', 'featureVisibility', 'costMasterList', 'faxPatterns', 'serviceChannelList', 'purchaseCategoryList'];
     objKeys.forEach(function (k) {
       if (JSON.stringify(state.currentSettings[k]) !== JSON.stringify(state.initialSettings[k])) {
         fields[k] = state.currentSettings[k];
@@ -1179,10 +1184,149 @@
     renderFeatureVisibility();
     renderServiceMaster();
     renderPurchaseMaster();
+    renderServiceChannel();
+    renderPurchaseCategory();
     renderCostMaster();
     renderContract();
     clearDirty();
     showToast('変更を破棄しました', 'info');
+  }
+
+  // ============ §5-3 サービス販売チャネル大分類（2026-08-27・→ 03§1-1-2） ============
+  function renderServiceChannel() {
+    const tbody = document.getElementById('service-channel-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!Array.isArray(state.currentSettings.serviceChannelList)) {
+      state.currentSettings.serviceChannelList = [];
+    }
+    const list = state.currentSettings.serviceChannelList;
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-row">未設定（ユーザーアプリの売上入力モーダルにチャネル選択は出ません＝後方互換）</td></tr>';
+      return;
+    }
+    list.forEach(function (ch, idx) {
+      const tr = document.createElement('tr');
+      const rate = (ch.taxRate != null ? ch.taxRate : 10);
+      tr.innerHTML =
+        '<td><span class="readonly-text">' + escapeHtml(ch.id || '(未割当)') + '</span></td>' +
+        '<td><input type="text" data-sc-idx="' + idx + '" data-sc-field="name" value="' + escapeHtml(ch.name || '') + '" maxlength="30" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;"></td>' +
+        '<td><select data-sc-idx="' + idx + '" data-sc-field="taxRate" style="padding:6px;border:1px solid #ccc;border-radius:4px;">' +
+          '<option value="10"' + (Number(rate) === 10 ? ' selected' : '') + '>10%</option>' +
+          '<option value="8"' + (Number(rate) === 8 ? ' selected' : '') + '>8%</option>' +
+          '<option value="0"' + (Number(rate) === 0 ? ' selected' : '') + '>0%</option>' +
+        '</select></td>' +
+        '<td><button type="button" class="btn-danger" data-sc-delete="' + idx + '">削除</button></td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  function readServiceChannel() {
+    const tbody = document.getElementById('service-channel-table-body');
+    if (!tbody) return;
+    if (!Array.isArray(state.currentSettings.serviceChannelList)) return;
+    const updated = JSON.parse(JSON.stringify(state.currentSettings.serviceChannelList));
+    tbody.querySelectorAll('[data-sc-idx]').forEach(function (el) {
+      const idx = parseInt(el.dataset.scIdx, 10);
+      const field = el.dataset.scField;
+      if (!updated[idx]) return;
+      if (field === 'taxRate') updated[idx][field] = parseInt(el.value, 10);
+      else updated[idx][field] = el.value.trim();
+    });
+    state.currentSettings.serviceChannelList = updated.filter(function (c) { return c && c.name; });
+  }
+
+  function nextServiceChannelId() {
+    const list = state.currentSettings.serviceChannelList || [];
+    let maxN = 0;
+    list.forEach(function (c) {
+      const m = String(c.id || '').match(/^sc(\d+)$/);
+      if (m) { const n = parseInt(m[1], 10); if (isFinite(n) && n > maxN) maxN = n; }
+    });
+    return 'sc' + String(maxN + 1).padStart(3, '0');
+  }
+
+  function addServiceChannelFromForm() {
+    const nameEl = document.getElementById('service-channel-add-name');
+    const taxEl = document.getElementById('service-channel-add-tax');
+    const name = nameEl ? String(nameEl.value || '').trim() : '';
+    const taxRate = taxEl ? parseInt(taxEl.value, 10) : 10;
+    if (!name) { showToast('チャネル名を入力してください', 'error'); return; }
+    if (!Array.isArray(state.currentSettings.serviceChannelList)) state.currentSettings.serviceChannelList = [];
+    state.currentSettings.serviceChannelList.push({ id: nextServiceChannelId(), name: name, taxRate: taxRate });
+    if (nameEl) nameEl.value = '';
+    renderServiceChannel();
+    markDirty('service-channel');
+  }
+
+  function deleteServiceChannel(idx) {
+    state.currentSettings.serviceChannelList.splice(idx, 1);
+    renderServiceChannel();
+    markDirty('service-channel');
+  }
+
+  // ============ §5-4 仕入原価大分類（2026-08-27・→ 03§1-3-2） ============
+  function renderPurchaseCategory() {
+    const tbody = document.getElementById('purchase-category-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!Array.isArray(state.currentSettings.purchaseCategoryList)) {
+      state.currentSettings.purchaseCategoryList = [];
+    }
+    const list = state.currentSettings.purchaseCategoryList;
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-row">未設定（品目マスタで categoryId 紐付けのみ・入力モーダルにタグは出ません）</td></tr>';
+      return;
+    }
+    list.forEach(function (cat, idx) {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><span class="readonly-text">' + escapeHtml(cat.id || '(未割当)') + '</span></td>' +
+        '<td><input type="text" data-pc-idx="' + idx + '" data-pc-field="name" value="' + escapeHtml(cat.name || '') + '" maxlength="30" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;"></td>' +
+        '<td><button type="button" class="btn-danger" data-pc-delete="' + idx + '">削除</button></td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  function readPurchaseCategory() {
+    const tbody = document.getElementById('purchase-category-table-body');
+    if (!tbody) return;
+    if (!Array.isArray(state.currentSettings.purchaseCategoryList)) return;
+    const updated = JSON.parse(JSON.stringify(state.currentSettings.purchaseCategoryList));
+    tbody.querySelectorAll('[data-pc-idx]').forEach(function (el) {
+      const idx = parseInt(el.dataset.pcIdx, 10);
+      const field = el.dataset.pcField;
+      if (!updated[idx]) return;
+      updated[idx][field] = el.value.trim();
+    });
+    state.currentSettings.purchaseCategoryList = updated.filter(function (c) { return c && c.name; });
+  }
+
+  function nextPurchaseCategoryId() {
+    const list = state.currentSettings.purchaseCategoryList || [];
+    let maxN = 0;
+    list.forEach(function (c) {
+      const m = String(c.id || '').match(/^pc(\d+)$/);
+      if (m) { const n = parseInt(m[1], 10); if (isFinite(n) && n > maxN) maxN = n; }
+    });
+    return 'pc' + String(maxN + 1).padStart(3, '0');
+  }
+
+  function addPurchaseCategoryFromForm() {
+    const nameEl = document.getElementById('purchase-category-add-name');
+    const name = nameEl ? String(nameEl.value || '').trim() : '';
+    if (!name) { showToast('大分類名を入力してください', 'error'); return; }
+    if (!Array.isArray(state.currentSettings.purchaseCategoryList)) state.currentSettings.purchaseCategoryList = [];
+    state.currentSettings.purchaseCategoryList.push({ id: nextPurchaseCategoryId(), name: name });
+    if (nameEl) nameEl.value = '';
+    renderPurchaseCategory();
+    markDirty('purchase-category');
+  }
+
+  function deletePurchaseCategory(idx) {
+    state.currentSettings.purchaseCategoryList.splice(idx, 1);
+    renderPurchaseCategory();
+    markDirty('purchase-category');
   }
 
   // ============ §8 PIN再発行 ============
@@ -1712,6 +1856,49 @@
     // doc_automation トグルの変更を商品マスタ側の注意書きへ即時反映
     const fvDoc = document.getElementById('fv-doc-automation');
     if (fvDoc) fvDoc.addEventListener('change', pmSyncDocAutomationNotice);
+
+    // 2026-08-27：サービス販売チャネル大分類・仕入原価大分類 の追加/編集/削除
+    const scAddBtn = document.getElementById('service-channel-add-btn');
+    if (scAddBtn) scAddBtn.addEventListener('click', addServiceChannelFromForm);
+    const scTbody = document.getElementById('service-channel-table-body');
+    if (scTbody) {
+      scTbody.addEventListener('input', function (e) {
+        if (e.target.dataset.scIdx !== undefined) {
+          readServiceChannel();
+          markDirty('service-channel');
+        }
+      });
+      scTbody.addEventListener('change', function (e) {
+        if (e.target.dataset.scIdx !== undefined) {
+          readServiceChannel();
+          markDirty('service-channel');
+        }
+      });
+      scTbody.addEventListener('click', function (e) {
+        if (e.target.dataset.scDelete !== undefined) {
+          readServiceChannel();
+          deleteServiceChannel(Number(e.target.dataset.scDelete));
+        }
+      });
+    }
+
+    const pcAddBtn = document.getElementById('purchase-category-add-btn');
+    if (pcAddBtn) pcAddBtn.addEventListener('click', addPurchaseCategoryFromForm);
+    const pcTbody = document.getElementById('purchase-category-table-body');
+    if (pcTbody) {
+      pcTbody.addEventListener('input', function (e) {
+        if (e.target.dataset.pcIdx !== undefined) {
+          readPurchaseCategory();
+          markDirty('purchase-category');
+        }
+      });
+      pcTbody.addEventListener('click', function (e) {
+        if (e.target.dataset.pcDelete !== undefined) {
+          readPurchaseCategory();
+          deletePurchaseCategory(Number(e.target.dataset.pcDelete));
+        }
+      });
+    }
 
     document.getElementById('btn-save').addEventListener('click', saveAll);
 

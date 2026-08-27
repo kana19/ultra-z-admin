@@ -150,6 +150,20 @@
         </label>
       </div>
 
+      <!-- 既存SS 再利用モード（2026-08-27・→ 金光指示「既存PWAアップデート＝新規PWA＋既存SS紐付け」） -->
+      <div style="margin-top:16px;padding:16px;border:1px solid #d9dee8;border-radius:10px;background:#fff8ec;">
+        <div style="font-size:13px;font-weight:700;color:#664;margin-bottom:10px;">既存SS 再利用（アップデート運用）</div>
+        <p style="font-size:12px;color:#665;margin:0 0 10px;line-height:1.5;">
+          既存店の PWA をアップデートしたい時は、ここに既存の spreadsheetId を指定します。<br>
+          指定時は新規SS を作らず、既存SS に対して suppliers シート生成・B8/B9 初期化・masterQuota 拡張のみ実行します（既存データは保全）。<br>
+          空欄なら通常通り新規SS を作成します。
+        </p>
+        <label style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:12px;color:#556;">既存 spreadsheetId（任意・空欄で新規作成）</span>
+          <input type="text" id="f2-reuse-ssid" placeholder="例：1BAgtGMOuoDpcViVIQ_pkjODhMXAFeA8w" style="padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-family:monospace;font-size:12px;">
+        </label>
+      </div>
+
       <div class="step-error" id="step2-error" hidden></div>
     </section>
 
@@ -184,8 +198,27 @@
         </div>
       </div>
 
+      <!-- 3-1-2：大分類マスタ（サービス販売チャネル・仕入原価大分類・任意設定） -->
+      <h3 class="sub-heading">3-1-2：大分類マスタ（任意設定・→ 03§1-1-2 / §1-3-2）</h3>
+      <div class="quota-box">
+        <div class="quota-box-header">
+          <span class="quota-box-badge">運営初期投入</span>
+          <span class="quota-box-title">サービス販売チャネル大分類（売上入力側で店内/テイクアウト/委託/卸し等を選ぶ）</span>
+        </div>
+        <p class="quota-box-help">1行1チャネル・「名前」と「税率(%)」をカンマで指定（例：<code>店内,10</code>）。1行ずつ改行。空欄OK（設定なし＝入力モーダルにチャネル選択が出ない）。税率は大分類選択時にサービス個別 taxRate より優先。</p>
+        <textarea id="f3-service-channel-list" rows="3" placeholder="店内,10&#10;テイクアウト,8&#10;卸し,10" style="width:100%;padding:8px;font-family:monospace;font-size:13px;border:1px solid #ccc;border-radius:6px;"></textarea>
+      </div>
+      <div class="quota-box" style="margin-top:12px;">
+        <div class="quota-box-header">
+          <span class="quota-box-badge">運営初期投入</span>
+          <span class="quota-box-title">仕入原価大分類（食材・アルコール・パッケージ等でグルーピング）</span>
+        </div>
+        <p class="quota-box-help">1行1大分類・名前のみ（税率は品目側 defaultTaxRate が正）。空欄OK。品目マスタからマスタ管理画面で任意に紐付け。</p>
+        <textarea id="f3-purchase-category-list" rows="3" placeholder="食材&#10;酒類&#10;包材" style="width:100%;padding:8px;font-family:monospace;font-size:13px;border:1px solid #ccc;border-radius:6px;"></textarea>
+      </div>
+
       <!-- 3-2：販管費マスタ設定（青色申告デフォルト24件・アプリ表示/税率） -->
-      <h3 class="sub-heading">3-2：販管費マスタ設定（青色申告デフォルト 24 件）</h3>
+      <h3 class="sub-heading" style="margin-top:20px;">3-2：販管費マスタ設定（青色申告デフォルト 24 件）</h3>
       <p class="step-help">青色申告書互換の販管費科目（コストシート D列='2'）。固定枠（コード8〜25,31の19件）は名称変更不可・税率のみ編集可。任意枠（コード26〜30の5件）は業種固有の販管費科目（団体会費・看板料等）として名称も編集可。<br>「アプリ表示」はユーザーアプリ（スマホ・iPad）のコスト入力モーダル販管費タブでの表示有無。業種により使わない科目を非表示にしてユーザーUIを簡潔化する用途（例：飲食店なら「外注工賃」「税理士等の報酬」を非表示）。PC版コスト入力では本フラグは無視され全科目利用可能。<br>⚠ 仕入原価科目（食材費・商品仕入等）は本マスタではなく、ユーザーがアプリ側で仕入マスタに登録します。</p>
       <table class="data-table" id="register-cost-table">
         <thead>
