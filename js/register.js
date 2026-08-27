@@ -1098,15 +1098,20 @@
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">⑥ ウェブアプリURL を貼り付けて登録</div>' +
+            '<div class="manual-gas-step-title">⑥ ウェブアプリURL と プロジェクトID を貼り付けて登録</div>' +
             '<p class="manual-gas-note">' +
-              'デプロイ完了画面に表示された「ウェブアプリ URL」（<code>https://script.google.com/macros/s/.../exec</code>）をコピーして下に貼付：' +
+              'デプロイ完了画面の「ウェブアプリ URL」（<code>https://script.google.com/macros/s/.../exec</code>）と、Apps Script エディタのアドレスバーの <code>projects/</code> の後ろの部分（プロジェクトID・例：<code>1XuVxH76uEuce0S40d9iZ2qqXQ-eOICPaZ0K7Mdi-nEKth9QSoZIHp8wB</code>）をコピーして下に貼付：' +
             '</p>' +
-            '<div class="manual-gas-url-form">' +
+            '<div class="manual-gas-url-form" style="display:flex;flex-direction:column;gap:8px;">' +
               '<input type="text" id="manual-gas-url-input" class="manual-gas-url-input" ' +
-                'placeholder="https://script.google.com/macros/s/AKfycb.../exec">' +
-              '<button type="button" class="btn-primary" id="manual-gas-submit-btn">URL登録</button>' +
+                'placeholder="ウェブアプリ URL（https://script.google.com/macros/s/AKfycb.../exec）">' +
+              '<input type="text" id="manual-gas-scriptid-input" class="manual-gas-url-input" ' +
+                'placeholder="プロジェクトID（Apps Script エディタ URL の projects/ の後ろ）">' +
+              '<button type="button" class="btn-primary" id="manual-gas-submit-btn">URL＋プロジェクトID を登録</button>' +
             '</div>' +
+            '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
+              '※ プロジェクトID を指定すると、Apps Script ファイルが共有ドライブ uz-個別データ/&lt;clientId&gt;/&lt;clientId&gt;-gas に自動移動＋改名されます（07_命名・保存規則）。空欄でも登録は可能ですが、ファイルはマイドライブに残ります。' +
+            '</p>' +
             '<p class="manual-gas-error" id="manual-gas-error" hidden></p>' +
           '</li>' +
         '</ol>' +
@@ -1168,6 +1173,8 @@
     if (submitBtn) {
       submitBtn.addEventListener('click', function () {
         const url = urlInput ? String(urlInput.value || '').trim() : '';
+        const scriptIdInput = document.getElementById('manual-gas-scriptid-input');
+        const scriptId = scriptIdInput ? String(scriptIdInput.value || '').trim() : '';
         if (!url) {
           if (errorEl) {
             errorEl.textContent = 'URL を入力してください。';
@@ -1182,11 +1189,21 @@
           }
           return;
         }
+        // scriptId 形式検証（任意・空文字も許容）
+        if (scriptId && !/^[A-Za-z0-9_-]{20,}$/.test(scriptId)) {
+          if (errorEl) {
+            errorEl.textContent = 'プロジェクトID の形式が正しくありません。Apps Script エディタ URL の projects/ 直後の英数字＋ハイフン列（20文字以上）を貼付してください。';
+            errorEl.hidden = false;
+          }
+          return;
+        }
         if (errorEl) errorEl.hidden = true;
         submitBtn.disabled = true;
         if (urlInput) urlInput.disabled = true;
+        if (scriptIdInput) scriptIdInput.disabled = true;
         if (typeof ManualGasState.onUrlConfirmed === 'function') {
-          ManualGasState.onUrlConfirmed(url);
+          // 2026-08-28：URL と scriptId をオブジェクトで返す（後方互換のため url 文字列も維持）
+          ManualGasState.onUrlConfirmed({ url: url, scriptId: scriptId });
         }
       });
     }
@@ -1210,10 +1227,12 @@
       panel.hidden = false;
       bindManualGasPanelEvents();
 
-      ManualGasState.onUrlConfirmed = function (url) {
+      ManualGasState.onUrlConfirmed = function (payload) {
         ManualGasState.waiting = false;
         ManualGasState.onUrlConfirmed = null;
-        resolve(url);
+        // 2026-08-28：payload はオブジェクト {url, scriptId} または後方互換の文字列
+        if (typeof payload === 'string') resolve({ url: payload, scriptId: '' });
+        else resolve(payload || { url: '', scriptId: '' });
       };
 
       // パネル位置にスクロール
@@ -1480,17 +1499,22 @@
         clientId:      Step7Progress.clientId,
         spreadsheetId: Step7Progress.spreadsheetId
       });
-      // 手動運用パネルを展開し、運営担当が URL を確定するまで待つ
+      // 手動運用パネルを展開し、運営担当が URL＋scriptId を確定するまで待つ
       let manualGasUrl = '';
+      let manualScriptId = '';
       let urlValidated = false;
       while (!urlValidated) {
-        manualGasUrl = await waitForManualGasUrl(r6prep);
-        // 疎通テスト（registerUserGasUrl）
+        // 2026-08-28：{url, scriptId} オブジェクトを受け取る
+        const manualPayload = await waitForManualGasUrl(r6prep);
+        manualGasUrl = manualPayload.url || '';
+        manualScriptId = manualPayload.scriptId || '';
+        // 疎通テスト（registerUserGasUrl）＋ scriptId 指定で共有ドライブへ自動移動
         let pingRes;
         try {
           pingRes = await window.uzAdmin.callMasterGas('registerUserGasUrl', {
             clientId: Step7Progress.clientId,
-            gasUrl:   manualGasUrl
+            gasUrl:   manualGasUrl,
+            scriptId: manualScriptId
           });
         } catch (pingErr) {
           showManualGasErrorAndRetry('疎通テストの呼出でエラー：' + String(pingErr.message || pingErr));
@@ -1506,7 +1530,12 @@
           showManualGasErrorAndRetry('疎通テスト失敗：' + msg + '。URL を再確認してください。');
           continue;
         }
-        // 検証成功
+        // 検証成功（scriptMove の結果も進捗表示）
+        if (pingRes.scriptMove && pingRes.scriptMove.ok) {
+          step7SetStatus('gas', 'running', 'GAS ファイルを共有ドライブへ移動＋改名 完了');
+        } else if (pingRes.scriptMove && !pingRes.scriptMove.ok) {
+          console.warn('[Step7] scriptMove failed:', pingRes.scriptMove);
+        }
         urlValidated = true;
       }
       Step7Progress.gasUrl = manualGasUrl;
