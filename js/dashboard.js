@@ -60,6 +60,70 @@
     });
   }
 
+  // ---- 3層整理・システム版履歴パネル ---------------------------
+  // listSystemVersions を叩いて版履歴を新しい順に描画。currentVersion バッジも更新。
+  // 空データ時は誘導文（system_versions シート手動追記 or recordSystemVersion 実行）を出す。
+  function initSystemVersionsPanel() {
+    var currentEl = document.getElementById('sysver-current');
+    var loadingEl = document.getElementById('sysver-loading');
+    var errorEl = document.getElementById('sysver-error');
+    var emptyEl = document.getElementById('sysver-empty');
+    var tableEl = document.getElementById('sysver-table');
+    var tbodyEl = document.getElementById('sysver-tbody');
+    if (!tbodyEl) return;
+
+    function hideAll() {
+      if (loadingEl) loadingEl.hidden = true;
+      if (errorEl) errorEl.hidden = true;
+      if (emptyEl) emptyEl.hidden = true;
+      if (tableEl) tableEl.hidden = true;
+    }
+    function showError(msg) {
+      hideAll();
+      if (errorEl) { errorEl.textContent = msg; errorEl.hidden = false; }
+    }
+    function formatDate(iso) {
+      if (!iso) return '—';
+      var s = String(iso);
+      var m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+      if (m) return m[1] + '-' + m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5];
+      return s.slice(0, 16);
+    }
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    AdminApp.callMasterGas('listSystemVersions', { limit: 100 }).then(function (res) {
+      if (!res || res.ok === false) {
+        showError('版履歴取得失敗: ' + ((res && (res.message || res.code || res.error)) || 'unknown'));
+        return;
+      }
+      var versions = res.versions || [];
+      if (currentEl && res.currentVersion) currentEl.textContent = 'v' + res.currentVersion;
+
+      if (versions.length === 0) {
+        hideAll();
+        if (emptyEl) emptyEl.hidden = false;
+        return;
+      }
+
+      var rows = versions.map(function (v) {
+        return '<tr>' +
+          '<td class="sysver-version">v' + escapeHtml(v.version) + '</td>' +
+          '<td class="sysver-date">' + escapeHtml(formatDate(v.releasedAt)) + '</td>' +
+          '<td>' + escapeHtml(v.summary || '—') + '</td>' +
+          '<td class="sysver-notes">' + escapeHtml(v.notes || '') + '</td>' +
+        '</tr>';
+      }).join('');
+      tbodyEl.innerHTML = rows;
+      hideAll();
+      if (tableEl) tableEl.hidden = false;
+    }).catch(function (err) {
+      showError('版履歴取得失敗: ' + ((err && err.message) || String(err)));
+    });
+  }
+
   // ---- ログアウト -----------------------------------------------
   function initLogoutButton() {
     var btn = document.getElementById('logout-btn');
@@ -630,6 +694,7 @@
   onReady(function () {
     initEnvInfo();
     initGasVersionFetch();
+    initSystemVersionsPanel();
     initLogoutButton();
     initConnectionTest();
     initClientsList();

@@ -385,6 +385,63 @@
     .deadline-notice__store { font-weight: 600; min-width: 160px; }
     .deadline-notice__days { color: #c0392b; font-weight: 700; font-variant-numeric: tabular-nums; }
     .deadline-notice__date { color: #777; font-family: "SFMono-Regular", Menlo, Consolas, monospace; }
+
+    /* 3層整理・システム版履歴パネル */
+    .sysver-card { padding: 0; overflow: hidden; }
+    .sysver-card details > summary {
+      list-style: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 14px 20px;
+      background: #f6f8fc; border-bottom: 1px solid transparent;
+      transition: background 0.15s;
+    }
+    .sysver-card details[open] > summary { border-bottom-color: #d9dee8; background: #eef2f9; }
+    .sysver-card details > summary:hover { background: #ecf1f8; }
+    .sysver-card details > summary::-webkit-details-marker { display: none; }
+    .sysver-card details > summary::before {
+      content: '▶'; font-size: 10px; color: #667; margin-right: 4px;
+      transition: transform 0.15s;
+    }
+    .sysver-card details[open] > summary::before { content: '▼'; }
+    .sysver-current {
+      display: inline-block; margin-left: 8px; padding: 2px 8px;
+      background: #0B1842; color: #fff; border-radius: 10px;
+      font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+    }
+    .sysver-hint { font-size: 11px; color: #667; }
+    .sysver-body { padding: 12px 20px 18px; }
+    .sysver-loading, .sysver-empty { color: #667; font-size: 12px; padding: 8px 0; }
+    .sysver-error {
+      color: #c0392b; font-size: 12px; padding: 8px 12px;
+      background: #fdecea; border-radius: 6px;
+    }
+    .sysver-empty__hint { font-size: 11px; color: #889; margin-top: 4px; }
+    .sysver-empty__hint code {
+      background: #eef; padding: 1px 5px; border-radius: 3px;
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+    .sysver-table {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+    }
+    .sysver-table th, .sysver-table td {
+      padding: 6px 10px; text-align: left; border-bottom: 1px solid #e5e9f0;
+      vertical-align: top;
+    }
+    .sysver-table th {
+      background: #f7f9fc; font-weight: 700; color: #445; font-size: 11px;
+      letter-spacing: 0.03em;
+    }
+    .sysver-table td.sysver-version {
+      font-weight: 700; font-variant-numeric: tabular-nums;
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+    .sysver-table td.sysver-date {
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace; color: #667;
+      white-space: nowrap;
+    }
+    .sysver-table td.sysver-notes {
+      color: #556; white-space: pre-wrap; font-size: 11px;
+    }
   </style>
 </head>
 <body>
@@ -429,6 +486,37 @@
       <p class="deadline-notice__title">⚠ 契約期限が近い店舗（60日以内）</p>
       <div id="deadline-list"></div>
     </div>
+
+    <!-- 3層整理・①TOP版履歴（system_versions）
+         各PWA発行日時（clients.createdAt・下の登録日時列）と照合して
+         「その店に何が積まれているか」を追う。展開式で邪魔にならない配置。 -->
+    <section class="card sysver-card" aria-labelledby="sysver-card-title">
+      <details id="sysver-details">
+        <summary class="sysver-summary">
+          <span class="card__title" id="sysver-card-title">システム版履歴 <span class="sysver-current" id="sysver-current">v—</span></span>
+          <span class="sysver-hint">各PWAの登録日時と照合＝その店に積まれている版が分かる</span>
+        </summary>
+        <div class="sysver-body">
+          <div class="sysver-loading" id="sysver-loading">読み込み中…</div>
+          <div class="sysver-error" id="sysver-error" hidden></div>
+          <div class="sysver-empty" id="sysver-empty" hidden>
+            <p>まだ版履歴が記録されていません。</p>
+            <p class="sysver-empty__hint">マスタSS の <code>system_versions</code> シートに手動追記、または出口Cで <code>recordSystemVersion</code> を実行してください。</p>
+          </div>
+          <table class="sysver-table" id="sysver-table" hidden>
+            <thead>
+              <tr>
+                <th style="width:12%">版数</th>
+                <th style="width:20%">リリース日時</th>
+                <th style="width:30%">要約</th>
+                <th>詳細</th>
+              </tr>
+            </thead>
+            <tbody id="sysver-tbody"></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
 
     <section class="card" aria-labelledby="users-card-title">
       <div class="card__header">
