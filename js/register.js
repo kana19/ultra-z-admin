@@ -1100,13 +1100,13 @@
           '<li class="manual-gas-step">' +
             '<div class="manual-gas-step-title">⑥ ウェブアプリURL と プロジェクトID を貼り付けて登録</div>' +
             '<p class="manual-gas-note">' +
-              'デプロイ完了画面の「ウェブアプリ URL」（<code>https://script.google.com/macros/s/.../exec</code>）と、Apps Script エディタのアドレスバーの <code>projects/</code> の後ろの部分（プロジェクトID・例：<code>1XuVxH76uEuce0S40d9iZ2qqXQ-eOICPaZ0K7Mdi-nEKth9QSoZIHp8wB</code>）をコピーして下に貼付：' +
+              'デプロイ完了画面の「ウェブアプリ URL」（<code>https://script.google.com/macros/s/.../exec</code>）と、Apps Script エディタのアドレスバー <code>https://script.google.com/home/projects/<b>{ここ}</b>/edit</code> の <code>projects/</code> と <code>/edit</code> の間（プロジェクトID・<b>/edit は含めない</b>・例：<code>1XuVxH76uEuce0S40d9iZ2qqXQ-eOICPaZ0K7Mdi-nEKth9QSoZIHp8wB</code>）をコピーして下に貼付：' +
             '</p>' +
             '<div class="manual-gas-url-form" style="display:flex;flex-direction:column;gap:8px;">' +
               '<input type="text" id="manual-gas-url-input" class="manual-gas-url-input" ' +
                 'placeholder="ウェブアプリ URL（https://script.google.com/macros/s/AKfycb.../exec）">' +
               '<input type="text" id="manual-gas-scriptid-input" class="manual-gas-url-input" ' +
-                'placeholder="プロジェクトID（Apps Script エディタ URL の projects/ の後ろ）">' +
+                'placeholder="プロジェクトID（projects/ と /edit の間・/edit は含めない）">' +
               '<button type="button" class="btn-primary" id="manual-gas-submit-btn">URL＋プロジェクトID を登録</button>' +
             '</div>' +
             '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
@@ -1192,7 +1192,7 @@
         // scriptId 形式検証（任意・空文字も許容）
         if (scriptId && !/^[A-Za-z0-9_-]{20,}$/.test(scriptId)) {
           if (errorEl) {
-            errorEl.textContent = 'プロジェクトID の形式が正しくありません。Apps Script エディタ URL の projects/ 直後の英数字＋ハイフン列（20文字以上）を貼付してください。';
+            errorEl.textContent = 'プロジェクトID の形式が正しくありません。Apps Script エディタ URL の projects/ と /edit の間の英数字＋ハイフン列（20文字以上・/edit は含めない）を貼付してください。';
             errorEl.hidden = false;
           }
           return;
