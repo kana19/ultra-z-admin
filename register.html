@@ -37,6 +37,24 @@
       <h2 class="step-heading">Step 1：基本情報</h2>
       <p class="step-help">契約者・店舗・契約の基本情報を入力します。マスタGAS の clients シート / ユーザーSS settings に投入される項目です。</p>
 
+      <!-- 発行モード選択（2026-08-28・→ 3層整理・埋め忘れ防止）
+           新規発行：通常の新規SS作成モード
+           アップデート発行：既存店の spreadsheetId を再利用し、新PWA/新GAS/新cardのみ発行
+           アップデート発行選択時のみ Step 2 の既存SS ID欄が現れる＋必須化される -->
+      <div class="form-row issue-mode-row" style="padding:14px 16px;border:2px solid #0B1842;border-radius:10px;background:#f6f8fc;">
+        <label style="font-weight:700;color:#0B1842;margin-bottom:8px;display:block;">発行モード <span class="required">*</span></label>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;padding:8px 12px;border:1px solid #d9dee8;border-radius:6px;background:#fff;flex:1;min-width:280px;">
+            <input type="radio" name="f1-issue-mode" value="new" checked style="margin-top:3px;">
+            <span style="font-size:13px;line-height:1.5;"><strong>新規発行</strong>（初めての顧客・新規SS作成）<br><span style="color:#667;">通常の登録。SS・GAS・PWA・納品カードを一式生成する。</span></span>
+          </label>
+          <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;padding:8px 12px;border:1px solid #d9dee8;border-radius:6px;background:#fff;flex:1;min-width:280px;">
+            <input type="radio" name="f1-issue-mode" value="update" style="margin-top:3px;">
+            <span style="font-size:13px;line-height:1.5;"><strong>アップデート発行</strong>（既存店のPWA更新・既存SS紐付け）<br><span style="color:#667;">既存店の spreadsheetId を再利用し、新PWA・新GAS・新納品カードのみ発行。既存データは保全。Step 2 で既存SS IDを指定。</span></span>
+          </label>
+        </div>
+      </div>
+
       <div class="form-row">
         <label>契約者名（事業者名）<span class="required">*</span></label>
         <input type="text" id="f1-contractor-name" maxlength="100">
@@ -150,17 +168,17 @@
         </label>
       </div>
 
-      <!-- 既存SS 再利用モード（2026-08-27・→ 金光指示「既存PWAアップデート＝新規PWA＋既存SS紐付け」） -->
-      <div style="margin-top:16px;padding:16px;border:1px solid #d9dee8;border-radius:10px;background:#fff8ec;">
-        <div style="font-size:13px;font-weight:700;color:#664;margin-bottom:10px;">既存SS 再利用（アップデート運用）</div>
+      <!-- 既存SS 再利用モード（2026-08-27／2026-08-28 UX改修：Step1発行モード連動）
+           発行モード＝アップデート発行のときのみ表示＆必須化。新規発行時は非表示＝埋め忘れ・誤埋め両方を構造で防ぐ。 -->
+      <div id="f2-reuse-panel" hidden style="margin-top:16px;padding:16px;border:2px solid #b8860b;border-radius:10px;background:#fff8ec;">
+        <div style="font-size:13px;font-weight:700;color:#8a6d00;margin-bottom:10px;">🔗 既存SS 紐付け（アップデート発行モード・必須）</div>
         <p style="font-size:12px;color:#665;margin:0 0 10px;line-height:1.5;">
-          既存店の PWA をアップデートしたい時は、ここに既存の spreadsheetId を指定します。<br>
-          指定時は新規SS を作らず、既存SS に対して suppliers シート生成・B8/B9 初期化・masterQuota 拡張のみ実行します（既存データは保全）。<br>
-          空欄なら通常通り新規SS を作成します。
+          既存店の spreadsheetId を指定してください。<b>新規SS は作りません</b>。既存SS に対して suppliers シート生成・B8/B9 初期化・masterQuota 拡張のみ実行し、<b>既存データ（売上・コスト・attendance・products・customers 等）は保全</b>します。<br>
+          <b>取得方法</b>：既存店のスプレッドシートを開き、URL <code>https://docs.google.com/spreadsheets/d/<b>{ここ}</b>/edit</code> の <code>d/</code> と <code>/edit</code> の間の文字列をコピー。
         </p>
         <label style="display:flex;flex-direction:column;gap:6px;">
-          <span style="font-size:12px;color:#556;">既存 spreadsheetId（任意・空欄で新規作成）</span>
-          <input type="text" id="f2-reuse-ssid" placeholder="例：1BAgtGMOuoDpcViVIQ_pkjODhMXAFeA8w" style="padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-family:monospace;font-size:12px;">
+          <span style="font-size:12px;color:#556;">既存 spreadsheetId <span class="required">*</span></span>
+          <input type="text" id="f2-reuse-ssid" placeholder="例：1BAgtGMOuoDpcViVIQ_pkjODhMXAFeA8w" style="padding:8px 10px;border:1px solid #b8860b;border-radius:6px;font-family:monospace;font-size:12px;">
         </label>
       </div>
 

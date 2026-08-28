@@ -71,6 +71,9 @@
     maxReachedStep: 1, // 円クリックで戻れる最大Step（前進制御用）
     data: {
       step1: {
+        // 2026-08-28：発行モード（'new'=新規発行／'update'=アップデート発行＝既存SS紐付け）
+        // update時は Step2 の reuseSpreadsheetId 必須化＋Step7で reuse 分岐が発火する。
+        issueMode: 'new',
         contractorName: '',
         representativeName: '',
         address: '',
@@ -320,6 +323,12 @@
   // 主に state.dataの内容を form input に反映する（戻る時に値を保持）
   function paintStep1() {
     const s = RegisterState.data.step1;
+    // 発行モードラジオ復元（state → form）
+    const mode = s.issueMode || 'new';
+    document.querySelectorAll('input[name="f1-issue-mode"]').forEach(function (r) {
+      r.checked = (r.value === mode);
+    });
+    updateIssueModeVisibility();
     $('f1-contractor-name').value = s.contractorName;
     $('f1-representative-name').value = s.representativeName;
     $('f1-address').value = s.address;
@@ -378,6 +387,9 @@
   // ============ Step 別保存（form → state）／ バリデーション ============
   function readStep1AndValidate() {
     const s = RegisterState.data.step1;
+    // 発行モード（新規/アップデート）
+    const modeEl = document.querySelector('input[name="f1-issue-mode"]:checked');
+    s.issueMode = modeEl ? String(modeEl.value) : 'new';
     s.contractorName = $('f1-contractor-name').value.trim();
     s.representativeName = $('f1-representative-name').value.trim();
     s.address = $('f1-address').value.trim();
@@ -434,9 +446,26 @@
     const qr = $('f2-qr-proof'), sh = $('f2-shift-schedule');
     RegisterState.data.step2.qrProofEnabled       = isLeo && !!(qr && qr.checked);
     RegisterState.data.step2.shiftScheduleEnabled = isLeo && !!(sh && sh.checked);
-    // 既存SS 再利用モード（2026-08-27・→ 金光指示・空欄なら新規SS作成）
+    // 既存SS 再利用モード（2026-08-27／2026-08-28 UX改修：発行モード連動）
+    // 発行モード=update のときのみ reuseSpreadsheetId を有効化＋必須検証。
+    // new のときは強制で空文字化＝ Step2 の入力値が残っていても無視（誤埋め防止）。
     const reuseEl = $('f2-reuse-ssid');
-    RegisterState.data.step2.reuseSpreadsheetId = reuseEl ? String(reuseEl.value || '').trim() : '';
+    const rawReuse = reuseEl ? String(reuseEl.value || '').trim() : '';
+    const isUpdateMode = RegisterState.data.step1.issueMode === 'update';
+    if (isUpdateMode) {
+      if (!rawReuse) {
+        showStepError('step2-error', 'アップデート発行モードでは既存 spreadsheetId が必須です（Step 2 の「既存SS 紐付け」欄）');
+        return false;
+      }
+      // 形式検証（Google spreadsheetId は 44文字前後の英数字＋ _ ／ -）
+      if (!/^[A-Za-z0-9_-]{20,}$/.test(rawReuse)) {
+        showStepError('step2-error', '既存 spreadsheetId の形式が正しくありません。URL の d/ と /edit の間の英数字＋ハイフン列を貼付してください。');
+        return false;
+      }
+      RegisterState.data.step2.reuseSpreadsheetId = rawReuse;
+    } else {
+      RegisterState.data.step2.reuseSpreadsheetId = '';
+    }
     hideStepError('step2-error');
     return true;
   }
@@ -636,6 +665,17 @@
     const cross = isCloseNextDay($('f1-business-open').value, $('f1-business-close').value);
     badge.hidden = !cross;
     badge.style.display = cross ? 'inline-block' : 'none';
+  }
+  // 2026-08-28：Step1発行モード連動＝Step2「既存SS 紐付け」パネルの表示制御
+  //   update：パネル表示＋必須／new：パネル非表示＋入力値クリア＝埋め忘れ・誤埋めを構造で防ぐ
+  function updateIssueModeVisibility() {
+    const modeEl = document.querySelector('input[name="f1-issue-mode"]:checked');
+    const mode = modeEl ? String(modeEl.value) : 'new';
+    const panel = $('f2-reuse-panel');
+    const input = $('f2-reuse-ssid');
+    if (panel) panel.hidden = (mode !== 'update');
+    if (mode !== 'update' && input) input.value = '';
+    RegisterState.data.step1.issueMode = mode;
   }
   function recomputeContractEnd() {
     const dur = $('f1-contract-duration').value;
@@ -842,6 +882,7 @@
       '</table>';
     const html =
       section('Step 1：基本情報', 1, [
+        ['発行モード', s1.issueMode === 'update' ? '🔗 アップデート発行（既存SS紐付け・新PWA/新GAS/新cardのみ発行）' : '✨ 新規発行（新規SS作成・一式生成）'],
         ['契約者名', s1.contractorName],
         ['代表者名', s1.representativeName],
         ['住所', s1.address],
@@ -861,8 +902,10 @@
         ['段3 シフト登録', (s2.timecardCount >= 5 && s2.shiftScheduleEnabled) ? '✅ ON（shiftScheduleEnabled）' : '— OFF'],
         // 2026-08-27：アストラのUI改修＝勤怠系メニュー撤廃の初期化結果
         ['勤怠系メニュー（初期化）', s2.timecardCount >= 5 ? '✅ ON（attendance/clockin/payroll 全て true）' : '— OFF（アストラ想定＝勤怠系メニュー撤廃）'],
-        // 2026-08-27：既存SS 再利用モード
-        ['SS 方式', s2.reuseSpreadsheetId ? '既存SS 再利用（' + s2.reuseSpreadsheetId + '）' : '新規SS 作成']
+        // 2026-08-27／2026-08-28 UX改修：発行モード連動でSS方式が確定
+        ['SS 方式', s2.reuseSpreadsheetId
+          ? '🔗 既存SS 再利用（' + s2.reuseSpreadsheetId + '）＝アップデート発行'
+          : '✨ 新規SS 作成＝新規発行']
       ]) +
       section('Step 3：マスタ件数枠＋販管費設定', 3, [
         ['サービスマスタ枠数', s3.serviceMasterQuota + ' 件'],
@@ -1688,6 +1731,12 @@
     // Step 1：営業時間の翌日跨ぎ自動判定バッジ更新
     $('f1-business-open').addEventListener('change', updateNextDayBadge);
     $('f1-business-close').addEventListener('change', updateNextDayBadge);
+
+    // Step 1：発行モード（新規/アップデート）変更で Step 2 の既存SS紐付けパネル表示を切替
+    document.querySelectorAll('input[name="f1-issue-mode"]').forEach(function (r) {
+      r.addEventListener('change', updateIssueModeVisibility);
+    });
+    updateIssueModeVisibility();
 
     // Step 2：ラジオ変更でグレード更新
     document.querySelectorAll('input[name="f2-timecard"]').forEach(function (r) {

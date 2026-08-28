@@ -86,7 +86,7 @@
       // 通常エラー
       if (!clientRes.ok) { showError('クライアント情報取得失敗: ' + (clientRes.message || clientRes.code || clientRes.error || 'unknown')); return; }
       if (!settingsRes.ok) { showError('ユーザー設定取得失敗: ' + (settingsRes.message || settingsRes.code || settingsRes.error || 'unknown')); return; }
-      if (!logRes.ok) { showError('変更履歴取得失敗: ' + (logRes.message || logRes.code || logRes.error || 'unknown')); return; }
+      if (!logRes.ok) { showError('運営操作履歴取得失敗: ' + (logRes.message || logRes.code || logRes.error || 'unknown')); return; }
       // state 反映
       state.initialClient = clientRes.client;
       state.currentClient = JSON.parse(JSON.stringify(clientRes.client));
@@ -988,12 +988,12 @@
     state.currentClient.contractStatus = document.getElementById('f-contract-status').value;
   }
 
-  // ============ §9 変更履歴 ============
+  // ============ §9 運営操作履歴 ============
   function renderChangeLog() {
     const tbody = document.getElementById('change-log-table-body');
     tbody.innerHTML = '';
     if (!state.changeLog || state.changeLog.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="empty-row">変更履歴がありません</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-row">運営操作履歴がありません</td></tr>';
       return;
     }
     state.changeLog.forEach(function (log) {
@@ -1010,7 +1010,7 @@
     const res = await window.uzAdmin.callMasterGas('getChangeLog', { clientId: state.clientId, limit: 50 });
     if (window.uzAdmin.handleAuthError(res)) return;
     if (!res.ok) {
-      showToast('変更履歴の取得に失敗: ' + (res.message || res.code || res.error || 'unknown'), 'error');
+      showToast('運営操作履歴の取得に失敗: ' + (res.message || res.code || res.error || 'unknown'), 'error');
       return;
     }
     state.changeLog = res.logs || [];
@@ -1781,10 +1781,10 @@
     var terminateBtn = document.getElementById('btn-terminate');
     if (terminateBtn) terminateBtn.addEventListener('click', terminateClient);
 
-    // 変更履歴
+    // 運営操作履歴
     document.getElementById('btn-refresh-change-log').addEventListener('click', function () {
       refreshChangeLog();
-      showToast('変更履歴を更新しました', 'info');
+      showToast('運営操作履歴を更新しました', 'info');
     });
 
     // 最下部操作バー
