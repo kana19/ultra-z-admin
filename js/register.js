@@ -446,23 +446,19 @@
     const qr = $('f2-qr-proof'), sh = $('f2-shift-schedule');
     RegisterState.data.step2.qrProofEnabled       = isLeo && !!(qr && qr.checked);
     RegisterState.data.step2.shiftScheduleEnabled = isLeo && !!(sh && sh.checked);
-    // 既存SS 再利用モード（2026-08-27／2026-08-28 UX改修：発行モード連動）
-    // 発行モード=update のときのみ reuseSpreadsheetId を有効化＋必須検証。
-    // new のときは強制で空文字化＝ Step2 の入力値が残っていても無視（誤埋め防止）。
-    const reuseEl = $('f2-reuse-ssid');
-    const rawReuse = reuseEl ? String(reuseEl.value || '').trim() : '';
+    // 既存SS 再利用モード（2026-08-29：dropdown 単独運用へ整理）
+    // 発行モード=update のとき、dropdown で選択された既存店の sheetId を直接 state へ。
+    // 手動貼付欄は撤去済＝入力事故（¥0 表示の主因）を構造で防ぐ。
     const isUpdateMode = RegisterState.data.step1.issueMode === 'update';
     if (isUpdateMode) {
-      if (!rawReuse) {
-        showStepError('step2-error', 'アップデート発行モードでは既存 spreadsheetId が必須です（Step 2 の「既存SS 紐付け」欄）');
+      const select = $('f2-reuse-select');
+      const opt = select ? select.options[select.selectedIndex] : null;
+      const ssid = (opt && opt.dataset && opt.dataset.ssid) ? String(opt.dataset.ssid).trim() : '';
+      if (!ssid) {
+        showStepError('step2-error', 'アップデート発行モードでは「更新元の既存店」の選択が必須です');
         return false;
       }
-      // 形式検証（Google spreadsheetId は 44文字前後の英数字＋ _ ／ -）
-      if (!/^[A-Za-z0-9_-]{20,}$/.test(rawReuse)) {
-        showStepError('step2-error', '既存 spreadsheetId の形式が正しくありません。URL の d/ と /edit の間の英数字＋ハイフン列を貼付してください。');
-        return false;
-      }
-      RegisterState.data.step2.reuseSpreadsheetId = rawReuse;
+      RegisterState.data.step2.reuseSpreadsheetId = ssid;
     } else {
       RegisterState.data.step2.reuseSpreadsheetId = '';
     }
@@ -672,15 +668,11 @@
     const modeEl = document.querySelector('input[name="f1-issue-mode"]:checked');
     const mode = modeEl ? String(modeEl.value) : 'new';
     const panel = $('f2-reuse-panel');
-    const input = $('f2-reuse-ssid');
     const select = $('f2-reuse-select');
     if (panel) panel.hidden = (mode !== 'update');
-    if (mode !== 'update') {
-      if (input) input.value = '';
-      if (select) select.value = '';
-    }
+    if (mode !== 'update' && select) select.value = '';
     RegisterState.data.step1.issueMode = mode;
-    // 2026-08-29：アップデート発行選択時に既存店 dropdown を populate（手動貼付を廃止）
+    // 2026-08-29：アップデート発行選択時に既存店 dropdown を populate（唯一の入力手段）
     if (mode === 'update') { populateReuseSelect(); }
   }
 
@@ -690,7 +682,6 @@
   let _reuseClientsCache = null;
   async function populateReuseSelect() {
     const select = $('f2-reuse-select');
-    const input = $('f2-reuse-ssid');
     if (!select) return;
     if (_reuseClientsCache) { _renderReuseOptions(_reuseClientsCache); return; }
     select.innerHTML = '<option value="">— 既存店を取得中… —</option>';
@@ -698,38 +689,29 @@
       // fetchClientsList は AdminApp 側に公開されている（uzAdmin ではない・app.js L309）。
       const res = await window.AdminApp.fetchClientsList();
       if (!res || res.ok !== true || !Array.isArray(res.clients)) {
-        select.innerHTML = '<option value="">— 取得失敗（手動貼付をご利用ください）—</option>';
+        select.innerHTML = '<option value="">— 取得失敗（ページを再読み込みしてください）—</option>';
         return;
       }
       _reuseClientsCache = res.clients;
       _renderReuseOptions(_reuseClientsCache);
     } catch (e) {
-      select.innerHTML = '<option value="">— 通信エラー（手動貼付をご利用ください）—</option>';
-    }
-    // change で spreadsheetId を input へ反映（state 保存は Step 2 の validateStep2 が担当）
-    if (!select._changeBound) {
-      select.addEventListener('change', function () {
-        const opt = select.options[select.selectedIndex];
-        if (opt && opt.dataset && opt.dataset.ssid && input) {
-          input.value = opt.dataset.ssid;
-        }
-      });
-      select._changeBound = true;
+      select.innerHTML = '<option value="">— 通信エラー（ページを再読み込みしてください）—</option>';
     }
   }
   function _renderReuseOptions(clients) {
     const select = $('f2-reuse-select');
     if (!select) return;
-    // spreadsheetId が空の行は除外（稼働中で必ずSSがある想定・target_admin行やゴミ行を排除）
-    const rows = clients.filter(c => c && c.spreadsheetId && c.clientId && c.clientId !== 'target');
+    // 名簿(clients) のフィールド名は sheetId（master.gs CLIENTS_HEADERS L278・spreadsheetId ではない）。
+    // sheetId が空の行は除外（稼働中で必ずSSがある想定・target_admin 行やゴミ行を排除）。
+    const rows = clients.filter(c => c && c.sheetId && c.clientId && c.clientId !== 'target');
     if (rows.length === 0) {
       select.innerHTML = '<option value="">— 既存店がありません（新規発行モードをご利用ください）—</option>';
       return;
     }
-    // 名前が新しい順（＝登録が新しい順）で並べる
+    // 登録が新しい順（createdAt 降順）で並べる
     rows.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
     select.innerHTML = '<option value="">— 既存店を選択してください —</option>' +
-      rows.map(c => `<option value="${escapeHtml(c.clientId)}" data-ssid="${escapeHtml(c.spreadsheetId)}">${escapeHtml(c.storeName || '')}（${escapeHtml(c.clientId)}）</option>`).join('');
+      rows.map(c => `<option value="${escapeHtml(c.clientId)}" data-ssid="${escapeHtml(c.sheetId)}">${escapeHtml(c.storeName || '')}（${escapeHtml(c.clientId)}）</option>`).join('');
   }
   function recomputeContractEnd() {
     const dur = $('f1-contract-duration').value;

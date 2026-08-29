@@ -176,27 +176,12 @@
           既存店の spreadsheetId を指定してください。<b>新規SS は作りません</b>。既存SS に対して suppliers シート生成・B8/B9 初期化・masterQuota 拡張のみ実行し、<b>既存データ（売上・コスト・attendance・products・customers 等）は保全</b>します。<br>
           <b>v0.9.5 以降</b>：既存SS は <code>&lt;新clientId&gt;-data</code> にrename＋<code>uz-個別データ/&lt;新clientId&gt;/</code> に自動移動され、旧フォルダは空になります（掃除は旧フォルダ丸ごと削除の1操作で完結）。
         </p>
-        <!-- 2026-08-29：既存店 dropdown 選択 UX（手動貼付を廃止・入力事故を構造で防ぐ） -->
-        <label style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+        <!-- 2026-08-29：既存店 dropdown 選択（唯一の手段・入力事故ゼロ） -->
+        <label style="display:flex;flex-direction:column;gap:6px;">
           <span style="font-size:12px;color:#556;font-weight:600;">更新元の既存店を選択 <span class="required">*</span></span>
           <select id="f2-reuse-select" style="padding:8px 10px;border:1px solid #b8860b;border-radius:6px;font-size:13px;background:#fff;">
             <option value="">— 既存店を選択してください —</option>
           </select>
-          <span style="font-size:11px;color:#889;">選択すると下の spreadsheetId が自動で入ります。dropdown に出ない場合は下の欄に手動で貼付。</span>
-        </label>
-        <!-- 2026-08-29：uz-個別データフォルダの誘導ボタンは常時表示（dropdown 補助＋成果物の目視確認用） -->
-        <div style="display:flex;gap:8px;margin:8px 0 10px;flex-wrap:wrap;align-items:center;">
-          <a href="https://drive.google.com/drive/folders/1BAgtGMOuoDpcViVlQ_pkjODhMXAFeA8w"
-             target="_blank" rel="noopener"
-             style="display:inline-block;padding:6px 12px;background:#b8860b;color:#fff;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;">
-            📂 uz-個別データ を開く（既存店フォルダを確認）
-          </a>
-          <span style="font-size:11px;color:#889;">→ 既存店の 3点セット（<code>-data / -gas / -card</code>）配置確認用。手動貼付時は該当 <code>-data</code> を開いて URL コピー。</span>
-        </div>
-        <!-- 手動貼付欄（dropdown で選べない特殊ケース用・常時表示） -->
-        <label style="display:flex;flex-direction:column;gap:6px;">
-          <span style="font-size:11px;color:#667;">📋 手動で spreadsheetId を貼付する場合（fallback）</span>
-          <input type="text" id="f2-reuse-ssid" placeholder="例：1BAgtGMOuoDpcViVlQ_pkjODhMXAFeA8w" style="padding:8px 10px;border:1px solid #b8860b;border-radius:6px;font-family:monospace;font-size:12px;">
         </label>
       </div>
 
