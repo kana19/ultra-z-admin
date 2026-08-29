@@ -710,9 +710,15 @@
     if (!select) return;
     // 名簿(clients) のフィールド名は sheetId（master.gs CLIENTS_HEADERS L278・spreadsheetId ではない）。
     // sheetId が空の行は除外（稼働中で必ずSSがある想定・target_admin 行やゴミ行を排除）。
-    const rows = clients.filter(c => c && c.sheetId && c.clientId && c.clientId !== 'target');
+    // 2026-08-29：削除済・解約済を dropdown から除外＝稼働中のみ（contractStatus が空 or '稼働中' or 'active'）。
+    //   ダッシュボードの「稼働中のみ」フィルタと対称。運営が誤って解約店をアップデート対象に選ぶ事故を防ぐ。
+    const isActive = (c) => {
+      const s = String((c && c.contractStatus) || '').trim().toLowerCase();
+      return s === '' || s === '稼働中' || s === 'active';
+    };
+    const rows = clients.filter(c => c && c.sheetId && c.clientId && c.clientId !== 'target' && isActive(c));
     if (rows.length === 0) {
-      select.innerHTML = '<option value="">— 既存店がありません（新規発行モードをご利用ください）—</option>';
+      select.innerHTML = '<option value="">— 稼働中の既存店がありません（新規発行モードをご利用ください）—</option>';
       return;
     }
     // 登録が新しい順（createdAt 降順）で並べる
