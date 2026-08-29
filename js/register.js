@@ -695,7 +695,8 @@
     if (_reuseClientsCache) { _renderReuseOptions(_reuseClientsCache); return; }
     select.innerHTML = '<option value="">— 既存店を取得中… —</option>';
     try {
-      const res = await window.uzAdmin.fetchClientsList();
+      // fetchClientsList は AdminApp 側に公開されている（uzAdmin ではない・app.js L309）。
+      const res = await window.AdminApp.fetchClientsList();
       if (!res || res.ok !== true || !Array.isArray(res.clients)) {
         select.innerHTML = '<option value="">— 取得失敗（手動貼付をご利用ください）—</option>';
         return;

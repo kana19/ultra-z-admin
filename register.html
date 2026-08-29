@@ -83,8 +83,8 @@
       </div>
       <div class="form-row">
         <label>店舗コード（任意・確定後変更不可）</label>
-        <input type="text" id="f1-client-code" maxlength="20" placeholder="osafune（→ uz-osafune）">
-        <p class="form-note">repo/URL/Drive/名簿に使う識別子 uz-□□□ の □□□ 部分。半角英数字と - ・2〜20字（例 osafune）。空欄なら自動発行。正式店名は上の「店舗名」（日本語）。</p>
+        <input type="text" id="f1-client-code" maxlength="20" placeholder="sample01（→ uz-sample01）">
+        <p class="form-note">repo/URL/Drive/名簿に使う識別子 uz-□□□ の □□□ 部分。半角英数字と - ・2〜20字（例 sample01）。空欄なら自動発行。<code>uz-</code> プレフィックスは他システム（ウルトラ○○くん）と資源を混同しないための名前空間マーカー（命名規則07）＝入力不要・自動付与。正式店名は上の「店舗名」（日本語）。</p>
       </div>
       <div class="form-row">
         <label>営業時間</label>
@@ -184,23 +184,20 @@
           </select>
           <span style="font-size:11px;color:#889;">選択すると下の spreadsheetId が自動で入ります。dropdown に出ない場合は下の欄に手動で貼付。</span>
         </label>
-        <!-- 2026-08-29：手動貼付は fallback として温存＝dropdown で出ない特殊ケース用 -->
-        <details style="margin-top:8px;">
-          <summary style="cursor:pointer;font-size:11px;color:#667;">🔧 手動で spreadsheetId を貼付する（fallback）</summary>
-          <div style="margin-top:8px;">
-            <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-              <a href="https://drive.google.com/drive/folders/1BAgtGMOuoDpcViVlQ_pkjODhMXAFeA8w"
-                 target="_blank" rel="noopener"
-                 style="display:inline-block;padding:4px 10px;background:#b8860b;color:#fff;text-decoration:none;border-radius:4px;font-size:11px;">
-                📂 uz-個別データ を開く
-              </a>
-              <span style="font-size:10px;color:#889;align-self:center;">
-                → <code>&lt;clientId&gt;-data</code> を開いて URL の <code>d/</code>〜<code>/edit</code> 間をコピー
-              </span>
-            </div>
-            <input type="text" id="f2-reuse-ssid" placeholder="例：1BAgtGMOuoDpcViVlQ_pkjODhMXAFeA8w" style="width:100%;padding:8px 10px;border:1px solid #b8860b;border-radius:6px;font-family:monospace;font-size:12px;box-sizing:border-box;">
-          </div>
-        </details>
+        <!-- 2026-08-29：uz-個別データフォルダの誘導ボタンは常時表示（dropdown 補助＋成果物の目視確認用） -->
+        <div style="display:flex;gap:8px;margin:8px 0 10px;flex-wrap:wrap;align-items:center;">
+          <a href="https://drive.google.com/drive/folders/1BAgtGMOuoDpcViVlQ_pkjODhMXAFeA8w"
+             target="_blank" rel="noopener"
+             style="display:inline-block;padding:6px 12px;background:#b8860b;color:#fff;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;">
+            📂 uz-個別データ を開く（既存店フォルダを確認）
+          </a>
+          <span style="font-size:11px;color:#889;">→ 既存店の 3点セット（<code>-data / -gas / -card</code>）配置確認用。手動貼付時は該当 <code>-data</code> を開いて URL コピー。</span>
+        </div>
+        <!-- 手動貼付欄（dropdown で選べない特殊ケース用・常時表示） -->
+        <label style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:11px;color:#667;">📋 手動で spreadsheetId を貼付する場合（fallback）</span>
+          <input type="text" id="f2-reuse-ssid" placeholder="例：1BAgtGMOuoDpcViVlQ_pkjODhMXAFeA8w" style="padding:8px 10px;border:1px solid #b8860b;border-radius:6px;font-family:monospace;font-size:12px;">
+        </label>
       </div>
 
       <div class="step-error" id="step2-error" hidden></div>
