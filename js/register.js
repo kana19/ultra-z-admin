@@ -1141,19 +1141,10 @@
         '</p>' +
         '<ol class="manual-gas-steps">' +
           '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">① Apps Script エディタと uz-個別データ フォルダを別タブで開く</div>' +
-            '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-              '<a class="btn-secondary manual-gas-btn" href="' + escapeHtml(editorUrl) + '" target="_blank" rel="noopener">' +
-                '🔗 Apps Script エディタを開く' +
-              '</a>' +
-              // 2026-08-29：金光指示＝uz-個別データフォルダを直接開ける導線（デプロイ後の3点セット確認・SS配置確認用）
-              '<a class="btn-secondary manual-gas-btn" href="https://drive.google.com/drive/folders/1BAgtGMOuoDpcViVlQ_pkjODhMXAFeA8w" target="_blank" rel="noopener">' +
-                '📂 uz-個別データ を開く' +
-              '</a>' +
-            '</div>' +
-            '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
-              '※ デプロイ後、新clientId フォルダに <code>-data / -gas / -card</code> の3点セットが揃うのを目視できます（v0.9.5 のSS自動rename+moveで旧フォルダは空になる）。' +
-            '</p>' +
+            '<div class="manual-gas-step-title">① Apps Script エディタを別タブで開く</div>' +
+            '<a class="btn-secondary manual-gas-btn" href="' + escapeHtml(editorUrl) + '" target="_blank" rel="noopener">' +
+              '🔗 Apps Script エディタを開く' +
+            '</a>' +
           '</li>' +
           '<li class="manual-gas-step">' +
             '<div class="manual-gas-step-title">② 新しいプロジェクトを作成</div>' +
@@ -1201,20 +1192,15 @@
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">⑥ ウェブアプリURL と プロジェクトID を貼り付けて登録</div>' +
+            '<div class="manual-gas-step-title">⑥ ウェブアプリURL を貼り付けて登録</div>' +
             '<p class="manual-gas-note">' +
-              'デプロイ完了画面の「ウェブアプリ URL」（<code>https://script.google.com/macros/s/.../exec</code>）と、Apps Script エディタのアドレスバー <code>https://script.google.com/home/projects/<b>{ここ}</b>/edit</code> の <code>projects/</code> と <code>/edit</code> の間（プロジェクトID・<b>/edit は含めない</b>・例：<code>1XuVxH76uEuce0S40d9iZ2qqXQ-eOICPaZ0K7Mdi-nEKth9QSoZIHp8wB</code>）をコピーして下に貼付：' +
+              'デプロイ完了画面の「ウェブアプリ URL」（<code>https://script.google.com/macros/s/.../exec</code>）をコピーして下に貼付：' +
             '</p>' +
             '<div class="manual-gas-url-form" style="display:flex;flex-direction:column;gap:8px;">' +
               '<input type="text" id="manual-gas-url-input" class="manual-gas-url-input" ' +
                 'placeholder="ウェブアプリ URL（https://script.google.com/macros/s/AKfycb.../exec）">' +
-              '<input type="text" id="manual-gas-scriptid-input" class="manual-gas-url-input" ' +
-                'placeholder="プロジェクトID（projects/ と /edit の間・/edit は含めない）">' +
-              '<button type="button" class="btn-primary" id="manual-gas-submit-btn">URL＋プロジェクトID を登録</button>' +
+              '<button type="button" class="btn-primary" id="manual-gas-submit-btn">URL を登録</button>' +
             '</div>' +
-            '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
-              '※ プロジェクトID を指定すると、Apps Script ファイルが共有ドライブ uz-個別データ/&lt;clientId&gt;/&lt;clientId&gt;-gas に自動移動＋改名されます（07_命名・保存規則）。空欄でも登録は可能ですが、ファイルはマイドライブに残ります。' +
-            '</p>' +
             '<p class="manual-gas-error" id="manual-gas-error" hidden></p>' +
           '</li>' +
         '</ol>' +
@@ -1288,8 +1274,6 @@
     if (submitBtn) {
       submitBtn.addEventListener('click', function () {
         const url = urlInput ? String(urlInput.value || '').trim() : '';
-        const scriptIdInput = document.getElementById('manual-gas-scriptid-input');
-        const scriptId = scriptIdInput ? String(scriptIdInput.value || '').trim() : '';
         if (!url) {
           if (errorEl) {
             errorEl.textContent = 'URL を入力してください。';
@@ -1304,21 +1288,12 @@
           }
           return;
         }
-        // scriptId 形式検証（任意・空文字も許容）
-        if (scriptId && !/^[A-Za-z0-9_-]{20,}$/.test(scriptId)) {
-          if (errorEl) {
-            errorEl.textContent = 'プロジェクトID の形式が正しくありません。Apps Script エディタ URL の projects/ と /edit の間の英数字＋ハイフン列（20文字以上・/edit は含めない）を貼付してください。';
-            errorEl.hidden = false;
-          }
-          return;
-        }
         if (errorEl) errorEl.hidden = true;
         submitBtn.disabled = true;
         if (urlInput) urlInput.disabled = true;
-        if (scriptIdInput) scriptIdInput.disabled = true;
+        // 2026-08-29：projectId 廃止＝scriptId は常に空文字（GAS は運営のマイドライブに残置＝shared drive への自動移動なし）。
         if (typeof ManualGasState.onUrlConfirmed === 'function') {
-          // 2026-08-28：URL と scriptId をオブジェクトで返す（後方互換のため url 文字列も維持）
-          ManualGasState.onUrlConfirmed({ url: url, scriptId: scriptId });
+          ManualGasState.onUrlConfirmed({ url: url, scriptId: '' });
         }
       });
     }
