@@ -174,12 +174,33 @@
         <div style="font-size:13px;font-weight:700;color:#8a6d00;margin-bottom:10px;">🔗 既存SS 紐付け（アップデート発行モード・必須）</div>
         <p style="font-size:12px;color:#665;margin:0 0 10px;line-height:1.5;">
           既存店の spreadsheetId を指定してください。<b>新規SS は作りません</b>。既存SS に対して suppliers シート生成・B8/B9 初期化・masterQuota 拡張のみ実行し、<b>既存データ（売上・コスト・attendance・products・customers 等）は保全</b>します。<br>
-          <b>取得方法</b>：既存店のスプレッドシートを開き、URL <code>https://docs.google.com/spreadsheets/d/<b>{ここ}</b>/edit</code> の <code>d/</code> と <code>/edit</code> の間の文字列をコピー。
+          <b>v0.9.5 以降</b>：既存SS は <code>&lt;新clientId&gt;-data</code> にrename＋<code>uz-個別データ/&lt;新clientId&gt;/</code> に自動移動され、旧フォルダは空になります（掃除は旧フォルダ丸ごと削除の1操作で完結）。
         </p>
-        <label style="display:flex;flex-direction:column;gap:6px;">
-          <span style="font-size:12px;color:#556;">既存 spreadsheetId <span class="required">*</span></span>
-          <input type="text" id="f2-reuse-ssid" placeholder="例：1BAgtGMOuoDpcViVIQ_pkjODhMXAFeA8w" style="padding:8px 10px;border:1px solid #b8860b;border-radius:6px;font-family:monospace;font-size:12px;">
+        <!-- 2026-08-29：既存店 dropdown 選択 UX（手動貼付を廃止・入力事故を構造で防ぐ） -->
+        <label style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+          <span style="font-size:12px;color:#556;font-weight:600;">更新元の既存店を選択 <span class="required">*</span></span>
+          <select id="f2-reuse-select" style="padding:8px 10px;border:1px solid #b8860b;border-radius:6px;font-size:13px;background:#fff;">
+            <option value="">— 既存店を選択してください —</option>
+          </select>
+          <span style="font-size:11px;color:#889;">選択すると下の spreadsheetId が自動で入ります。dropdown に出ない場合は下の欄に手動で貼付。</span>
         </label>
+        <!-- 2026-08-29：手動貼付は fallback として温存＝dropdown で出ない特殊ケース用 -->
+        <details style="margin-top:8px;">
+          <summary style="cursor:pointer;font-size:11px;color:#667;">🔧 手動で spreadsheetId を貼付する（fallback）</summary>
+          <div style="margin-top:8px;">
+            <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+              <a href="https://drive.google.com/drive/folders/1BAgtGMOuoDpcViVlQ_pkjODhMXAFeA8w"
+                 target="_blank" rel="noopener"
+                 style="display:inline-block;padding:4px 10px;background:#b8860b;color:#fff;text-decoration:none;border-radius:4px;font-size:11px;">
+                📂 uz-個別データ を開く
+              </a>
+              <span style="font-size:10px;color:#889;align-self:center;">
+                → <code>&lt;clientId&gt;-data</code> を開いて URL の <code>d/</code>〜<code>/edit</code> 間をコピー
+              </span>
+            </div>
+            <input type="text" id="f2-reuse-ssid" placeholder="例：1BAgtGMOuoDpcViVlQ_pkjODhMXAFeA8w" style="width:100%;padding:8px 10px;border:1px solid #b8860b;border-radius:6px;font-family:monospace;font-size:12px;box-sizing:border-box;">
+          </div>
+        </details>
       </div>
 
       <div class="step-error" id="step2-error" hidden></div>

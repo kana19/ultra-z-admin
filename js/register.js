@@ -673,9 +673,62 @@
     const mode = modeEl ? String(modeEl.value) : 'new';
     const panel = $('f2-reuse-panel');
     const input = $('f2-reuse-ssid');
+    const select = $('f2-reuse-select');
     if (panel) panel.hidden = (mode !== 'update');
-    if (mode !== 'update' && input) input.value = '';
+    if (mode !== 'update') {
+      if (input) input.value = '';
+      if (select) select.value = '';
+    }
     RegisterState.data.step1.issueMode = mode;
+    // 2026-08-29：アップデート発行選択時に既存店 dropdown を populate（手動貼付を廃止）
+    if (mode === 'update') { populateReuseSelect(); }
+  }
+
+  // 2026-08-29：既存店 dropdown populate＝listClients で稼働中の店を全部拾って select に流し込む。
+  //   dropdown で選ぶと spreadsheetId が自動で入る＝手動貼付の入力事故（¥0 表示の原因）を構造で防ぐ。
+  //   fetch は初回のみ。以後は cache から即描画。change イベントで input へ反映。
+  let _reuseClientsCache = null;
+  async function populateReuseSelect() {
+    const select = $('f2-reuse-select');
+    const input = $('f2-reuse-ssid');
+    if (!select) return;
+    if (_reuseClientsCache) { _renderReuseOptions(_reuseClientsCache); return; }
+    select.innerHTML = '<option value="">— 既存店を取得中… —</option>';
+    try {
+      const res = await window.uzAdmin.fetchClientsList();
+      if (!res || res.ok !== true || !Array.isArray(res.clients)) {
+        select.innerHTML = '<option value="">— 取得失敗（手動貼付をご利用ください）—</option>';
+        return;
+      }
+      _reuseClientsCache = res.clients;
+      _renderReuseOptions(_reuseClientsCache);
+    } catch (e) {
+      select.innerHTML = '<option value="">— 通信エラー（手動貼付をご利用ください）—</option>';
+    }
+    // change で spreadsheetId を input へ反映（state 保存は Step 2 の validateStep2 が担当）
+    if (!select._changeBound) {
+      select.addEventListener('change', function () {
+        const opt = select.options[select.selectedIndex];
+        if (opt && opt.dataset && opt.dataset.ssid && input) {
+          input.value = opt.dataset.ssid;
+        }
+      });
+      select._changeBound = true;
+    }
+  }
+  function _renderReuseOptions(clients) {
+    const select = $('f2-reuse-select');
+    if (!select) return;
+    // spreadsheetId が空の行は除外（稼働中で必ずSSがある想定・target_admin行やゴミ行を排除）
+    const rows = clients.filter(c => c && c.spreadsheetId && c.clientId && c.clientId !== 'target');
+    if (rows.length === 0) {
+      select.innerHTML = '<option value="">— 既存店がありません（新規発行モードをご利用ください）—</option>';
+      return;
+    }
+    // 名前が新しい順（＝登録が新しい順）で並べる
+    rows.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    select.innerHTML = '<option value="">— 既存店を選択してください —</option>' +
+      rows.map(c => `<option value="${escapeHtml(c.clientId)}" data-ssid="${escapeHtml(c.spreadsheetId)}">${escapeHtml(c.storeName || '')}（${escapeHtml(c.clientId)}）</option>`).join('');
   }
   function recomputeContractEnd() {
     const dur = $('f1-contract-duration').value;
@@ -1105,10 +1158,19 @@
         '</p>' +
         '<ol class="manual-gas-steps">' +
           '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">① Apps Script エディタを別タブで開く</div>' +
-            '<a class="btn-secondary manual-gas-btn" href="' + escapeHtml(editorUrl) + '" target="_blank" rel="noopener">' +
-              '🔗 Apps Script エディタを開く' +
-            '</a>' +
+            '<div class="manual-gas-step-title">① Apps Script エディタと uz-個別データ フォルダを別タブで開く</div>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+              '<a class="btn-secondary manual-gas-btn" href="' + escapeHtml(editorUrl) + '" target="_blank" rel="noopener">' +
+                '🔗 Apps Script エディタを開く' +
+              '</a>' +
+              // 2026-08-29：金光指示＝uz-個別データフォルダを直接開ける導線（デプロイ後の3点セット確認・SS配置確認用）
+              '<a class="btn-secondary manual-gas-btn" href="https://drive.google.com/drive/folders/1BAgtGMOuoDpcViVlQ_pkjODhMXAFeA8w" target="_blank" rel="noopener">' +
+                '📂 uz-個別データ を開く' +
+              '</a>' +
+            '</div>' +
+            '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
+              '※ デプロイ後、新clientId フォルダに <code>-data / -gas / -card</code> の3点セットが揃うのを目視できます（v0.9.5 のSS自動rename+moveで旧フォルダは空になる）。' +
+            '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
             '<div class="manual-gas-step-title">② 新しいプロジェクトを作成</div>' +

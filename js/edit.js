@@ -73,26 +73,23 @@
   async function loadAll() {
     showLoading();
     try {
-      // 並列で取得（独立した3つの呼び出し）
-      const [clientRes, settingsRes, logRes] = await Promise.all([
+      // 2026-08-29：§9 運営操作履歴 撤去に伴い getChangeLog fetch も廃止（無駄なGASコール削減）。
+      const [clientRes, settingsRes] = await Promise.all([
         window.uzAdmin.callMasterGas('getClient', { clientId: state.clientId }),
-        window.uzAdmin.callMasterGas('getUserSettings', { clientId: state.clientId }),
-        window.uzAdmin.callMasterGas('getChangeLog', { clientId: state.clientId, limit: 50 })
+        window.uzAdmin.callMasterGas('getUserSettings', { clientId: state.clientId })
       ]);
       // 認証エラーは handleAuthError で吸収（true 返却で遷移発火済み）
       if (window.uzAdmin.handleAuthError(clientRes)) return;
       if (window.uzAdmin.handleAuthError(settingsRes)) return;
-      if (window.uzAdmin.handleAuthError(logRes)) return;
       // 通常エラー
       if (!clientRes.ok) { showError('クライアント情報取得失敗: ' + (clientRes.message || clientRes.code || clientRes.error || 'unknown')); return; }
       if (!settingsRes.ok) { showError('ユーザー設定取得失敗: ' + (settingsRes.message || settingsRes.code || settingsRes.error || 'unknown')); return; }
-      if (!logRes.ok) { showError('運営操作履歴取得失敗: ' + (logRes.message || logRes.code || logRes.error || 'unknown')); return; }
       // state 反映
       state.initialClient = clientRes.client;
       state.currentClient = JSON.parse(JSON.stringify(clientRes.client));
       state.initialSettings = settingsRes.settings || {};
       state.currentSettings = JSON.parse(JSON.stringify(state.initialSettings));
-      state.changeLog = logRes.logs || [];
+      state.changeLog = [];
       // ヘッダー描画
       renderHeader();
       // 各セクション描画
@@ -988,34 +985,11 @@
     state.currentClient.contractStatus = document.getElementById('f-contract-status').value;
   }
 
-  // ============ §9 運営操作履歴 ============
-  function renderChangeLog() {
-    const tbody = document.getElementById('change-log-table-body');
-    tbody.innerHTML = '';
-    if (!state.changeLog || state.changeLog.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="empty-row">運営操作履歴がありません</td></tr>';
-      return;
-    }
-    state.changeLog.forEach(function (log) {
-      const tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td>' + escapeHtml(formatTs(log.ts)) + '</td>' +
-        '<td>' + escapeHtml(log.action) + '</td>' +
-        '<td><code class="log-detail">' + escapeHtml(JSON.stringify(log.detail || {})) + '</code></td>';
-      tbody.appendChild(tr);
-    });
-  }
-
-  async function refreshChangeLog() {
-    const res = await window.uzAdmin.callMasterGas('getChangeLog', { clientId: state.clientId, limit: 50 });
-    if (window.uzAdmin.handleAuthError(res)) return;
-    if (!res.ok) {
-      showToast('運営操作履歴の取得に失敗: ' + (res.message || res.code || res.error || 'unknown'), 'error');
-      return;
-    }
-    state.changeLog = res.logs || [];
-    renderChangeLog();
-  }
+  // ============ §9 運営操作履歴（2026-08-29 撤去・no-op スタブに縮退） ============
+  // 金光指示：各店の個別操作履歴は運営の恒常的な意思決定に不要＝edit.html §9 セクション撤去済。
+  // 呼び出し側（uploadUserAsset 後の refreshChangeLog）が残っているため no-op で受ける。
+  function renderChangeLog() { /* no-op */ }
+  async function refreshChangeLog() { /* no-op */ }
 
   // ============ Dirty 管理 ============
   function markDirty(sectionName) {
@@ -1781,11 +1755,7 @@
     var terminateBtn = document.getElementById('btn-terminate');
     if (terminateBtn) terminateBtn.addEventListener('click', terminateClient);
 
-    // 運営操作履歴
-    document.getElementById('btn-refresh-change-log').addEventListener('click', function () {
-      refreshChangeLog();
-      showToast('運営操作履歴を更新しました', 'info');
-    });
+    // 2026-08-29：運営操作履歴 撤去に伴い btn-refresh-change-log のバインドを廃止（要素が存在しない）。
 
     // 最下部操作バー
     document.getElementById('btn-discard').addEventListener('click', function () {

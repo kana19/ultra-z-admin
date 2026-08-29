@@ -542,30 +542,9 @@
       </div>
     </section>
 
-    <!-- §9 運営操作履歴（3層整理・→ dashboard.html「システム版履歴 ▼」）
-         この店に対して運営がadminポータルから行った個別操作の履歴。
-         システム全体の版アップ履歴はTOPダッシュボードの「システム版履歴 ▼」で追う。 -->
-    <section class="edit-section" data-section="change-log">
-      <div class="section-header">
-        <h2>9. 運営操作履歴</h2>
-        <button type="button" id="btn-refresh-change-log" class="btn-secondary">↻ 再読み込み</button>
-      </div>
-      <div class="section-body">
-        <p class="section-description">この店に対して<strong>運営が admin ポータルから行った個別操作</strong>の履歴（直近50件・読み取り専用）：PIN リセット・ロック解除・契約変更・設定変更・アセット差替 等。<br>システム全体の版アップ履歴（テンプレ更新・機能追加）はTOPダッシュボードの「システム版履歴 ▼」で追う（3層整理）。各PWAは発行時点のテンプレ版で固定される＝下の「登録日時」×TOP版履歴で「この店に何が積まれているか」が分かる。</p>
-        <table class="data-table" id="change-log-table">
-          <thead>
-            <tr>
-              <th style="width: 20%;">日時</th>
-              <th style="width: 20%;">操作</th>
-              <th style="width: 60%;">詳細</th>
-            </tr>
-          </thead>
-          <tbody id="change-log-table-body">
-            <!-- JS で動的生成 -->
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <!-- §9 運営操作履歴＝2026-08-29 金光指示で撤去。
+         各店の個別操作履歴は運営の恒常的な意思決定・監査に不要。
+         必要になったら3層整理のTOPダッシュボード側で全店横串の版履歴＋登録日時で足りる。 -->
 
     <!-- 最下部操作バー（sticky） -->
     <div class="edit-footer">
