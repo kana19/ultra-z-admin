@@ -1088,6 +1088,7 @@
     waiting: false,        // URL 入力待ちか
     onUrlConfirmed: null,  // URL 確定時に呼ぶコールバック（Promise resolver）
     gasCode: '',           // prepareUserGasCode で取得した完成コード
+    manifestCode: '',      // v0.9.4：appsscript.json（oauthScopes 事前宣言・認可の二度手間根治）
     projectTitle: ''       // Apps Script プロジェクト名（= clientId）
   };
 
@@ -1133,11 +1134,25 @@
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">⑤ ウェブアプリとしてデプロイ</div>' +
+            '<div class="manual-gas-step-title">④-a appsscript.json を表示して貼り付け（★認可の二度手間を消す要）</div>' +
+            '<p class="manual-gas-note">' +
+              '左メニュー「<strong>プロジェクトの設定⚙</strong>」→「<strong>「appsscript.json」マニフェスト ファイルをエディタで表示する</strong>」に <strong>✓</strong> →<br>' +
+              '左メニューの<strong>エディタ</strong>に戻ると <code>appsscript.json</code> が出現 → クリック → <code>Ctrl+A</code> → <code>Delete</code> → 下のボタンでコピー → <code>Ctrl+V</code> → <code>Ctrl+S</code> で保存。' +
+            '</p>' +
+            '<button type="button" class="btn-primary manual-gas-btn" id="manual-gas-manifest-copy-btn">' +
+              '📋 appsscript.json をコピー' +
+            '</button>' +
+            '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
+              '※ oauthScopes を事前宣言することで、次の⑤「デプロイ」時に「アクセスを承認」ボタンが確実に出て consent が一括完了する。この手順を飛ばすと、デプロイ後に別途 <code>getSettings ▶実行→承認</code> が必要になる（＝認可の二度手間の原因）。' +
+            '</p>' +
+          '</li>' +
+          '<li class="manual-gas-step">' +
+            '<div class="manual-gas-step-title">⑤ ウェブアプリとしてデプロイ＋アクセスを承認</div>' +
             '<p class="manual-gas-note">' +
               '右上「<strong>デプロイ</strong>」→「<strong>新しいデプロイ</strong>」→ 歯車⚙ →「<strong>ウェブアプリ</strong>」を選択。<br>' +
               '「次のユーザーとして実行：<strong>自分</strong>」「アクセスできるユーザー：<strong>全員</strong>」を確認し、「<strong>デプロイ</strong>」を押下。<br>' +
-              '初回は承認ダイアログ → 詳細 →「安全ではないページに移動」→ 許可。' +
+              '★ 承認フロー：「<strong>アクセスを承認</strong>」 → アカウント選択（<code>k@tgx.jp</code>） →「詳細」→「<strong>{プロジェクト名}（安全ではないページ）に移動</strong>」→「<strong>許可</strong>」→ デプロイ完了画面へ。<br>' +
+              '<strong>この⑤で承認が完結すれば、発行後の再認可（getSettings ▶実行）は不要。</strong>' +
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
@@ -1206,6 +1221,18 @@
         });
       });
     }
+    const manifestCopyBtn = document.getElementById('manual-gas-manifest-copy-btn');
+    if (manifestCopyBtn) {
+      manifestCopyBtn.addEventListener('click', function () {
+        copyToClipboard(ManualGasState.manifestCode).then(function (ok) {
+          if (ok) {
+            showToast('appsscript.json をコピーしました', 'success');
+          } else {
+            showToast('コピーに失敗しました。手動で選択してください', 'error');
+          }
+        });
+      });
+    }
     if (titleCopyBtn) {
       titleCopyBtn.addEventListener('click', function () {
         copyToClipboard(ManualGasState.projectTitle).then(function (ok) {
@@ -1258,6 +1285,7 @@
     return new Promise(function (resolve) {
       ManualGasState.waiting = true;
       ManualGasState.gasCode = prepResult.gasCode || '';
+      ManualGasState.manifestCode = prepResult.manifestCode || '';
       ManualGasState.projectTitle = prepResult.projectTitle || '';
 
       const panel = document.getElementById('manual-gas-panel');
