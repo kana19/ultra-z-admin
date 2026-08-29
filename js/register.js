@@ -87,7 +87,7 @@
         monthlyFee: 4980,
         clientCode: ''
       },
-      step2: { timecardCount: 5, qrProofEnabled: false, shiftScheduleEnabled: false, reuseSpreadsheetId: '' },
+      step2: { timecardCount: 5, qrProofEnabled: false, shiftScheduleEnabled: false, reuseSpreadsheetId: '', reuseClientId: '', reuseStoreName: '' },
       step3: {
         // マスタ件数枠（運営側内部管理項目・01_商品体系.md §4-2）
         // 基本枠：S=5 / P=5 / C=5・UI硬制限なし・拡張オプション販売時は edit 画面でも変更可
@@ -447,8 +447,8 @@
     RegisterState.data.step2.qrProofEnabled       = isLeo && !!(qr && qr.checked);
     RegisterState.data.step2.shiftScheduleEnabled = isLeo && !!(sh && sh.checked);
     // 既存SS 再利用モード（2026-08-29：dropdown 単独運用へ整理）
-    // 発行モード=update のとき、dropdown で選択された既存店の sheetId を直接 state へ。
-    // 手動貼付欄は撤去済＝入力事故（¥0 表示の主因）を構造で防ぐ。
+    // 発行モード=update のとき、dropdown で選択された既存店の sheetId＋店名＋clientId を state へ。
+    // Step 6 確認画面で「更新元：カナミツ事務所（uz-kanamitsu01）」と店名を並記して視認できるようにする。
     const isUpdateMode = RegisterState.data.step1.issueMode === 'update';
     if (isUpdateMode) {
       const select = $('f2-reuse-select');
@@ -459,8 +459,15 @@
         return false;
       }
       RegisterState.data.step2.reuseSpreadsheetId = ssid;
+      // 選択された option の value=clientId・text=「店名（clientId）」から店名を抽出
+      RegisterState.data.step2.reuseClientId = String((opt && opt.value) || '').trim();
+      const label = String((opt && opt.textContent) || '').trim();
+      const m = label.match(/^(.*?)（[^）]*）$/);
+      RegisterState.data.step2.reuseStoreName = m ? m[1] : label;
     } else {
       RegisterState.data.step2.reuseSpreadsheetId = '';
+      RegisterState.data.step2.reuseClientId = '';
+      RegisterState.data.step2.reuseStoreName = '';
     }
     hideStepError('step2-error');
     return true;
@@ -938,9 +945,13 @@
         ['段3 シフト登録', (s2.timecardCount >= 5 && s2.shiftScheduleEnabled) ? '✅ ON（shiftScheduleEnabled）' : '— OFF'],
         // 2026-08-27：アストラのUI改修＝勤怠系メニュー撤廃の初期化結果
         ['勤怠系メニュー（初期化）', s2.timecardCount >= 5 ? '✅ ON（attendance/clockin/payroll 全て true）' : '— OFF（アストラ想定＝勤怠系メニュー撤廃）'],
-        // 2026-08-27／2026-08-28 UX改修：発行モード連動でSS方式が確定
+        // 2026-08-29 UX改修：更新元の店名・clientId を明示（spreadsheetId だけでは何店か視認できない）
         ['SS 方式', s2.reuseSpreadsheetId
-          ? '🔗 既存SS 再利用（' + s2.reuseSpreadsheetId + '）＝アップデート発行'
+          ? ('🔗 既存SS 再利用＝アップデート発行'
+              + (s2.reuseStoreName || s2.reuseClientId
+                  ? '<br>更新元：<strong>' + escapeHtml(s2.reuseStoreName || '') + '</strong>（' + escapeHtml(s2.reuseClientId || '') + '）'
+                  : '')
+              + '<br><span style="color:#889;font-size:11px;">spreadsheetId: ' + escapeHtml(s2.reuseSpreadsheetId) + '</span>')
           : '✨ 新規SS 作成＝新規発行']
       ]) +
       section('Step 3：マスタ件数枠＋販管費設定', 3, [
