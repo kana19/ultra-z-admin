@@ -385,11 +385,28 @@
   }
 
   // ============ Step 別保存（form → state）／ バリデーション ============
+  //   2026-08-30：発行モードで分岐。update=基本情報は Step 2 で選ぶ更新元から自動引継ぎのため
+  //   Step 1 では入力・検証不要（発行モード＋任意「変更後の店名」のみ）。
   function readStep1AndValidate() {
     const s = RegisterState.data.step1;
     // 発行モード（新規/アップデート）
     const modeEl = document.querySelector('input[name="f1-issue-mode"]:checked');
     s.issueMode = modeEl ? String(modeEl.value) : 'new';
+
+    // 発行モード＝アップデート：基本情報の入力は不要（Step 2 で選ぶ更新元から引継ぎ）
+    //   「変更後の店名」だけ任意入力＝空欄なら更新元の店名をそのまま使う。
+    if (s.issueMode === 'update') {
+      const upd = ($('f1-update-storename') && $('f1-update-storename').value || '').trim();
+      // storeName は Step 2 dropdown 選択後に更新元から流し込む（updateStoreNameFromReuse）。
+      //   ここで upd が非空ならそれで上書き（新店名として Step 7 に流れる）。
+      s.updateStoreName = upd;  // Step 7 で settings.storeName・名簿 storeName の上書き判定に使う
+      // アプデ時は他の基本情報項目は state に残っていた値をそのまま保持（Step 2 で dropdown 選択時に上書き）。
+      hideStepError('step1-error');
+      return true;
+    }
+
+    // 発行モード＝新規：従来通り全項目入力＋検証
+    s.updateStoreName = '';
     s.contractorName = $('f1-contractor-name').value.trim();
     s.representativeName = $('f1-representative-name').value.trim();
     s.address = $('f1-address').value.trim();
@@ -449,6 +466,8 @@
     // 既存SS 再利用モード（2026-08-29：dropdown 単独運用へ整理）
     // 発行モード=update のとき、dropdown で選択された既存店の sheetId＋店名＋clientId を state へ。
     // Step 6 確認画面で「更新元：カナミツ事務所（uz-kanamitsu01）」と店名を並記して視認できるようにする。
+    // 2026-08-30：加えて、選択された既存店の基本情報（契約者名・住所・電話・メール・営業時間・契約情報）を
+    //   Step 1 state に流し込み＝Step 1 入力欄を省略できる。名簿 clients 行が真実の所在地。
     const isUpdateMode = RegisterState.data.step1.issueMode === 'update';
     if (isUpdateMode) {
       const select = $('f2-reuse-select');
@@ -463,7 +482,34 @@
       RegisterState.data.step2.reuseClientId = String((opt && opt.value) || '').trim();
       const label = String((opt && opt.textContent) || '').trim();
       const m = label.match(/^(.*?)（[^）]*）$/);
-      RegisterState.data.step2.reuseStoreName = m ? m[1] : label;
+      const parsedStoreName = m ? m[1] : label;
+      RegisterState.data.step2.reuseStoreName = parsedStoreName;
+      // 2026-08-30：更新元の完全な client 行を _reuseClientsCache から引いて Step 1 state に流し込む。
+      //   これで Step 7 の writeUserRepositoryFiles / registerNewClient が更新元の値を継承する。
+      const src = (Array.isArray(_reuseClientsCache) ? _reuseClientsCache : [])
+        .find(function (c) { return c && String(c.clientId || '') === RegisterState.data.step2.reuseClientId; });
+      const s1 = RegisterState.data.step1;
+      const updStoreName = String(s1.updateStoreName || '').trim();
+      // 店名：ユーザーが「変更後の店名」を入力していればそれ、なければ更新元の店名。
+      s1.storeName = updStoreName || parsedStoreName || (src ? String(src.storeName || '') : '');
+      if (src) {
+        // 契約者・代表者・住所・連絡先・営業時間・契約情報＝更新元の値をそのまま継承
+        s1.contractorName = String(src.contractorName || s1.contractorName || '');
+        s1.representativeName = String(src.representativeName || s1.representativeName || '');
+        s1.address = String(src.address || s1.address || '');
+        s1.phone = String(src.phone || s1.phone || '');
+        s1.email = String(src.email || s1.email || '');
+        if (src.businessHours && typeof src.businessHours === 'object') {
+          s1.businessHours = {
+            open: String(src.businessHours.open || s1.businessHours.open),
+            close: String(src.businessHours.close || s1.businessHours.close),
+            closeNextDay: !!src.businessHours.closeNextDay
+          };
+        }
+        s1.contractStart = String(src.contractStart || s1.contractStart || '');
+        s1.contractEnd = String(src.contractEnd || s1.contractEnd || '');
+        s1.monthlyFee = parseInt(String(src.monthlyFee || s1.monthlyFee || 0), 10) || 0;
+      }
     } else {
       RegisterState.data.step2.reuseSpreadsheetId = '';
       RegisterState.data.step2.reuseClientId = '';
@@ -671,6 +717,9 @@
   }
   // 2026-08-28：Step1発行モード連動＝Step2「既存SS 紐付け」パネルの表示制御
   //   update：パネル表示＋必須／new：パネル非表示＋入力値クリア＝埋め忘れ・誤埋めを構造で防ぐ
+  // 2026-08-30：加えて Step1 の基本情報ブロック（f1-basic-info-block）の表示切替＋
+  //   アップデート時のみ「変更後の店名」欄（f1-update-storename-row）を表示。
+  //   アプデ時は基本情報を Step 2 で選ぶ更新元から自動引継ぎ＝入力欄は非表示・任意で店名だけ上書き可。
   function updateIssueModeVisibility() {
     const modeEl = document.querySelector('input[name="f1-issue-mode"]:checked');
     const mode = modeEl ? String(modeEl.value) : 'new';
@@ -679,6 +728,11 @@
     if (panel) panel.hidden = (mode !== 'update');
     if (mode !== 'update' && select) select.value = '';
     RegisterState.data.step1.issueMode = mode;
+    // Step1 基本情報ブロックの表示切替＋アプデ時の「変更後の店名」欄表示
+    const basicBlock = $('f1-basic-info-block');
+    const updateStoreNameRow = $('f1-update-storename-row');
+    if (basicBlock) basicBlock.hidden = (mode === 'update');
+    if (updateStoreNameRow) updateStoreNameRow.hidden = (mode !== 'update');
     // 2026-08-29：アップデート発行選択時に既存店 dropdown を populate（唯一の入力手段）
     if (mode === 'update') { populateReuseSelect(); }
   }
@@ -1187,7 +1241,7 @@
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">④-a appsscript.json を表示して貼り付け（★認可の二度手間を消す要）</div>' +
+            '<div class="manual-gas-step-title">④-a appsscript.json を貼り付け（consent 画面に必要スコープを列挙）</div>' +
             '<p class="manual-gas-note">' +
               '左メニュー「<strong>プロジェクトの設定⚙</strong>」→「<strong>「appsscript.json」マニフェスト ファイルをエディタで表示する</strong>」に <strong>✓</strong> →<br>' +
               '左メニューの<strong>エディタ</strong>に戻ると <code>appsscript.json</code> が出現 → クリック → <code>Ctrl+A</code> → <code>Delete</code> → 下のボタンでコピー → <code>Ctrl+V</code> → <code>Ctrl+S</code> で保存。' +
@@ -1196,16 +1250,25 @@
               '📋 appsscript.json をコピー' +
             '</button>' +
             '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
-              '※ oauthScopes を事前宣言することで、次の⑤「デプロイ」時に「アクセスを承認」ボタンが確実に出て consent が一括完了する。この手順を飛ばすと、デプロイ後に別途 <code>getSettings ▶実行→承認</code> が必要になる（＝認可の二度手間の原因）。' +
+              '※ この手順で、次の⑤「デプロイ」時と⑤-b「getSettings 実行」時の consent 画面に、SpreadsheetApp／Drive／Gmail 等の必要スコープが漏れなく列挙される。' +
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">⑤ ウェブアプリとしてデプロイ＋アクセスを承認</div>' +
+            '<div class="manual-gas-step-title">⑤ ウェブアプリとしてデプロイ＋デプロイ用スコープを承認</div>' +
             '<p class="manual-gas-note">' +
               '右上「<strong>デプロイ</strong>」→「<strong>新しいデプロイ</strong>」→ 歯車⚙ →「<strong>ウェブアプリ</strong>」を選択。<br>' +
               '「次のユーザーとして実行：<strong>自分</strong>」「アクセスできるユーザー：<strong>全員</strong>」を確認し、「<strong>デプロイ</strong>」を押下。<br>' +
-              '★ 承認フロー：「<strong>アクセスを承認</strong>」 → アカウント選択（<code>k@tgx.jp</code>） →「詳細」→「<strong>{プロジェクト名}（安全ではないページ）に移動</strong>」→「<strong>許可</strong>」→ デプロイ完了画面へ。<br>' +
-              '<strong>この⑤で承認が完結すれば、発行後の再認可（getSettings ▶実行）は不要。</strong>' +
+              '★ 承認フロー：「<strong>アクセスを承認</strong>」 → アカウント選択（<code>k@tgx.jp</code>） →「詳細」→「<strong>{プロジェクト名}（安全ではないページ）に移動</strong>」→「<strong>許可</strong>」→ デプロイ完了画面へ。' +
+            '</p>' +
+          '</li>' +
+          '<li class="manual-gas-step">' +
+            '<div class="manual-gas-step-title">⑤-b getSettings を実行して実行時スコープを承認（Google 仕様上、必須）</div>' +
+            '<p class="manual-gas-note">' +
+              'Apps Script エディタ上部の <strong>関数プルダウン</strong>（既定は <code>doGet</code>）から <strong><code>getSettings</code></strong> を選択 → <strong>▶実行</strong> を押下。<br>' +
+              '★ 承認フロー：「<strong>権限を確認</strong>」 → アカウント選択（<code>k@tgx.jp</code>） →「詳細」→「<strong>{プロジェクト名}（安全ではないページ）に移動</strong>」→「<strong>許可</strong>」→ 実行ログに応答が出れば完了。' +
+            '</p>' +
+            '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
+              '※ Google Apps Script は「デプロイ時 consent＝デプロイに必要なスコープ」「実行時 consent＝実際にコードが使うスコープ」の2段階仕様。⑤だけでは SpreadsheetApp 等の実行時スコープが consent されず、PWA から呼ぶと権限エラーになるため、⑤-b で明示実行して承認する。⑥の URL登録時に自動で疎通検査し、⑤-b を飛ばすと <code>gas_unauthorized</code> で弾かれる。' +
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +

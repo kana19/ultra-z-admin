@@ -34,26 +34,36 @@
 
     <!-- ===================== Step 1：基本情報 ===================== -->
     <section class="step-panel" data-panel="1">
-      <h2 class="step-heading">Step 1：基本情報</h2>
-      <p class="step-help">契約者・店舗・契約の基本情報を入力します。マスタGAS の clients シート / ユーザーSS settings に投入される項目です。</p>
+      <h2 class="step-heading">Step 1：発行モード＋基本情報</h2>
+      <p class="step-help">発行モードを選び、新規なら契約者・店舗・契約の基本情報を入力します。アップデート発行では基本情報は Step 2 で選ぶ更新元の既存店から自動引継ぎされます。</p>
 
       <!-- 発行モード選択（2026-08-28・→ 3層整理・埋め忘れ防止）
-           新規発行：通常の新規SS作成モード
+           新規発行：通常の新規SS作成モード＋基本情報全項目入力
            アップデート発行：既存店の spreadsheetId を再利用し、新PWA/新GAS/新cardのみ発行
-           アップデート発行選択時のみ Step 2 の既存SS ID欄が現れる＋必須化される -->
+             ＋基本情報は更新元から自動引継ぎ（下段の基本情報ブロックは非表示・任意で「変更後の店名」だけ入力可） -->
       <div class="form-row issue-mode-row" style="padding:14px 16px;border:2px solid #0B1842;border-radius:10px;background:#f6f8fc;">
         <label style="font-weight:700;color:#0B1842;margin-bottom:8px;display:block;">発行モード <span class="required">*</span></label>
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
           <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;padding:8px 12px;border:1px solid #d9dee8;border-radius:6px;background:#fff;flex:1;min-width:280px;">
             <input type="radio" name="f1-issue-mode" value="new" checked style="margin-top:3px;">
-            <span style="font-size:13px;line-height:1.5;"><strong>新規発行</strong>（初めての顧客・新規SS作成）<br><span style="color:#667;">通常の登録。SS・GAS・PWA・納品カードを一式生成する。</span></span>
+            <span style="font-size:13px;line-height:1.5;"><strong>新規発行</strong>（初めての顧客・新規SS作成）<br><span style="color:#667;">通常の登録。SS・GAS・PWA・納品カードを一式生成する。基本情報（下段）を全項目入力。</span></span>
           </label>
           <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;padding:8px 12px;border:1px solid #d9dee8;border-radius:6px;background:#fff;flex:1;min-width:280px;">
             <input type="radio" name="f1-issue-mode" value="update" style="margin-top:3px;">
-            <span style="font-size:13px;line-height:1.5;"><strong>アップデート発行</strong>（既存店のPWA更新・既存SS紐付け）<br><span style="color:#667;">既存店の spreadsheetId を再利用し、新PWA・新GAS・新納品カードのみ発行。既存データは保全。Step 2 で既存SS IDを指定。</span></span>
+            <span style="font-size:13px;line-height:1.5;"><strong>アップデート発行</strong>（既存店のPWA更新・既存SS紐付け）<br><span style="color:#667;">既存店の spreadsheetId を再利用し、新PWA・新GAS・新納品カードのみ発行。既存データは保全。<strong>基本情報は Step 2 で選ぶ更新元から自動引継ぎ</strong>＝下段の基本情報は入力不要（変更したい店名だけ下の任意欄で上書き可）。</span></span>
           </label>
         </div>
       </div>
+
+      <!-- アップデート発行時のみ表示：変更後の店名（任意・入力すると settings.storeName と 名簿 storeName の両方を上書き） -->
+      <div class="form-row" id="f1-update-storename-row" hidden style="padding:12px 16px;border:1px dashed #b8860b;border-radius:8px;background:#fff8ec;">
+        <label>変更後の店名（変更する場合のみ入力）</label>
+        <input type="text" id="f1-update-storename" maxlength="50" placeholder="空欄なら更新元の店名をそのまま引き継ぎ">
+        <p class="form-note">入力すると、この店名がユーザーSS の settings.storeName とマスタ名簿の storeName の両方に上書きされます。空欄なら更新元の店名をそのまま使います。</p>
+      </div>
+
+      <!-- 基本情報ブロック（新規発行時のみ入力・アップデート時は非表示） -->
+      <div id="f1-basic-info-block">
 
       <div class="form-row">
         <label>契約者名（事業者名）<span class="required">*</span></label>
@@ -118,6 +128,8 @@
         <label>月額（円）<span class="required">*</span></label>
         <input type="number" id="f1-monthly-fee" min="0" step="1" value="4980">
       </div>
+
+      </div><!-- /#f1-basic-info-block -->
 
       <div class="step-error" id="step1-error" hidden></div>
     </section>
