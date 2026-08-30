@@ -207,7 +207,19 @@
     <!-- ===================== Step 3：マスタ件数枠＋販管費設定 ===================== -->
     <section class="step-panel" data-panel="3" hidden>
       <h2 class="step-heading">Step 3：マスタ件数枠＋販管費設定</h2>
-      <p class="step-help">運営内部管理として件数枠（3-1）を設定し、青色申告決算書互換の販管費マスタ（3-2）のアプリ表示・税率を設定します。サービス品目・仕入科目の中身はユーザーがアプリ側で登録します（運営は枠数のみ制御）。</p>
+      <p class="step-help" id="f3-help-new">運営内部管理として件数枠（3-1）を設定し、青色申告決算書互換の販管費マスタ（3-2）のアプリ表示・税率を設定します。サービス品目・仕入科目の中身はユーザーがアプリ側で登録します（運営は枠数のみ制御）。</p>
+
+      <!-- アップデート発行時のみ表示：既存店から自動引継ぎのため設定不要（2026-08-30 金光指示） -->
+      <div id="f3-update-notice" hidden style="padding:16px 20px;border:2px solid #b8860b;border-radius:10px;background:#fff8ec;">
+        <div style="font-size:14px;font-weight:700;color:#8a6d00;margin-bottom:6px;">🔗 アプデ発行モードのため設定不要</div>
+        <p style="font-size:13px;color:#665;margin:0;line-height:1.6;">
+          マスタ件数枠（サービス／仕入／販管費）と大分類マスタ・販管費マスタは、Step 2 で選んだ<strong>更新元の既存店の値をそのまま引き継ぎ</strong>ます（運用者側の設定を上書きしないため）。<br>
+          そのまま「次へ」で Step 4 に進んでください。
+        </p>
+      </div>
+
+      <!-- 新規発行時のみ表示（Step 3 の本体・アプデ時は f3-new-content 全体を非表示） -->
+      <div id="f3-new-content">
 
       <!-- 3-1：マスタ件数枠付与（運営内部管理・S/P 2軸編集＋C 固定表示） -->
       <h3 class="sub-heading">3-1：マスタ件数枠付与（運営内部管理）</h3>
@@ -269,6 +281,8 @@
         </thead>
         <tbody id="register-cost-tbody"></tbody>
       </table>
+
+      </div><!-- /#f3-new-content -->
 
       <div class="step-error" id="step3-error" hidden></div>
     </section>

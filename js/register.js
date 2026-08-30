@@ -528,6 +528,13 @@
   }
 
   function readStep3AndValidate() {
+    // 2026-08-30 金光指示：アプデ発行時は更新元の枠数・大分類・販管費マスタをそのまま引き継ぐ
+    //   ため Step 3 の入力・検証はスキップ（_reuseSsMigrateNewMasters_ が既存値を尊重するので、
+    //   state に残っている既定値を渡しても既存店の値が上書きされない構造で担保済み）。
+    if (RegisterState.data.step1.issueMode === 'update') {
+      hideStepError('step3-error');
+      return true;
+    }
     // 付与枠数を input から state に反映（S/P のみ・C は5固定維持）
     // マスタの中身（サービス・仕入）はユーザー主権のため空配列を維持する。
     const s3 = RegisterState.data.step3;
@@ -741,6 +748,14 @@
     const updateStoreNameRow = $('f1-update-storename-row');
     if (basicBlock) basicBlock.hidden = (mode === 'update');
     if (updateStoreNameRow) updateStoreNameRow.hidden = (mode !== 'update');
+    // Step3 の切替：アプデ時は「更新元から自動引継ぎ」の1行notice のみ表示、本体は非表示
+    //   （2026-08-30 金光指示＝運用者の枠数設定を上書きしない）
+    const f3New = $('f3-new-content');
+    const f3UpdNotice = $('f3-update-notice');
+    const f3HelpNew = $('f3-help-new');
+    if (f3New) f3New.hidden = (mode === 'update');
+    if (f3UpdNotice) f3UpdNotice.hidden = (mode !== 'update');
+    if (f3HelpNew) f3HelpNew.hidden = (mode === 'update');
     // 2026-08-29：アップデート発行選択時に既存店 dropdown を populate（唯一の入力手段）
     if (mode === 'update') { populateReuseSelect(); }
   }
@@ -1249,7 +1264,7 @@
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">④-a appsscript.json を貼り付け（consent 画面に必要スコープを列挙）</div>' +
+            '<div class="manual-gas-step-title">④-a appsscript.json を貼り付け（★認可を発行フロー内で完結させる要）</div>' +
             '<p class="manual-gas-note">' +
               '左メニュー「<strong>プロジェクトの設定⚙</strong>」→「<strong>「appsscript.json」マニフェスト ファイルをエディタで表示する</strong>」に <strong>✓</strong> →<br>' +
               '左メニューの<strong>エディタ</strong>に戻ると <code>appsscript.json</code> が出現 → クリック → <code>Ctrl+A</code> → <code>Delete</code> → 下のボタンでコピー → <code>Ctrl+V</code> → <code>Ctrl+S</code> で保存。' +
@@ -1258,25 +1273,16 @@
               '📋 appsscript.json をコピー' +
             '</button>' +
             '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
-              '※ この手順で、次の⑤「デプロイ」時と⑤-b「getSettings 実行」時の consent 画面に、SpreadsheetApp／Drive／Gmail 等の必要スコープが漏れなく列挙される。' +
+              '※ oauthScopes（SpreadsheetApp／Drive／Gmail 等）を事前宣言することで、次の⑤「デプロイ」時「アクセスを承認」で全スコープが一括 consent される（Google Apps Script の仕様）。この手順を必ず実施すれば、発行後の追加操作（getSettings ▶実行 等）は不要。飛ばすと⑥のURL登録で <code>gas_unauthorized</code> エラーが返り、エラー文で提示される復旧手順（getSettings ▶実行→承認）を実施する必要が出る。' +
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">⑤ ウェブアプリとしてデプロイ＋デプロイ用スコープを承認</div>' +
+            '<div class="manual-gas-step-title">⑤ ウェブアプリとしてデプロイ＋アクセスを承認</div>' +
             '<p class="manual-gas-note">' +
               '右上「<strong>デプロイ</strong>」→「<strong>新しいデプロイ</strong>」→ 歯車⚙ →「<strong>ウェブアプリ</strong>」を選択。<br>' +
               '「次のユーザーとして実行：<strong>自分</strong>」「アクセスできるユーザー：<strong>全員</strong>」を確認し、「<strong>デプロイ</strong>」を押下。<br>' +
-              '★ 承認フロー：「<strong>アクセスを承認</strong>」 → アカウント選択（<code>k@tgx.jp</code>） →「詳細」→「<strong>{プロジェクト名}（安全ではないページ）に移動</strong>」→「<strong>許可</strong>」→ デプロイ完了画面へ。' +
-            '</p>' +
-          '</li>' +
-          '<li class="manual-gas-step">' +
-            '<div class="manual-gas-step-title">⑤-b getSettings を実行して実行時スコープを承認（Google 仕様上、必須）</div>' +
-            '<p class="manual-gas-note">' +
-              'Apps Script エディタ上部の <strong>関数プルダウン</strong>（既定は <code>doGet</code>）から <strong><code>getSettings</code></strong> を選択 → <strong>▶実行</strong> を押下。<br>' +
-              '★ 承認フロー：「<strong>権限を確認</strong>」 → アカウント選択（<code>k@tgx.jp</code>） →「詳細」→「<strong>{プロジェクト名}（安全ではないページ）に移動</strong>」→「<strong>許可</strong>」→ 実行ログに応答が出れば完了。' +
-            '</p>' +
-            '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
-              '※ Google Apps Script は「デプロイ時 consent＝デプロイに必要なスコープ」「実行時 consent＝実際にコードが使うスコープ」の2段階仕様。⑤だけでは SpreadsheetApp 等の実行時スコープが consent されず、PWA から呼ぶと権限エラーになるため、⑤-b で明示実行して承認する。⑥の URL登録時に自動で疎通検査し、⑤-b を飛ばすと <code>gas_unauthorized</code> で弾かれる。' +
+              '★ 承認フロー：「<strong>アクセスを承認</strong>」 → アカウント選択（<code>k@tgx.jp</code>） →「詳細」→「<strong>{プロジェクト名}（安全ではないページ）に移動</strong>」→「<strong>許可</strong>」→ デプロイ完了画面へ。<br>' +
+              '<strong>この⑤で承認が完結すれば、発行後の追加操作は不要（④-a を実施済であれば全スコープが一括 consent されるため）。</strong>' +
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
