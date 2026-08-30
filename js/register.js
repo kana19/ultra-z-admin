@@ -386,19 +386,34 @@
 
   // ============ Step 別保存（form → state）／ バリデーション ============
   //   2026-08-30：発行モードで分岐。update=基本情報は Step 2 で選ぶ更新元から自動引継ぎのため
-  //   Step 1 では入力・検証不要（発行モード＋任意「変更後の店名」のみ）。
+  //   Step 1 では入力・検証不要（発行モード＋店舗コード＋任意「変更後の店名」のみ）。
+  //   店舗コード＝命名規則07 の根治で新規/アプデ両方で必須（ランダムハッシュ発番の廃止）。
   function readStep1AndValidate() {
     const s = RegisterState.data.step1;
     // 発行モード（新規/アップデート）
     const modeEl = document.querySelector('input[name="f1-issue-mode"]:checked');
     s.issueMode = modeEl ? String(modeEl.value) : 'new';
 
+    // 店舗コード（新規/アプデ共通・必須）＝命名規則07 の根治
+    s.clientCode = $('f1-client-code').value.trim().toLowerCase();
+    const clientCodeErrors = [];
+    if (!s.clientCode) {
+      clientCodeErrors.push('店舗コード（意味のある可読名を必ず入力・例：osafune・aiyouhouen・kana01）');
+    } else {
+      var cc = s.clientCode.indexOf('uz-') === 0 ? s.clientCode.slice(3) : s.clientCode;
+      if (cc.length < 2 || cc.length > 20 || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(cc)) {
+        clientCodeErrors.push('店舗コード（半角英数字と - ・2〜20字）');
+      }
+    }
+
     // 発行モード＝アップデート：基本情報の入力は不要（Step 2 で選ぶ更新元から引継ぎ）
-    //   「変更後の店名」だけ任意入力＝空欄なら更新元の店名をそのまま使う。
+    //   店舗コード（新clientId）＋「変更後の店名」（任意）のみ入力。
     if (s.issueMode === 'update') {
+      if (clientCodeErrors.length) {
+        showStepError('step1-error', '入力エラー：' + clientCodeErrors.join(' / '));
+        return false;
+      }
       const upd = ($('f1-update-storename') && $('f1-update-storename').value || '').trim();
-      // storeName は Step 2 dropdown 選択後に更新元から流し込む（updateStoreNameFromReuse）。
-      //   ここで upd が非空ならそれで上書き（新店名として Step 7 に流れる）。
       s.updateStoreName = upd;  // Step 7 で settings.storeName・名簿 storeName の上書き判定に使う
       // アプデ時は他の基本情報項目は state に残っていた値をそのまま保持（Step 2 で dropdown 選択時に上書き）。
       hideStepError('step1-error');
@@ -413,7 +428,6 @@
     s.phone = $('f1-phone').value.trim();
     s.email = $('f1-email').value.trim();
     s.storeName = $('f1-store-name').value.trim();
-    s.clientCode = $('f1-client-code').value.trim().toLowerCase();
     s.businessHours = {
       open: $('f1-business-open').value,
       close: $('f1-business-close').value,
@@ -424,7 +438,7 @@
     s.contractEnd = $('f1-contract-end').value;
     s.monthlyFee = parseInt($('f1-monthly-fee').value, 10) || 0;
 
-    const errors = [];
+    const errors = [].concat(clientCodeErrors);
     if (!s.contractorName) errors.push('契約者名（事業者名）');
     if (!s.representativeName) errors.push('代表者名');
     if (!s.address) errors.push('住所');
@@ -436,12 +450,6 @@
     if (!s.contractStart) errors.push('契約開始日');
     if (!s.contractEnd) errors.push('契約終了日');
     if (!s.monthlyFee || s.monthlyFee < 0) errors.push('月額（0以上の整数）');
-    if (s.clientCode) {
-      var cc = s.clientCode.indexOf('uz-') === 0 ? s.clientCode.slice(3) : s.clientCode;
-      if (cc.length < 2 || cc.length > 20 || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(cc)) {
-        errors.push('店舗コード（半角英数字と - ・2〜20字）');
-      }
-    }
 
     if (errors.length) {
       showStepError('step1-error', '入力エラー：' + errors.join(' / '));
