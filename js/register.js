@@ -1446,12 +1446,27 @@
   }
 
   // URL 検証失敗時に手動運用パネルへエラー表示し、再入力を促す
-  function showManualGasErrorAndRetry(errorMessage) {
+  // v0.9.12：authUrl が渡されたら 1クリック承認ブートストラップの導線を挿入（⑤-b 手作業消去）
+  function showManualGasErrorAndRetry(errorMessage, authUrl) {
     const errorEl = document.getElementById('manual-gas-error');
     const submitBtn = document.getElementById('manual-gas-submit-btn');
     const urlInput = document.getElementById('manual-gas-url-input');
     if (errorEl) {
-      errorEl.textContent = errorMessage;
+      if (authUrl) {
+        // 認可未完＝1クリック承認ブートストラップを提示（editor での関数選択・実行が不要になる）
+        errorEl.innerHTML =
+          '<div style="margin-bottom:8px">' + escapeHtml(errorMessage) + '</div>' +
+          '<div style="background:#fef3c7;padding:12px;border-radius:6px;border:1px solid #f59e0b">' +
+          '<div style="font-weight:600;color:#92400e;margin-bottom:8px">🔗 1クリック承認で完了</div>' +
+          '<a href="' + escapeHtml(authUrl) + '" target="_blank" rel="noopener" ' +
+          'style="display:inline-block;padding:10px 16px;background:#f59e0b;color:#fff;text-decoration:none;border-radius:6px;font-weight:600">' +
+          '認可ページを新タブで開く</a>' +
+          '<div style="font-size:12px;color:#78350f;margin-top:8px;line-height:1.5">' +
+          '① 上のボタンで新タブを開く → ② k@tgx.jp を選択 → ③「詳細 → 安全ではないページに移動 → 許可」→ ④ タブを閉じてこのパネルの「再検証」を押す' +
+          '</div></div>';
+      } else {
+        errorEl.textContent = errorMessage;
+      }
       errorEl.hidden = false;
     }
     if (submitBtn) submitBtn.disabled = false;
@@ -1721,7 +1736,9 @@
           const msg = (pingRes && (pingRes.message || pingRes.code))
             ? pingRes.message || pingRes.code
             : 'URL の疎通テストに失敗しました';
-          showManualGasErrorAndRetry('疎通テスト失敗：' + msg + '。URL を再確認してください。');
+          // v0.9.12：gas_unauthorized なら authUrl を渡して 1クリック承認ボタンを提示（⑤-b 消去）
+          const authUrl = (pingRes && pingRes.code === 'gas_unauthorized' && pingRes.authUrl) ? pingRes.authUrl : '';
+          showManualGasErrorAndRetry('疎通テスト失敗：' + msg, authUrl);
           continue;
         }
         // 検証成功（scriptMove の結果も進捗表示）
