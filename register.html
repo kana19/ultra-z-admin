@@ -55,12 +55,24 @@
         </div>
       </div>
 
-      <!-- 店舗コード（新規/アプデ共通・必須）＝命名規則07 の根治で常時表示＋必須化（2026-08-30）。
-           基本情報ブロックの外に置き、アプデ発行時も入力必須にする＝ランダムハッシュ発番を構造で防ぐ。 -->
-      <div class="form-row" style="padding:12px 16px;border:2px solid #0B1842;border-radius:8px;background:#eef2f9;">
+      <!-- 店舗コード（新規発行時のみ表示・必須）＝命名規則07 の根治で意味のある可読名を必ず入力。
+           v0.9.14（2026-09-04）：アプデ発行時は非表示＋新clientId は更新元から世界標準の複製パターン
+           （filename→filename (N)）で自動採番（下段の f1-client-code-auto-preview に preview 表示）。 -->
+      <div class="form-row" id="f1-client-code-row" style="padding:12px 16px;border:2px solid #0B1842;border-radius:8px;background:#eef2f9;">
         <label>店舗コード <span class="required">*</span>（新PWA の URL・repo・Drive・名簿を貫く可読ID）</label>
-        <input type="text" id="f1-client-code" maxlength="20" placeholder="意味のある可読名（例：osafune・aiyouhouen・kana01）" required>
-        <p class="form-note">半角英数字と <code>-</code>・2〜20字。<code>uz-</code> は自動付与（入力不要）＝正式店名（日本語）は下の「店舗名」欄。命名規則07 の根治でランダムハッシュ発番は廃止＝<strong>意味のある可読名を必ず入力</strong>。アプデ発行時もここが新clientId になる（更新元とは別の名前を付ける）。</p>
+        <input type="text" id="f1-client-code" maxlength="20" placeholder="意味のある可読名（例：osafune・aiyouhouen・kana01）">
+        <p class="form-note">半角英数字と <code>-</code>・2〜20字。<code>uz-</code> は自動付与（入力不要）＝正式店名（日本語）は下の「店舗名」欄。命名規則07 の根治でランダムハッシュ発番は廃止＝<strong>意味のある可読名を必ず入力</strong>。</p>
+      </div>
+
+      <!-- アップデート発行時のみ表示：新clientId は自動採番＝入力不要（v0.9.14・2026-09-04）
+           Step 2 で更新元を選択すると、世界標準の複製パターンで新clientId が自動生成される。
+           例：更新元 uz-osafune → 新clientId uz-osafune-2、既に -2 があれば -3。 -->
+      <div class="form-row" id="f1-client-code-auto-preview" hidden style="padding:12px 16px;border:1px dashed #0B1842;border-radius:8px;background:#eef2f9;">
+        <label>新clientId（自動採番・世界標準の複製パターン）</label>
+        <div id="f1-client-code-auto-value" style="font-size:15px;font-weight:700;color:#0B1842;padding:8px 12px;background:#fff;border:1px solid #0B1842;border-radius:6px;font-family:monospace;">
+          <span style="color:#888;">Step 2 で「更新元の既存店」を選択すると自動生成されます</span>
+        </div>
+        <p class="form-note">アプデ発行時は新clientId を手入力しません。<strong>Step 2 で選ぶ更新元 clientId から <code>-N</code> 形式で自動採番</strong>（世界標準のファイル複製＝<code>filename→filename (N)</code> と同挙動・命名規則07 準拠）。<code>-N</code> は既存の同系譜（<code>base</code>・<code>base-2</code>・<code>base-3</code>…）の最大 N +1。</p>
       </div>
 
       <!-- アップデート発行時のみ表示：変更後の店名（任意・入力すると settings.storeName と 名簿 storeName の両方を上書き） -->
@@ -199,6 +211,11 @@
             <option value="">— 既存店を選択してください —</option>
           </select>
         </label>
+        <!-- v0.9.14（2026-09-04）：更新元 preflight 検証結果表示（3層 readiness ✅/⚠️/❌）
+             出来損ない PWA（-data/-gas 欠落・認可未完）を選ぶと構造で弾く＝「次へ」を disable。 -->
+        <div id="f2-reuse-readiness" hidden style="margin-top:12px;padding:12px;border-radius:8px;font-size:12px;line-height:1.5;">
+          <div id="f2-reuse-readiness-body"></div>
+        </div>
       </div>
 
       <div class="step-error" id="step2-error" hidden></div>

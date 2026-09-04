@@ -87,7 +87,11 @@
         monthlyFee: 4980,
         clientCode: ''
       },
-      step2: { timecardCount: 5, qrProofEnabled: false, shiftScheduleEnabled: false, reuseSpreadsheetId: '', reuseClientId: '', reuseStoreName: '' },
+      // v0.9.14（2026-09-04）：nextGenClientId・readinessOk を追加。
+      //   nextGenClientId = validateReuseSource が返す自動採番 clientId（例：uz-osafune-2）
+      //   readinessOk = 3層 preflight（ss_ok+gas_ok+authorized）が全 true か
+      //   readinessDetail = readiness UI レンダリング用の生 result（{ss_ok, gas_ok, authorized, ...}）
+      step2: { timecardCount: 5, qrProofEnabled: false, shiftScheduleEnabled: false, reuseSpreadsheetId: '', reuseClientId: '', reuseStoreName: '', nextGenClientId: '', readinessOk: false, readinessDetail: null },
       step3: {
         // マスタ件数枠（運営側内部管理項目・01_商品体系.md §4-2）
         // 基本枠：S=5 / P=5 / C=5・UI硬制限なし・拡張オプション販売時は edit 画面でも変更可
@@ -407,14 +411,14 @@
     }
 
     // 発行モード＝アップデート：基本情報の入力は不要（Step 2 で選ぶ更新元から引継ぎ）
-    //   店舗コード（新clientId）＋「変更後の店名」（任意）のみ入力。
+    //   v0.9.14（2026-09-04）：新clientId は Step 2 で更新元選択時に自動採番＝Step 1 では入力しない
+    //   （世界標準の複製パターン filename→filename (N)・命名規則07 は自動採番 -N で満たす）。
+    //   「変更後の店名」（任意）のみ Step 1 で入力可。
     if (s.issueMode === 'update') {
-      if (clientCodeErrors.length) {
-        showStepError('step1-error', '入力エラー：' + clientCodeErrors.join(' / '));
-        return false;
-      }
       const upd = ($('f1-update-storename') && $('f1-update-storename').value || '').trim();
       s.updateStoreName = upd;  // Step 7 で settings.storeName・名簿 storeName の上書き判定に使う
+      // 新clientId は Step 2 で readStep2AndValidate() が RegisterState.data.step2.nextGenClientId
+      // を s.clientCode に流し込む。Step 1 段階では clientCode は空でも OK（Step 2 検証で埋まる）。
       // アプデ時は他の基本情報項目は state に残っていた値をそのまま保持（Step 2 で dropdown 選択時に上書き）。
       hideStepError('step1-error');
       return true;
@@ -485,6 +489,19 @@
         showStepError('step2-error', 'アップデート発行モードでは「更新元の既存店」の選択が必須です');
         return false;
       }
+      // v0.9.14（2026-09-04）：3層 preflight（validateReuseSource）が全通過しているかを確認。
+      //   readinessOk=false のまま「次へ」を押すと出来損ない PWA を更新元にした事故が起きる＝弾く。
+      if (!RegisterState.data.step2.readinessOk) {
+        showStepError('step2-error', '更新元の前提検証（SS 実体・GAS 疎通・認可）が未通過です。上部の readiness 表示を確認し、全て ✅ になるまで進めません。');
+        return false;
+      }
+      // v0.9.14：自動採番された新clientId を Step 1 state に流し込む（Step 7 の全 action がこれを使う）。
+      const nextGenId = String(RegisterState.data.step2.nextGenClientId || '').trim();
+      if (!nextGenId) {
+        showStepError('step2-error', '新clientId が自動生成されていません。更新元を再選択してください。');
+        return false;
+      }
+      RegisterState.data.step1.clientCode = nextGenId;
       RegisterState.data.step2.reuseSpreadsheetId = ssid;
       // 選択された option の value=clientId・text=「店名（clientId）」から店名を抽出
       RegisterState.data.step2.reuseClientId = String((opt && opt.value) || '').trim();
@@ -748,6 +765,25 @@
     const updateStoreNameRow = $('f1-update-storename-row');
     if (basicBlock) basicBlock.hidden = (mode === 'update');
     if (updateStoreNameRow) updateStoreNameRow.hidden = (mode !== 'update');
+    // v0.9.14（2026-09-04）：Step1 店舗コード欄の表示切替。
+    //   新規発行：手入力の店舗コード欄を表示（f1-client-code-row）／自動プレビューは非表示。
+    //   アプデ発行：手入力欄を非表示・自動採番プレビュー（f1-client-code-auto-preview）を表示。
+    //   世界標準の複製パターン（filename→filename (N)）で更新元 clientId から -N 形式で自動生成する
+    //   ため、アプデでは店舗コードを人間が発明しない＝命名規則07 も自動採番 -N で満たす。
+    const clientCodeRow = $('f1-client-code-row');
+    const clientCodeAutoPreview = $('f1-client-code-auto-preview');
+    if (clientCodeRow) clientCodeRow.hidden = (mode === 'update');
+    if (clientCodeAutoPreview) clientCodeAutoPreview.hidden = (mode !== 'update');
+    // アプデから新規へ戻したら preview 内容と readiness を初期化
+    if (mode !== 'update') {
+      const av = $('f1-client-code-auto-value');
+      if (av) av.innerHTML = '<span style="color:#888;">Step 2 で「更新元の既存店」を選択すると自動生成されます</span>';
+      const rd = $('f2-reuse-readiness');
+      if (rd) rd.hidden = true;
+      RegisterState.data.step2.nextGenClientId = '';
+      RegisterState.data.step2.readinessOk = false;
+      RegisterState.data.step2.readinessDetail = null;
+    }
     // Step3 の切替：アプデ時は「更新元から自動引継ぎ」の1行notice のみ表示、本体は非表示
     //   （2026-08-30 金光指示＝運用者の枠数設定を上書きしない）
     const f3New = $('f3-new-content');
@@ -758,6 +794,77 @@
     if (f3HelpNew) f3HelpNew.hidden = (mode === 'update');
     // 2026-08-29：アップデート発行選択時に既存店 dropdown を populate（唯一の入力手段）
     if (mode === 'update') { populateReuseSelect(); }
+  }
+
+  // v0.9.14（2026-09-04）：更新元選択時に validateReuseSource を呼び 3層 preflight 検証。
+  //   結果を state.step2 に格納＋readiness UI を描画＋Step 1 のプレビュー欄を更新する。
+  //   ここで readinessOk=false のまま Step 2「次へ」を押すと readStep2AndValidate で弾かれる。
+  async function validateAndRenderReuseSource(clientId) {
+    const readiness = $('f2-reuse-readiness');
+    const body = $('f2-reuse-readiness-body');
+    const previewVal = $('f1-client-code-auto-value');
+    if (!readiness || !body) return;
+    // 選択解除時（value=''）は readiness 非表示＋プレビュー初期化
+    if (!clientId) {
+      readiness.hidden = true;
+      RegisterState.data.step2.nextGenClientId = '';
+      RegisterState.data.step2.readinessOk = false;
+      RegisterState.data.step2.readinessDetail = null;
+      if (previewVal) previewVal.innerHTML = '<span style="color:#888;">Step 2 で「更新元の既存店」を選択すると自動生成されます</span>';
+      return;
+    }
+    // 検証中表示
+    readiness.hidden = false;
+    readiness.style.background = '#f6f8fc';
+    readiness.style.border = '1px solid #d9dee8';
+    body.innerHTML = '<span style="color:#556;">更新元の前提を検証中… (SS 実体・GAS 疎通・認可 の3層)</span>';
+    if (previewVal) previewVal.innerHTML = '<span style="color:#888;">検証中…</span>';
+    try {
+      const res = await window.uzAdmin.callMasterGas('validateReuseSource', { reuseClientId: clientId });
+      RegisterState.data.step2.readinessDetail = res;
+      const ssOk = !!(res && res.ss_ok);
+      const gasOk = !!(res && res.gas_ok);
+      const authOk = !!(res && res.authorized);
+      const allOk = !!(res && res.ok);
+      RegisterState.data.step2.readinessOk = allOk;
+      RegisterState.data.step2.nextGenClientId = String((res && res.nextGenClientId) || '');
+      // 見た目：全 ✅ なら緑・欠陥ありなら赤・部分成功で auth のみ NG は黄色
+      if (allOk) {
+        readiness.style.background = '#eaf6ec';
+        readiness.style.border = '1px solid #4caf50';
+      } else if (ssOk && gasOk && !authOk) {
+        readiness.style.background = '#fff8ec';
+        readiness.style.border = '1px solid #b8860b';
+      } else {
+        readiness.style.background = '#fdecea';
+        readiness.style.border = '1px solid #d93025';
+      }
+      const rows = [];
+      const mark = (ok) => ok ? '<span style="color:#2e7d32;font-weight:700;">✅</span>' : '<span style="color:#c62828;font-weight:700;">❌</span>';
+      rows.push('<div>' + mark(ssOk) + ' <b>SS 実体</b>：' + (ssOk ? '取得成功' : escapeHtml(String(res.ss_error || '不明'))) + '</div>');
+      rows.push('<div>' + mark(gasOk) + ' <b>GAS 疎通</b>：' + (gasOk ? '応答あり' : escapeHtml(String(res.gas_error || '不明'))) + '</div>');
+      rows.push('<div>' + mark(authOk) + ' <b>認可</b>：' + (authOk ? 'consent 完了' : escapeHtml(String(res.auth_error || '不明'))) + '</div>');
+      // Layer 3 のみ NG の場合、authUrl ボタンを inline 提示（v0.9.12 の 1クリック承認）
+      if (ssOk && gasOk && !authOk && res.authUrl) {
+        rows.push('<div style="margin-top:8px;"><a href="' + escapeHtml(res.authUrl) + '" target="_blank" rel="noopener" style="display:inline-block;padding:6px 14px;background:#f57c00;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:12px;">認可ページを新タブで開く（k@tgx.jp）</a> <span style="color:#665;font-size:11px;">→ 承認後、更新元を再選択して再検証</span></div>');
+      }
+      // 全 OK 時：自動採番された新clientId を Step 1 プレビューへ反映
+      if (allOk && res.nextGenClientId) {
+        rows.push('<div style="margin-top:10px;padding-top:8px;border-top:1px dashed #4caf50;font-size:13px;"><b>新clientId（自動採番）</b>：<code style="font-size:14px;color:#0B1842;background:#fff;padding:2px 8px;border-radius:4px;">' + escapeHtml(res.nextGenClientId) + '</code></div>');
+        if (previewVal) previewVal.innerHTML = '<code>' + escapeHtml(res.nextGenClientId) + '</code>';
+      } else {
+        if (previewVal) previewVal.innerHTML = '<span style="color:#c62828;">更新元の前提が未通過のため生成できません</span>';
+      }
+      body.innerHTML = rows.join('');
+    } catch (e) {
+      readiness.style.background = '#fdecea';
+      readiness.style.border = '1px solid #d93025';
+      body.innerHTML = '<span style="color:#c62828;">検証呼び出し失敗: ' + escapeHtml(String(e && e.message || e)) + '</span>';
+      RegisterState.data.step2.readinessOk = false;
+      RegisterState.data.step2.readinessDetail = null;
+      RegisterState.data.step2.nextGenClientId = '';
+      if (previewVal) previewVal.innerHTML = '<span style="color:#c62828;">検証エラー</span>';
+    }
   }
 
   // 2026-08-29：既存店 dropdown populate＝listClients で稼働中の店を全部拾って select に流し込む。
@@ -1904,6 +2011,16 @@
     document.querySelectorAll('input[name="f1-issue-mode"]').forEach(function (r) {
       r.addEventListener('change', updateIssueModeVisibility);
     });
+
+    // v0.9.14（2026-09-04）：Step 2 更新元 dropdown 変更で 3層 preflight 検証＋readiness UI 更新。
+    //   全 ✅ で新clientId が自動採番され Step 1 プレビューへ反映される。
+    //   readiness が未通過（❌ or ⚠️）の間は readStep2AndValidate() で「次へ」が弾かれる。
+    const reuseSel = $('f2-reuse-select');
+    if (reuseSel) {
+      reuseSel.addEventListener('change', function () {
+        validateAndRenderReuseSource(String(reuseSel.value || ''));
+      });
+    }
     updateIssueModeVisibility();
 
     // Step 2：ラジオ変更でグレード更新
