@@ -317,6 +317,13 @@
       readAllSteps();
       $('summary-container').innerHTML = buildSummary();
       bindSummaryEditLinks();
+      // 2026-09-05（v0.9.18・金光承認）：アプデ版発行時のみ⑤-b 必須の注釈を表示。
+      //   register.html L430 の #update-mode-authorize-notice を発行モード=update の時だけ visible にする。
+      var authNotice = $('update-mode-authorize-notice');
+      if (authNotice) {
+        var s1 = RegisterState.data.step1;
+        authNotice.hidden = (String(s1.issueMode || 'new') !== 'update');
+      }
     }
     renderStepper();
     // 上部にスクロール
