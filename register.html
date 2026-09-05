@@ -423,6 +423,18 @@
       <h2 class="step-heading">Step 6：確認</h2>
       <p class="step-help">入力内容を確認し、問題なければ「次へ」を押下してください。Step 7 で「登録実行」ボタンを押した時点で確定処理（リポジトリ生成・SS 生成・GAS デプロイ・clients 投入・納品カードPDF 生成）が一括実行されます。</p>
 
+      <!-- 2026-09-05（v0.9.17 実装後・金光承認）：アプデ版発行では Step 7 の⑤-b editor 手作業が
+           Google 仕様上必須。前セッションで「⑤-b が消えない」を課題視して authUrl 導線・authorizeScopes
+           自動化などの絆創膏実装を積んだが、最終的に「⑤-b は仕様として据える」で決着（→ 疲弊回避）。
+           発行前の確認画面で⑤-b 必須を明示し、金光が発行時点で心構えできる状態にする。 -->
+      <div id="update-mode-authorize-notice" hidden style="margin:16px 0;padding:14px 16px;background:#fff4e0;border:2px solid #b8860b;border-radius:8px;">
+        <div style="font-weight:700;color:#8a5a00;margin-bottom:6px;">⚠ アプデ版発行の必須手作業（Google 仕様）</div>
+        <div style="font-size:13px;line-height:1.6;color:#553;">
+          アプデ版発行では、Step 7 の <strong>⑤-b で Apps Script エディタから <code>authorizeScopes</code>（または <code>getSettings</code>）を関数プルダウンで選択 → <strong>▶実行</strong> → 承認ダイアログを「詳細 → 安全ではないページに移動 → 許可」まで完了</strong>させる editor 手作業が Google 仕様上必須です（新 SS instance に対する web app 外部呼出しの scope activation が deploy 時 consent と別レイヤーで要求されるため）。<br>
+          この 1 手を踏まないと ⑥ URL 登録で <code>gas_unauthorized</code> エラーで弾かれます。認可完了後、admin パネルの「URL を登録」ボタンを再押下してください。
+        </div>
+      </div>
+
       <div id="summary-container" class="summary-container"><!-- buildSummary() で動的生成 --></div>
 
       <div class="step-error" id="step6-error" hidden></div>
