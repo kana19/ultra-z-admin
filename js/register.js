@@ -1380,7 +1380,7 @@
               '📋 appsscript.json をコピー' +
             '</button>' +
             '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
-              '※ oauthScopes（SpreadsheetApp／Drive／Gmail 等）を事前宣言することで、次の⑤「デプロイ」時「アクセスを承認」で全スコープが一括 consent される（Google Apps Script の仕様）。この手順を実施すれば、発行後の追加操作は不要＝ エディタで関数を選んで▶実行する手作業は要らない。万が一飛ばしても、⑤ URL登録時に master.gs が authorize_check（v0.9.15）で全 scope を検査し、未 consent なら『認可ページを開く』ボタンを表示＝ ボタン1クリックで全 scope 承認完了。' +
+              '※ oauthScopes（SpreadsheetApp／Drive／Gmail 等）を事前宣言することで、次の⑤「デプロイ」時「アクセスを承認」で script owner の editor 実行 scope が一括 consent される。ただし web app 外部呼出しに対する Sensitive scope の活性化は別レイヤーで、⑤-b の editor 1 回実行が Google Apps Script の仕様上必要（v0.9.15 field test で確定）。' +
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
@@ -1389,6 +1389,16 @@
               '右上「<strong>デプロイ</strong>」→「<strong>新しいデプロイ</strong>」→ 歯車⚙ →「<strong>ウェブアプリ</strong>」を選択。<br>' +
               '「次のユーザーとして実行：<strong>自分</strong>」「アクセスできるユーザー：<strong>全員</strong>」を確認し、「<strong>デプロイ</strong>」を押下。<br>' +
               '★ 承認フロー：「<strong>アクセスを承認</strong>」 → アカウント選択（<code>k@tgx.jp</code>） →「詳細」→「<strong>{プロジェクト名}（安全ではないページ）に移動</strong>」→「<strong>許可</strong>」→ デプロイ完了画面へ。' +
+            '</p>' +
+          '</li>' +
+          '<li class="manual-gas-step" style="background:#fff8ec;border:1px dashed #b8860b;padding:12px;border-radius:6px;">' +
+            '<div class="manual-gas-step-title">⑤-b <code>authorizeScopes</code> を実行して全 Sensitive scope を一括活性化（★ editor 1 回実行）</div>' +
+            '<p class="manual-gas-note">' +
+              'Apps Script エディタ上部の <strong>関数プルダウン</strong>から <strong><code>authorizeScopes</code></strong> を選択 → <strong>▶実行</strong>。<br>' +
+              '承認ダイアログが出たら：「<strong>権限を確認</strong>」→ アカウント選択（<code>k@tgx.jp</code>）→「詳細」→「<strong>{プロジェクト名}（安全ではないページ）に移動</strong>」→「<strong>許可</strong>」→ 実行ログに <code>{ spreadsheet: "…", drive: "…", gmail: "unread=N", scriptapp: "…" }</code> が出れば完了。' +
+            '</p>' +
+            '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
+              '※ authorizeScopes は SpreadsheetApp／DriveApp／GmailApp／ScriptApp を 1 関数で叩く＝ 4 scope を 1 回で一括活性化。旧⑤-b（getSettings）は SpreadsheetApp scope 単発ゆえ他 scope 使用時に再手作業が発生したが、本手順は 1 回で完結する。⑥ URL登録時に master.gs（v0.9.15）が authorize_check で全 scope を検査するため、本手順を飛ばすと <code>gas_unauthorized</code> エラーで弾かれる。' +
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
