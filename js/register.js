@@ -1380,7 +1380,7 @@
               '📋 appsscript.json をコピー' +
             '</button>' +
             '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
-              '※ oauthScopes（SpreadsheetApp／Drive／Gmail 等）を事前宣言することで、次の⑤「デプロイ」時「アクセスを承認」で全スコープが一括 consent される（Google Apps Script の仕様）。この手順を必ず実施すれば、発行後の追加操作（getSettings ▶実行 等）は不要。飛ばすと⑥のURL登録で <code>gas_unauthorized</code> エラーが返り、エラー文で提示される復旧手順（getSettings ▶実行→承認）を実施する必要が出る。' +
+              '※ oauthScopes（SpreadsheetApp／Drive／Gmail 等）を事前宣言することで、次の⑤「デプロイ」時「アクセスを承認」で全スコープが一括 consent される（Google Apps Script の仕様）。この手順を実施すれば、発行後の追加操作は不要＝ エディタで関数を選んで▶実行する手作業は要らない。万が一飛ばしても、⑤ URL登録時に master.gs が authorize_check（v0.9.15）で全 scope を検査し、未 consent なら『認可ページを開く』ボタンを表示＝ ボタン1クリックで全 scope 承認完了。' +
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
@@ -1389,16 +1389,6 @@
               '右上「<strong>デプロイ</strong>」→「<strong>新しいデプロイ</strong>」→ 歯車⚙ →「<strong>ウェブアプリ</strong>」を選択。<br>' +
               '「次のユーザーとして実行：<strong>自分</strong>」「アクセスできるユーザー：<strong>全員</strong>」を確認し、「<strong>デプロイ</strong>」を押下。<br>' +
               '★ 承認フロー：「<strong>アクセスを承認</strong>」 → アカウント選択（<code>k@tgx.jp</code>） →「詳細」→「<strong>{プロジェクト名}（安全ではないページ）に移動</strong>」→「<strong>許可</strong>」→ デプロイ完了画面へ。' +
-            '</p>' +
-          '</li>' +
-          '<li class="manual-gas-step" style="background:#fff8ec;border:1px dashed #b8860b;padding:12px;border-radius:6px;">' +
-            '<div class="manual-gas-step-title">⑤-b getSettings を実行して SpreadsheetApp scope を承認（★実行時 consent を確実に完了させる）</div>' +
-            '<p class="manual-gas-note">' +
-              'Apps Script エディタ上部の <strong>関数プルダウン</strong>から <strong><code>getSettings</code></strong> を選択 → <strong>▶実行</strong>。<br>' +
-              '承認ダイアログが出たら：「<strong>権限を確認</strong>」→ アカウント選択（<code>k@tgx.jp</code>）→「詳細」→「<strong>{プロジェクト名}（安全ではないページ）に移動</strong>」→「<strong>許可</strong>」→ 実行ログに応答が出れば完了。' +
-            '</p>' +
-            '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
-              '※ ④-a を実施していても、Google Apps Script は SpreadsheetApp などの scope を「実際に呼ばれた時」に consent を要求することがある（実測で確認）。⑤-b で明示実行して事前に consent を通しておく＝PWA 実運用時に「データ取得エラー」を防ぐ。⑥ URL登録時に getSettings 疎通を自動検査するため、⑤-b を飛ばすと <code>gas_unauthorized</code> エラーで弾かれる。' +
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
