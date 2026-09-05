@@ -1380,7 +1380,7 @@
               '📋 appsscript.json をコピー' +
             '</button>' +
             '<p class="manual-gas-note" style="font-size:11px;color:#667;margin-top:6px;">' +
-              '※ oauthScopes（SpreadsheetApp／Drive／Gmail 等）を事前宣言することで、次の⑤「デプロイ」時「アクセスを承認」で script owner の editor 実行 scope が一括 consent される。ただし web app 外部呼出しに対する Sensitive scope の活性化は別レイヤーで、⑤-b の editor 1 回実行が Google Apps Script の仕様上必要（v0.9.15 field test で確定）。' +
+              '※ oauthScopes（SpreadsheetApp／Drive／Gmail 等）を事前宣言することで、次の⑤「デプロイ」時「アクセスを承認」で script owner の editor 実行 scope が一括 consent される。ただし web app 外部呼出しに対する Sensitive scope の活性化は別レイヤーで、⑤-b の editor 1 回実行が Google Apps Script の仕様上必要になる可能性がある（v0.9.15 field test の初回観察で URL 登録が通らず＝v0.9.16 で⑤-b を復活・実測は継続中）。⑥ URL 登録は先に authorize_check（backend v0.9.15）で自動判定するため、consent 完了済なら⑤-b は不要になる。' +
             '</p>' +
           '</li>' +
           '<li class="manual-gas-step">' +
