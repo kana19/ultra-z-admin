@@ -1811,61 +1811,14 @@
       }
       step7SetStatus('spreadsheet', 'done', Step7Progress.spreadsheetId);
 
-      // ---- 6. ユーザーGAS デプロイ（7-D ハイブリッド方式・手動操作） ----
-      //   6-a〜6-c：マスタGAS が prepareUserGasCode でテンプレGASコードに
-      //            SPREADSHEET_ID を差し込んで返却
-      //   6-d〜6-g：運営担当が Apps Script エディタで約2分の手動操作
-      //            （新規プロジェクト・コード貼付・デプロイ・URL取得）
-      //   6-h〜6-i：URL を運営ポータルに貼付 → registerUserGasUrl で疎通テスト
-      step7SetStatus('gas', 'running', '運営担当の手動操作を待機中...');
-      const r6prep = await callGasAction('prepareUserGasCode', {
-        clientId:      Step7Progress.clientId,
-        spreadsheetId: Step7Progress.spreadsheetId
-      });
-      // 手動運用パネルを展開し、運営担当が URL＋scriptId を確定するまで待つ
-      let manualGasUrl = '';
-      let manualScriptId = '';
-      let urlValidated = false;
-      while (!urlValidated) {
-        // 2026-08-28：{url, scriptId} オブジェクトを受け取る
-        const manualPayload = await waitForManualGasUrl(r6prep);
-        manualGasUrl = manualPayload.url || '';
-        manualScriptId = manualPayload.scriptId || '';
-        // 疎通テスト（registerUserGasUrl）＋ scriptId 指定で共有ドライブへ自動移動
-        let pingRes;
-        try {
-          pingRes = await window.uzAdmin.callMasterGas('registerUserGasUrl', {
-            clientId: Step7Progress.clientId,
-            gasUrl:   manualGasUrl,
-            scriptId: manualScriptId
-          });
-        } catch (pingErr) {
-          showManualGasErrorAndRetry('疎通テストの呼出でエラー：' + String(pingErr.message || pingErr));
-          continue;
-        }
-        if (window.uzAdmin.handleAuthError && window.uzAdmin.handleAuthError(pingRes)) {
-          throw new Error('セッション失効');
-        }
-        if (!pingRes || pingRes.ok !== true) {
-          const msg = (pingRes && (pingRes.message || pingRes.code))
-            ? pingRes.message || pingRes.code
-            : 'URL の疎通テストに失敗しました';
-          // v0.9.12：gas_unauthorized なら authUrl を渡して 1クリック承認ボタンを提示（⑤-b 消去）
-          const authUrl = (pingRes && pingRes.code === 'gas_unauthorized' && pingRes.authUrl) ? pingRes.authUrl : '';
-          showManualGasErrorAndRetry('疎通テスト失敗：' + msg, authUrl);
-          continue;
-        }
-        // 検証成功（scriptMove の結果も進捗表示）
-        if (pingRes.scriptMove && pingRes.scriptMove.ok) {
-          step7SetStatus('gas', 'running', 'GAS ファイルを共有ドライブへ移動＋改名 完了');
-        } else if (pingRes.scriptMove && !pingRes.scriptMove.ok) {
-          console.warn('[Step7] scriptMove failed:', pingRes.scriptMove);
-        }
-        urlValidated = true;
-      }
-      Step7Progress.gasUrl = manualGasUrl;
-      closeManualGasPanel();
-      step7SetStatus('gas', 'done', '手動デプロイ＋疎通確認 完了');
+      // ---- 6. ユーザーGAS デプロイ（v0.10.0 一元 GAS ルーティング化・手作業廃止） ----
+      //   v0.10.0：店舗別 GAS プロジェクト作成・手動 deploy・authorize 手作業を全廃。
+      //   master GAS URL を全店舗共通で使い、PWA 側の callGAS が user_call 経由で
+      //   dispatch する。詳細は 資料/知識MD/04_運営ポータル.md §11。
+      //   editor 手作業（⑤-b authorizeScopes ▶実行）は本経路で構造消滅。
+      step7SetStatus('gas', 'running', 'v0.10.0 一元 GAS ルーティング（master 経由・手作業なし）...');
+      Step7Progress.gasUrl = window.AdminApp.MASTER_GAS_URL;
+      step7SetStatus('gas', 'done', 'master GAS ルーティング設定完了（手作業ゼロ）');
 
       // ---- 4 実行（writeUserRepositoryFiles を SS/GAS 後に実行）----
       step7SetStatus('repoFiles', 'running', 'manifest / theme.css / app.js 書込中...');
