@@ -1114,7 +1114,7 @@
       '</table>';
     const html =
       section('Step 1：基本情報', 1, [
-        ['発行モード', s1.issueMode === 'update' ? '🔗 アップデート発行（既存SS紐付け・新PWA/新GAS/新cardのみ発行）' : '✨ 新規発行（新規SS作成・一式生成）'],
+        ['発行モード', s1.issueMode === 'update' ? 'アップデート発行（既存SS紐付け・新PWA/新GAS/新cardのみ発行）' : '新規発行（新規SS作成・一式生成）'],
         ['契約者名', s1.contractorName],
         ['代表者名', s1.representativeName],
         ['住所', s1.address],
@@ -1141,7 +1141,7 @@
                   ? '<br>更新元：<strong>' + escapeHtml(s2.reuseStoreName || '') + '</strong>（' + escapeHtml(s2.reuseClientId || '') + '）'
                   : '')
               + '<br><span style="color:#889;font-size:11px;">spreadsheetId: ' + escapeHtml(s2.reuseSpreadsheetId) + '</span>')
-          : '✨ 新規SS 作成＝新規発行']
+          : '新規SS 作成＝新規発行']
       ]) +
       section('Step 3：マスタ件数枠＋販管費設定', 3, [
         ['サービスマスタ枠数', s3.serviceMasterQuota + ' 件'],
@@ -1795,11 +1795,13 @@
       step7SetStatus('assets', 'done', assetDetail);
 
       // ---- 4. writeUserRepositoryFiles ----
-      // 注：このステップは createUserGasDeployment 完了後の gasUrl が必要だが、
-      //     マスタGAS 側の writeUserRepositoryFiles は gasUrl を必須要求する仕様。
-      //     順序を入れ替え：5（SS）→ 6（GAS）→ 4（リポファイル）の順で実行する。
-      //     UI 上は「4. リポファイル書込」と表示しつつ、実行順序は SS/GAS 完了後とする。
-      step7SetStatus('repoFiles', 'pending', '（SS・GAS 生成後に実行）');
+      // v0.11.1（2026-09-06 根治）：業界標準（tenant row create → API key issue → resource
+      //   provisioning）に沿って実行順を組替＝ 5（SS）→ 6（GAS）→ 7（clients 投入・apiToken 確定）
+      //   → 4（リポファイル・clients から apiToken read-only 参照）。従来（v0.11.0 まで）は
+      //   5→6→4→7 で、v0.11.0 で writeUserRepositoryFiles が clients シートを引くように
+      //   なった瞬間 Step 4 で client_not_found が発生する順序破綻（field test で判明）。
+      //   UI 上は「4. リポファイル書込」と表示しつつ、実行順序は clients 投入後とする。
+      step7SetStatus('repoFiles', 'pending', '（SS・GAS・clients 投入後に実行）');
 
       // ---- 5. createUserSpreadsheet ----
       // 2026-08-27：既存SS再利用モード（reuseSpreadsheetId が指定されていれば openById で
@@ -1849,18 +1851,10 @@
       Step7Progress.gasUrl = window.AdminApp.MASTER_GAS_URL;
       step7SetStatus('gas', 'done', 'master GAS ルーティング設定完了（手作業ゼロ）');
 
-      // ---- 4 実行（writeUserRepositoryFiles を SS/GAS 後に実行）----
-      step7SetStatus('repoFiles', 'running', 'manifest / theme.css / app.js 書込中...');
-      await callGasAction('writeUserRepositoryFiles', {
-        clientId:    Step7Progress.clientId,
-        gasUrl:      Step7Progress.gasUrl,
-        storeName:   s1.storeName,
-        themeColor:  s4.themeColor,
-        logoBgColor: s4.logoBgColor
-      });
-      step7SetStatus('repoFiles', 'done', '4ファイル書込済');
-
-      // ---- 7. registerNewClient ----
+      // ---- 7. registerNewClient（v0.11.1 根治：clients シート先行投入）----
+      //   apiToken と currentVersion=1 が clients シートに appendRow される。以降の Step 4
+      //   (writeUserRepositoryFiles) は clients から apiToken を read-only 参照して PWA
+      //   テンプレの __API_TOKEN__ に埋め込む＝ 真実の源から決定論的判定（§◎ 再現性ルール）。
       step7SetStatus('client', 'running', 'PINハッシュ計算・clients/auth/change_log 投入中...');
       const pinHashHex = await hashPin(s5.pin, Step7Progress.clientId);
       await callGasAction('registerNewClient', {
@@ -1889,6 +1883,17 @@
         }
       });
       step7SetStatus('client', 'done', '投入完了');
+
+      // ---- 4 実行（v0.11.1 根治：clients 投入後・apiToken read-only 参照可能）----
+      step7SetStatus('repoFiles', 'running', 'manifest / theme.css / app.js 書込中...');
+      await callGasAction('writeUserRepositoryFiles', {
+        clientId:    Step7Progress.clientId,
+        gasUrl:      Step7Progress.gasUrl,
+        storeName:   s1.storeName,
+        themeColor:  s4.themeColor,
+        logoBgColor: s4.logoBgColor
+      });
+      step7SetStatus('repoFiles', 'done', '4ファイル書込済');
 
       // ---- 登録はここで成功確定（納品カードは登録工程に含めない）----
       Step7Progress.completed = true;
