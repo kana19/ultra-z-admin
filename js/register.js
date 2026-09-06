@@ -417,16 +417,14 @@
       }
     }
 
-    // 発行モード＝アップデート：基本情報の入力は不要（Step 2 で選ぶ更新元から引継ぎ）
-    //   v0.9.14（2026-09-04）：新clientId は Step 2 で更新元選択時に自動採番＝Step 1 では入力しない
-    //   （世界標準の複製パターン filename→filename (N)・命名規則07 は自動採番 -N で満たす）。
-    //   「変更後の店名」（任意）のみ Step 1 で入力可。
+    // 発行モード＝アップデート（v0.11.0 業界標準案・2026-09-06）：URL/SS/clientId 一切不変で
+    //   既存 PWA テンプレを最新化するだけ＝ 新 clientCode 入力は不要（Step 2 で選ぶ既存 clientId
+    //   がそのまま対象）。「変更後の店名」も業界標準では触らない（アプデ = 機能追加であって
+    //   店名変更ではない）＝ 入力欄は残すが指定時のみ後日別 action で更新する運用に留める。
+    //   Step 1 で必要な検証は「発行モードが update である」ことだけ。
     if (s.issueMode === 'update') {
-      const upd = ($('f1-update-storename') && $('f1-update-storename').value || '').trim();
-      s.updateStoreName = upd;  // Step 7 で settings.storeName・名簿 storeName の上書き判定に使う
-      // 新clientId は Step 2 で readStep2AndValidate() が RegisterState.data.step2.nextGenClientId
-      // を s.clientCode に流し込む。Step 1 段階では clientCode は空でも OK（Step 2 検証で埋まる）。
-      // アプデ時は他の基本情報項目は state に残っていた値をそのまま保持（Step 2 で dropdown 選択時に上書き）。
+      s.updateStoreName = '';  // v0.11.0：update 経路では storeName を書き換えない（副作用回避）
+      s.clientCode = '';       // update mode では clientCode 不使用（既存 clientId を使う）
       hideStepError('step1-error');
       return true;
     }
@@ -502,13 +500,10 @@
         showStepError('step2-error', '更新元の前提検証（SS 実体・GAS 疎通・認可）が未通過です。上部の readiness 表示を確認し、全て ✅ になるまで進めません。');
         return false;
       }
-      // v0.9.14：自動採番された新clientId を Step 1 state に流し込む（Step 7 の全 action がこれを使う）。
-      const nextGenId = String(RegisterState.data.step2.nextGenClientId || '').trim();
-      if (!nextGenId) {
-        showStepError('step2-error', '新clientId が自動生成されていません。更新元を再選択してください。');
-        return false;
-      }
-      RegisterState.data.step1.clientCode = nextGenId;
+      // v0.11.0（2026-09-06・自動採番廃止）：clientCode は Step 1 で運営が手動命名する。
+      //   Step 2 では nextGenClientId を流し込まない（識別性の要件・金光判断 2026-09-06）。
+      //   最終 clientId は master GAS 側 _finalizeNewClientId_ が 'uz-<code>-<4桁ランダム>' を確定。
+      //   Step 1 で clientCode が未入力の場合は Step 1 バリデーションで既に弾かれている。
       RegisterState.data.step2.reuseSpreadsheetId = ssid;
       // 選択された option の value=clientId・text=「店名（clientId）」から店名を抽出
       RegisterState.data.step2.reuseClientId = String((opt && opt.value) || '').trim();
@@ -772,19 +767,16 @@
     const updateStoreNameRow = $('f1-update-storename-row');
     if (basicBlock) basicBlock.hidden = (mode === 'update');
     if (updateStoreNameRow) updateStoreNameRow.hidden = (mode !== 'update');
-    // v0.9.14（2026-09-04）：Step1 店舗コード欄の表示切替。
-    //   新規発行：手入力の店舗コード欄を表示（f1-client-code-row）／自動プレビューは非表示。
-    //   アプデ発行：手入力欄を非表示・自動採番プレビュー（f1-client-code-auto-preview）を表示。
-    //   世界標準の複製パターン（filename→filename (N)）で更新元 clientId から -N 形式で自動生成する
-    //   ため、アプデでは店舗コードを人間が発明しない＝命名規則07 も自動採番 -N で満たす。
+    // v0.11.0（2026-09-06・業界標準案）：Step1 店舗コード欄の表示切替。
+    //   新規発行：clientCode を手入力（必須）→ master GAS が 'uz-<code>-<4桁ランダム>' を確定
+    //   アプデ発行：URL 不変で既存 clientId を継続利用 → clientCode 欄は不要（非表示）
+    //   自動採番プレビュー（v0.9.14 期）は廃止・常に非表示
     const clientCodeRow = $('f1-client-code-row');
     const clientCodeAutoPreview = $('f1-client-code-auto-preview');
     if (clientCodeRow) clientCodeRow.hidden = (mode === 'update');
-    if (clientCodeAutoPreview) clientCodeAutoPreview.hidden = (mode !== 'update');
-    // アプデから新規へ戻したら preview 内容と readiness を初期化
+    if (clientCodeAutoPreview) clientCodeAutoPreview.hidden = true;
+    // アプデから新規へ戻したら readiness を初期化
     if (mode !== 'update') {
-      const av = $('f1-client-code-auto-value');
-      if (av) av.innerHTML = '<span style="color:#888;">Step 2 で「更新元の既存店」を選択すると自動生成されます</span>';
       const rd = $('f2-reuse-readiness');
       if (rd) rd.hidden = true;
       RegisterState.data.step2.nextGenClientId = '';
@@ -1714,6 +1706,43 @@
 
     // 各ステップを順次実行（ok:false で throw して catch で停止）
     try {
+
+      // ---- v0.11.0 update mode 分岐（2026-09-06 業界標準案）----
+      //   update 発行時は既存 clientId の PWA テンプレを最新化するだけ＝ URL/SS/GAS URL/apiToken
+      //   一切変わらない。master GAS の updateExistingPwa 1 action で backup snapshot + repo
+      //   ファイル PUT + currentVersion +1 が完結する。UI 側の 7 段プロセスは丸ごとスキップ。
+      if (s1.issueMode === 'update') {
+        const reuseClientId = String(s2.reuseClientId || '').trim();
+        if (!reuseClientId) {
+          throw new Error('update mode で reuseClientId が空です（Step 2 で更新元を選択してください）');
+        }
+        Step7Progress.clientId = reuseClientId;
+        step7SetStatus('clientId', 'done', reuseClientId + '（既存 clientId・アプデ対象）');
+        // 新規発行フローの中間ステップは update では意味を持たないため skip 表示
+        ['repo', 'assets', 'spreadsheet', 'gas', 'client'].forEach(function (k) {
+          step7SetStatus(k, 'done', 'update mode スキップ');
+        });
+        step7SetStatus('repoFiles', 'running', 'アプデ発行中（backup snapshot + repo PUT + version +1）...');
+        const rUpd = await callGasAction('updateExistingPwa', { clientId: reuseClientId });
+        Step7Progress.updateResult = rUpd;
+        const newVer = (rUpd && rUpd.version) ? rUpd.version : '?';
+        const bkFolder = (rUpd && rUpd.backup && rUpd.backup.folderName) ? rUpd.backup.folderName : '?';
+        step7SetStatus('repoFiles', 'done', 'v' + newVer + ' 反映済（backup: ' + bkFolder + '）');
+        Step7Progress.completed = true;
+        Step7Progress.running = false;
+        if (completionEl) {
+          completionEl.innerHTML =
+            '<div style="padding:16px;background:#eaf6ec;border:1px solid #4caf50;border-radius:6px;">' +
+              '<h3 style="margin:0 0 12px;color:#2e7d32;">アプデ発行完了（v' + escapeHtml(String(newVer)) + '）</h3>' +
+              '<div>clientId: <code>' + escapeHtml(reuseClientId) + '</code>（URL 不変）</div>' +
+              '<div>backup: <code>backup/' + escapeHtml(reuseClientId) + '/' + escapeHtml(bkFolder) + '</code></div>' +
+              '<div style="margin-top:8px;color:#556;font-size:12px;">顧客側は SW（network-first）により次回起動で自動反映されます。URL・ホーム画面アイコン・SS 参照は不変です。</div>' +
+            '</div>';
+        }
+        if (execBtn) execBtn.hidden = true;
+        showToast('アプデ v' + newVer + ' 発行完了', 'success');
+        return;
+      }
 
       // ---- 1. generateClientId ----
       step7SetStatus('clientId', 'running', '採番中...');
