@@ -1919,9 +1919,24 @@
       showToast('新規登録が完了しました', 'success');
 
     } catch (err) {
-      // ---- エラー停止 ----
+      // ---- エラー停止（v0.11.4 atomic rollback）----
       Step7Progress.running = false;
       Step7Progress.errorMessage = String((err && err.message) || err);
+
+      // v0.11.4（2026-09-07）：発行途中の失敗で作られた実体を全 rollback する。
+      //   Step 1 (generateClientId) より後で失敗した場合、Step7Progress.clientId が設定済み。
+      //   master GAS の rollbackClient action が GitHub repo・Drive folder・マイドライブ orphan・
+      //   clients row・auth row を idempotent に削除。これで orphan が生まれず、同じ clientCode で
+      //   すぐ再試行できる（金光の芯：情報の乖離・重複による繰り返し作業の根絶）。
+      if (Step7Progress.clientId) {
+        try {
+          const rb = await callGasAction('rollbackClient', { clientId: Step7Progress.clientId });
+          Step7Progress.rollbackReport = rb;
+        } catch (rbErr) {
+          Step7Progress.rollbackError = String((rbErr && rbErr.message) || rbErr);
+        }
+      }
+
       // 失敗ステップを特定（進捗UI の running 行）
       const runningRow = document.querySelector('[data-step-id].progress-running');
       if (runningRow) {
@@ -1935,7 +1950,10 @@
       if (completionEl) completionEl.innerHTML = buildErrorView();
       if (execBtn) execBtn.disabled = false;
       if (backBtn) backBtn.disabled = false;
-      showToast('登録処理が中断しました', 'error');
+      const rollbackNote = Step7Progress.rollbackReport
+        ? '（発行途中実体は全 rollback 済・同じ code で再試行可）'
+        : (Step7Progress.rollbackError ? '（rollback 失敗：手動 cleanup 要）' : '');
+      showToast('登録処理が中断しました' + rollbackNote, 'error');
     }
   }
 
