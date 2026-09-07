@@ -317,13 +317,11 @@
       readAllSteps();
       $('summary-container').innerHTML = buildSummary();
       bindSummaryEditLinks();
-      // 2026-09-05（v0.9.18・金光承認）：アプデ版発行時のみ⑤-b 必須の注釈を表示。
-      //   register.html L430 の #update-mode-authorize-notice を発行モード=update の時だけ visible にする。
+      // v0.12.0（2026-09-07）：#update-mode-authorize-notice は常時非表示に強制。
+      //   v0.9.17 期の ⑤-b editor 手作業案内は v0.10.0 一元 GAS ルーティング化で構造消滅済。
+      //   HTML 側の要素は残置（表示制御のみで塞ぐ・削除は別セッションで整理）。
       var authNotice = $('update-mode-authorize-notice');
-      if (authNotice) {
-        var s1 = RegisterState.data.step1;
-        authNotice.hidden = (String(s1.issueMode || 'new') !== 'update');
-      }
+      if (authNotice) authNotice.hidden = true;
     }
     renderStepper();
     // 上部にスクロール
@@ -417,14 +415,18 @@
       }
     }
 
-    // 発行モード＝アップデート（v0.11.0 業界標準案・2026-09-06）：URL/SS/clientId 一切不変で
-    //   既存 PWA テンプレを最新化するだけ＝ 新 clientCode 入力は不要（Step 2 で選ぶ既存 clientId
-    //   がそのまま対象）。「変更後の店名」も業界標準では触らない（アプデ = 機能追加であって
-    //   店名変更ではない）＝ 入力欄は残すが指定時のみ後日別 action で更新する運用に留める。
-    //   Step 1 で必要な検証は「発行モードが update である」ことだけ。
+    // 発行モード＝アップデート（v0.12.0 鉄則実装への復帰・2026-09-07）：③発行 = 新 clientId
+    //   発行＋SS 全シート複製＋新テンプレ注入＋旧 deprecated 化。よって update モードでも
+    //   clientCode（新 clientId 用の raw code）は必須＝ 新規と同じ検証を通す。基本情報
+    //   （contractorName/address/etc）は Step 2 で更新元 clients 行から流し込むため入力不要。
+    //   updateStoreName（旧 v0.11.0 の「変更後の店名」欄）は撤廃＝ 旧 SS の settings シートが
+    //   丸ごと複製される＝ 店名は旧のまま持ち込まれる（変更したければ ③ 発行後 updateClient で対応）。
     if (s.issueMode === 'update') {
-      s.updateStoreName = '';  // v0.11.0：update 経路では storeName を書き換えない（副作用回避）
-      s.clientCode = '';       // update mode では clientCode 不使用（既存 clientId を使う）
+      s.updateStoreName = '';  // v0.12.0：撤廃・後方互換のため空セット
+      if (clientCodeErrors.length) {
+        showStepError('step1-error', '入力エラー：' + clientCodeErrors.join(' / '));
+        return false;
+      }
       hideStepError('step1-error');
       return true;
     }
@@ -762,18 +764,23 @@
     if (panel) panel.hidden = (mode !== 'update');
     if (mode !== 'update' && select) select.value = '';
     RegisterState.data.step1.issueMode = mode;
-    // Step1 基本情報ブロックの表示切替＋アプデ時の「変更後の店名」欄表示
+    // Step1 基本情報ブロックの表示切替（アプデ時は Step 2 で更新元から流し込むため非表示）
     const basicBlock = $('f1-basic-info-block');
-    const updateStoreNameRow = $('f1-update-storename-row');
     if (basicBlock) basicBlock.hidden = (mode === 'update');
-    if (updateStoreNameRow) updateStoreNameRow.hidden = (mode !== 'update');
-    // v0.11.0（2026-09-06・業界標準案）：Step1 店舗コード欄の表示切替。
-    //   新規発行：clientCode を手入力（必須）→ master GAS が 'uz-<code>-<4桁ランダム>' を確定
-    //   アプデ発行：URL 不変で既存 clientId を継続利用 → clientCode 欄は不要（非表示）
-    //   自動採番プレビュー（v0.9.14 期）は廃止・常に非表示
+    // v0.12.0（2026-09-07・鉄則実装への復帰）：撤廃された UI 要素は常時非表示に据える。
+    //   - #f1-update-storename-row（v0.11.0 「変更後の店名」欄）：SS 全シート複製で店名は
+    //     旧のまま持ち込まれる＝ 変更したければ ③ 発行後 updateClient で対応。
+    //   - #f1-client-code-auto-preview（v0.9.14 -N 自動採番プレビュー）：clientCode は
+    //     新規/アプデ共通で手入力＋4桁ランダム自動付加（_finalizeNewClientId_）。
+    //   - #update-mode-authorize-notice（v0.9.17 ⑤-b editor 手作業案内）：v0.10.0 で一元
+    //     GAS ルーティング化＝ 手作業消滅・案内不要（後述 paintStep6 でも常時非表示に強制）。
+    const updateStoreNameRow = $('f1-update-storename-row');
+    if (updateStoreNameRow) updateStoreNameRow.hidden = true;
+    // 店舗コード欄は新規/アプデ共通で表示＋必須（v0.12.0 鉄則実装）
+    //   新規発行/アプデ発行 両モードで master GAS が 'uz-<code>-<4桁ランダム>' を確定する。
     const clientCodeRow = $('f1-client-code-row');
     const clientCodeAutoPreview = $('f1-client-code-auto-preview');
-    if (clientCodeRow) clientCodeRow.hidden = (mode === 'update');
+    if (clientCodeRow) clientCodeRow.hidden = false;
     if (clientCodeAutoPreview) clientCodeAutoPreview.hidden = true;
     // アプデから新規へ戻したら readiness を初期化
     if (mode !== 'update') {
@@ -1114,7 +1121,7 @@
       '</table>';
     const html =
       section('Step 1：基本情報', 1, [
-        ['発行モード', s1.issueMode === 'update' ? 'アップデート発行（既存SS紐付け・新PWA/新GAS/新cardのみ発行）' : '新規発行（新規SS作成・一式生成）'],
+        ['発行モード', s1.issueMode === 'update' ? 'アップデート発行（新 clientId 発行＋旧SS 全シート複製＋新テンプレ注入＋旧 deprecated 化・鉄則案A系）' : '新規発行（新規SS作成・一式生成）'],
         ['契約者名', s1.contractorName],
         ['代表者名', s1.representativeName],
         ['住所', s1.address],
@@ -1229,8 +1236,15 @@
     { id: 'assets',       label: '3. ロゴ・アイコン アップロード' },
     { id: 'repoFiles',    label: '4. manifest / theme.css / app.js 書込' },
     { id: 'spreadsheet',  label: '5. ユーザーSS 生成・settings 初期化' },
+    // v0.12.0（2026-09-07・鉄則実装への復帰）：アプデ発行時のみ実行。新規発行では「新規発行では対象外」
+    //   と表示して skip。旧 ① SS の全シート（settings + 売上 + コスト + attendance + マスタ群）を
+    //   新 ③ SS に複製し、(β) 引継＝ 運用データも含めて ③ で続きから運用可能にする。
+    { id: 'copySheets',   label: '5.5 旧 SS 全シート複製（アプデ発行のみ・鉄則(β)）' },
     { id: 'gas',          label: '6. ユーザーGAS デプロイ（運営担当の手動操作）' },
-    { id: 'client',       label: '7. clients/auth/change_log 投入' }
+    { id: 'client',       label: '7. clients/auth/change_log 投入' },
+    // v0.12.0：アプデ発行時のみ実行。旧 clientId を 'deprecated' に変更＋ successorClientId 紐付け。
+    //   deprecated は user_call で pass（旧 PWA は検証期間中稼働継続）。検証後 ① 削除は別 action。
+    { id: 'deprecate',    label: '8. 旧 clientId deprecated 化（アプデ発行のみ・鉄則①/③併存管理）' }
   ];
   // 注：納品カードPDF は登録処理（Step7）から分離した（04_運営ポータル.md §9）。
   //   「登録」と「納品物生成」は別概念であり、納品カード生成の失敗で登録全体を
@@ -1599,6 +1613,8 @@
   // 完了画面の組立
   function buildCompletionView() {
     const s1 = RegisterState.data.step1;
+    const s2 = RegisterState.data.step2;
+    const isUpd = (s1.issueMode === 'update');
     const ownerUrl = 'https://app.ultra7.pw/' + Step7Progress.clientId + '/';
     const staffUrl = ownerUrl + 'staff-clockin.html';
     const pdfBase64 = Step7Progress.deliveryCardBase64;
@@ -1607,11 +1623,27 @@
       : '#';
     const pdfFilename = Step7Progress.clientId + '-card.pdf';
 
+    // v0.12.0（2026-09-07・鉄則実装）：アプデ発行時は「旧 clientId → 新 clientId ／ deprecated 化済」を
+    //   完了画面冒頭で明示。運営が旧 URL の扱い（顧客への新 URL 案内・検証期間・① 削除）を把握できる。
+    const updateBanner = isUpd
+      ? ('<div style="margin:0 0 16px;padding:14px 16px;background:#eaf6ec;border:2px solid #4caf50;border-radius:8px;">' +
+           '<div style="font-weight:700;color:#2e7d32;margin-bottom:6px;">③発行完了（鉄則案A系）</div>' +
+           '<div style="font-size:13px;line-height:1.6;color:#334;">' +
+             '旧 clientId: <code>' + escapeHtml(String(s2.reuseClientId || '')) + '</code>' +
+             (s2.reuseStoreName ? '（' + escapeHtml(String(s2.reuseStoreName)) + '）' : '') +
+             ' → 新 clientId: <code>' + escapeHtml(Step7Progress.clientId) + '</code><br>' +
+             '旧 SS の全シート（settings＋運用データ全部）を新 SS に複製済＝ ③ で ① の続きから運用可能。<br>' +
+             '旧 clientId は <strong>deprecated</strong> に変更済＝ ①/③ 併存管理中。検証後 ① を削除してください（別 action・別セッション）。' +
+           '</div>' +
+         '</div>')
+      : '';
+
     return (
       '<div class="completion-card">' +
+        updateBanner +
         '<div class="completion-header">' +
           '<span class="completion-icon">🎉</span>' +
-          '<h3>新規登録が完了しました</h3>' +
+          '<h3>' + (isUpd ? 'アップデート発行が完了しました' : '新規登録が完了しました') + '</h3>' +
         '</div>' +
         '<dl class="completion-list">' +
           '<dt>店舗名</dt><dd>' + escapeHtml(s1.storeName) + '</dd>' +
@@ -1707,41 +1739,25 @@
     // 各ステップを順次実行（ok:false で throw して catch で停止）
     try {
 
-      // ---- v0.11.0 update mode 分岐（2026-09-06 業界標準案）----
-      //   update 発行時は既存 clientId の PWA テンプレを最新化するだけ＝ URL/SS/GAS URL/apiToken
-      //   一切変わらない。master GAS の updateExistingPwa 1 action で backup snapshot + repo
-      //   ファイル PUT + currentVersion +1 が完結する。UI 側の 7 段プロセスは丸ごとスキップ。
-      if (s1.issueMode === 'update') {
-        const reuseClientId = String(s2.reuseClientId || '').trim();
-        if (!reuseClientId) {
+      // ---- v0.12.0（2026-09-07・鉄則実装への復帰）----
+      //   update mode は「新 clientId 発行＋SS 全シート複製＋新テンプレ注入＋旧 deprecated 化」で
+      //   完結する（引き継ぎ.md 冒頭・[[00_原則]] §4-6・v0.9.11 案A 系）。よって新規と同じ 7 段
+      //   プロセスを走らせ、update mode の時のみ Step 5.5 (copySsAllSheets) と Step 8
+      //   (markClientAsDeprecated) を挟む。updateExistingPwa 1発呼出（URL 不変案）は v0.12.0 で撤回。
+      const isUpdateMode = (s1.issueMode === 'update');
+      const oldClientIdForUpdate = isUpdateMode ? String(s2.reuseClientId || '').trim() : '';
+      const oldSpreadsheetIdForUpdate = isUpdateMode ? String(s2.reuseSpreadsheetId || '').trim() : '';
+      if (isUpdateMode) {
+        if (!oldClientIdForUpdate) {
           throw new Error('update mode で reuseClientId が空です（Step 2 で更新元を選択してください）');
         }
-        Step7Progress.clientId = reuseClientId;
-        step7SetStatus('clientId', 'done', reuseClientId + '（既存 clientId・アプデ対象）');
-        // 新規発行フローの中間ステップは update では意味を持たないため skip 表示
-        ['repo', 'assets', 'spreadsheet', 'gas', 'client'].forEach(function (k) {
-          step7SetStatus(k, 'done', 'update mode スキップ');
-        });
-        step7SetStatus('repoFiles', 'running', 'アプデ発行中（backup snapshot + repo PUT + version +1）...');
-        const rUpd = await callGasAction('updateExistingPwa', { clientId: reuseClientId });
-        Step7Progress.updateResult = rUpd;
-        const newVer = (rUpd && rUpd.version) ? rUpd.version : '?';
-        const bkFolder = (rUpd && rUpd.backup && rUpd.backup.folderName) ? rUpd.backup.folderName : '?';
-        step7SetStatus('repoFiles', 'done', 'v' + newVer + ' 反映済（backup: ' + bkFolder + '）');
-        Step7Progress.completed = true;
-        Step7Progress.running = false;
-        if (completionEl) {
-          completionEl.innerHTML =
-            '<div style="padding:16px;background:#eaf6ec;border:1px solid #4caf50;border-radius:6px;">' +
-              '<h3 style="margin:0 0 12px;color:#2e7d32;">アプデ発行完了（v' + escapeHtml(String(newVer)) + '）</h3>' +
-              '<div>clientId: <code>' + escapeHtml(reuseClientId) + '</code>（URL 不変）</div>' +
-              '<div>backup: <code>backup/' + escapeHtml(reuseClientId) + '/' + escapeHtml(bkFolder) + '</code></div>' +
-              '<div style="margin-top:8px;color:#556;font-size:12px;">顧客側は SW（network-first）により次回起動で自動反映されます。URL・ホーム画面アイコン・SS 参照は不変です。</div>' +
-            '</div>';
+        if (!oldSpreadsheetIdForUpdate) {
+          throw new Error('update mode で reuseSpreadsheetId が空です（Step 2 で更新元 SS を確定してください）');
         }
-        if (execBtn) execBtn.hidden = true;
-        showToast('アプデ v' + newVer + ' 発行完了', 'success');
-        return;
+      } else {
+        // 新規発行では update 専用ステージを「対象外」で done 表示
+        step7SetStatus('copySheets', 'done', '新規発行では対象外');
+        step7SetStatus('deprecate', 'done', '新規発行では対象外');
       }
 
       // ---- 1. generateClientId ----
@@ -1804,10 +1820,10 @@
       step7SetStatus('repoFiles', 'pending', '（SS・GAS・clients 投入後に実行）');
 
       // ---- 5. createUserSpreadsheet ----
-      // 2026-08-27：既存SS再利用モード（reuseSpreadsheetId が指定されていれば openById で
-      // 既存SSに suppliers シート生成＋B8/B9 初期化＋masterQuota 拡張のみ実行。SS 内容は保全）
-      step7SetStatus('spreadsheet', 'running',
-        Step7Progress.reuseSpreadsheetId ? '既存SS へマイグレ中...' : 'SS 生成中...');
+      // v0.12.0（2026-09-07）：reuseSpreadsheetId 経路は撤回（v0.11.0 URL 不変案の一部＝ 鉄則違反）。
+      //   update mode でも新 SS を新規生成し、直後の Step 5.5 (copySsAllSheets) で旧 SS の全シートを
+      //   丸ごと複製する（β 引継＝ 運用データも含めて ③ で続きから運用可能）。
+      step7SetStatus('spreadsheet', 'running', 'SS 生成中...');
       const r5 = await callGasAction('createUserSpreadsheet', {
         clientId:             Step7Progress.clientId,
         storeName:            s1.storeName,
@@ -1831,9 +1847,9 @@
           payroll_menu:         s2.timecardCount >= 5,
           qrProofEnabled:       s2.timecardCount >= 5 && !!s2.qrProofEnabled,
           shiftScheduleEnabled: s2.timecardCount >= 5 && !!s2.shiftScheduleEnabled
-        },
-        // 既存SS 再利用モード（2026-08-27・→ 金光指示「既存PWA アップデート時は新規PWA＋既存SS紐付け」）
-        reuseSpreadsheetId:   Step7Progress.reuseSpreadsheetId || ''
+        }
+        // v0.12.0：reuseSpreadsheetId は削除（v0.11.0 で in-place reuse は deprecated_reuse_path
+        //   throw に置換済＝ 送っても弾かれる）。update mode の SS 承継は copySsAllSheets で行う。
       });
       Step7Progress.spreadsheetId = String(r5.spreadsheetId || '');
       Step7Progress.spreadsheetUrl = String(r5.spreadsheetUrl || '');
@@ -1841,6 +1857,30 @@
         throw new Error('createUserSpreadsheet 応答に spreadsheetId が含まれていません');
       }
       step7SetStatus('spreadsheet', 'done', Step7Progress.spreadsheetId);
+
+      // ---- 5.5. copySsAllSheets（update mode のみ・v0.12.0 鉄則(β) 引継）----
+      //   旧 ① SS の全シート（settings + 売上 + コスト + attendance + customers + products +
+      //   invoices + estimates + deliveries + orders + suppliers）を新 ③ SS に丸ごと複製。
+      //   運用データも含めて ③ で続きから運用可能にする。
+      //   新規発行時は STEP7_STAGES で「新規発行では対象外」を先出し済＝ skip。
+      if (isUpdateMode) {
+        step7SetStatus('copySheets', 'running',
+          '旧SS の全シート複製中（' + oldClientIdForUpdate + ' → ' + Step7Progress.clientId + '）...');
+        const rCopy = await callGasAction('copySsAllSheets', {
+          fromSpreadsheetId: oldSpreadsheetIdForUpdate,
+          toSpreadsheetId:   Step7Progress.spreadsheetId,
+          clientId:          Step7Progress.clientId  // change_log 記録用
+        });
+        Step7Progress.copySheetsResult = rCopy;
+        const copiedCount = (rCopy && Array.isArray(rCopy.copied)) ? rCopy.copied.length : 0;
+        const errCount = (rCopy && Array.isArray(rCopy.errors)) ? rCopy.errors.length : 0;
+        if (errCount > 0) {
+          throw new Error('copySsAllSheets で ' + errCount + ' シートの複製に失敗しました（詳細: '
+            + JSON.stringify(rCopy.errors).slice(0, 300) + '）');
+        }
+        step7SetStatus('copySheets', 'done',
+          copiedCount + ' シート複製済（' + (rCopy && rCopy.copied || []).join(', ') + '）');
+      }
 
       // ---- 6. ユーザーGAS デプロイ（v0.10.0 一元 GAS ルーティング化・手作業廃止） ----
       //   v0.10.0：店舗別 GAS プロジェクト作成・手動 deploy・authorize 手作業を全廃。
@@ -1895,6 +1935,26 @@
       });
       step7SetStatus('repoFiles', 'done', '4ファイル書込済');
 
+      // ---- 8. markClientAsDeprecated（update mode のみ・v0.12.0 鉄則 ①/③ 併存管理）----
+      //   旧 clientId の clients.contractStatus を 'deprecated' に変更＋ successorClientId 紐付け。
+      //   deprecated は user_call で pass（旧 PWA は検証期間中稼働継続）。
+      //   検証後 ① 削除は別 action（finalizeDeprecatedClient 予定）で行う。
+      //   idempotent＝ 既に deprecated なら changed:false を返して no-op。
+      //   新規発行時は STEP7_STAGES で「新規発行では対象外」を先出し済＝ skip。
+      if (isUpdateMode) {
+        step7SetStatus('deprecate', 'running',
+          '旧 clientId を deprecated 化中（' + oldClientIdForUpdate + '）...');
+        const rDep = await callGasAction('markClientAsDeprecated', {
+          clientId:           oldClientIdForUpdate,
+          successorClientId:  Step7Progress.clientId
+        });
+        Step7Progress.deprecateResult = rDep;
+        const depNote = (rDep && rDep.changed === false)
+          ? '既に deprecated（idempotent no-op）'
+          : ('deprecated 化完了（旧: ' + oldClientIdForUpdate + ' → 承継: ' + Step7Progress.clientId + '）');
+        step7SetStatus('deprecate', 'done', depNote);
+      }
+
       // ---- 登録はここで成功確定（納品カードは登録工程に含めない）----
       Step7Progress.completed = true;
       Step7Progress.running = false;
@@ -1916,7 +1976,7 @@
       // ---- 完了表示 ----
       if (completionEl) completionEl.innerHTML = buildCompletionView();
       if (execBtn) execBtn.hidden = true;
-      showToast('新規登録が完了しました', 'success');
+      showToast(isUpdateMode ? 'アップデート発行が完了しました（新 clientId 発行＋SS 全シート複製＋旧 deprecated 化）' : '新規登録が完了しました', 'success');
 
     } catch (err) {
       // ---- エラー停止（v0.11.4 atomic rollback）----
@@ -1976,13 +2036,27 @@
 
       // 確認ダイアログ（プロジェクト指示 §3-2 確定操作の3ステップ目）
       const s1 = RegisterState.data.step1;
+      const s2 = RegisterState.data.step2;
+      const isUpd = (s1.issueMode === 'update');
+      const modeTitle = isUpd
+        ? 'アップデート発行（鉄則案A系＝ 新 clientId 発行＋SS 全シート複製＋新テンプレ注入＋旧 deprecated 化）'
+        : '新規登録';
+      const updHeader = isUpd
+        ? ('更新元: ' + (s2.reuseStoreName || '(不明)') + '（' + (s2.reuseClientId || '?') + '）\n')
+        : '';
+      const updSteps = isUpd
+        ? ('・旧SS 全シート複製（settings＋運用データ全部 → 新③SS）\n' +
+           '・旧 clientId を deprecated 化（①/③ 併存管理・検証後 ① 削除は別作業）\n')
+        : '';
       const okToProceed = confirm(
-        '以下の内容で新規登録を実行します。\n\n' +
+        '以下の内容で' + modeTitle + 'を実行します。\n\n' +
+        updHeader +
         '店舗名：' + s1.storeName + '\n' +
-        'タイムカード数：' + RegisterState.data.step2.timecardCount + '\n' +
+        'タイムカード数：' + s2.timecardCount + '\n' +
         '月額:¥' + Number(s1.monthlyFee).toLocaleString('ja-JP') + '\n\n' +
         '・GitHubリポジトリ生成（自動）\n' +
         '・Googleスプレッドシート生成（自動）\n' +
+        updSteps +
         '・ユーザーGAS 作成（手動操作 約2分・運営担当）\n' +
         '・clients / auth / change_log 投入（自動）\n' +
         '・納品カードPDF 生成（自動）\n\n' +

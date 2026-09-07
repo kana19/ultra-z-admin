@@ -50,18 +50,20 @@
           </label>
           <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;padding:8px 12px;border:1px solid #d9dee8;border-radius:6px;background:#fff;flex:1;min-width:280px;">
             <input type="radio" name="f1-issue-mode" value="update" style="margin-top:3px;">
-            <span style="font-size:13px;line-height:1.5;"><strong>アップデート発行</strong>（既存店のPWA更新・既存SS紐付け）<br><span style="color:#667;">既存店の spreadsheetId を再利用し、新PWA・新GAS・新納品カードのみ発行。既存データは保全。<strong>基本情報は Step 2 で選ぶ更新元から自動引継ぎ</strong>＝下段の基本情報は入力不要（変更したい店名だけ下の任意欄で上書き可）。</span></span>
+            <span style="font-size:13px;line-height:1.5;"><strong>アップデート発行</strong>（鉄則案A系＝ 新 clientId 発行＋SS 全シート複製＋新テンプレ注入＋旧 deprecated 化）<br><span style="color:#667;">新 clientId を発行し、旧 SS の全シート（settings＋売上＋コスト＋attendance＋マスタ群）を新 SS に丸ごと複製＝ ③ で ① の続きから運用可能（β 引継）。UI 改修は新テンプレとして注入。旧 clientId は deprecated 化して併存管理（検証後 ① 削除）。<strong>基本情報・マスタ設定は Step 2 で選ぶ更新元から自動引継ぎ</strong>＝ 新 clientCode（店舗コード）のみ入力。</span></span>
           </label>
         </div>
       </div>
 
-      <!-- 店舗コード（新規発行時のみ表示・必須）＝命名規則07 の根治で意味のある可読名を必ず入力。
-           v0.9.14（2026-09-04）：アプデ発行時は非表示＋新clientId は更新元から世界標準の複製パターン
-           （filename→filename (N)）で自動採番（下段の f1-client-code-auto-preview に preview 表示）。 -->
+      <!-- 店舗コード（新規発行/アプデ発行 両モードで必須・v0.12.0 鉄則実装への復帰）
+           ＝命名規則07 の根治で意味のある可読名を必ず入力。master GAS が末尾 4 桁ランダムを
+           自動付加＝ 'uz-<code>-<4桁ランダム>'（_finalizeNewClientId_）。アプデ発行時も
+           新 clientId を発行するため clientCode は必須（v0.9.14 の -N 自動採番と v0.11.0 の
+           URL 不変案は撤回）。 -->
       <div class="form-row" id="f1-client-code-row" style="padding:12px 16px;border:2px solid #0B1842;border-radius:8px;background:#eef2f9;">
-        <label>店舗コード <span class="required">*</span>（新PWA の URL・repo・Drive・名簿を貫く可読ID）</label>
+        <label>店舗コード <span class="required">*</span>（新 PWA の URL・repo・Drive・名簿を貫く可読 ID・新規/アプデ共通で必須）</label>
         <input type="text" id="f1-client-code" maxlength="20" placeholder="意味のある可読名（例：osafune・aiyouhouen・kana01）">
-        <p class="form-note">半角英数字と <code>-</code>・2〜20字。<code>uz-</code> は自動付与（入力不要）＝正式店名（日本語）は下の「店舗名」欄。命名規則07 の根治でランダムハッシュ発番は廃止＝<strong>意味のある可読名を必ず入力</strong>。</p>
+        <p class="form-note">半角英数字と <code>-</code>・2〜20字。<code>uz-</code> は自動付与（入力不要）＝正式店名（日本語）は下の「店舗名」欄。命名規則07 の根治でランダムハッシュ発番は廃止＝<strong>意味のある可読名を必ず入力</strong>。アプデ発行時も新 clientId を発行するため clientCode 必須（例：<code>osafune</code> → 新 <code>uz-osafune-a3f7</code>）。</p>
       </div>
 
       <!-- アップデート発行時のみ表示：新clientId は自動採番＝入力不要（v0.9.14・2026-09-04）
