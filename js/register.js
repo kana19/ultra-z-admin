@@ -913,23 +913,19 @@
   function _renderReuseOptions(clients) {
     const select = $('f2-reuse-select');
     if (!select) return;
-    // 名簿(clients) のフィールド名は sheetId（master.gs CLIENTS_HEADERS L278・spreadsheetId ではない）。
-    // sheetId が空の行は除外（稼働中で必ずSSがある想定・target_admin 行やゴミ行を排除）。
-    // 2026-08-29：削除済・解約済を dropdown から除外＝稼働中のみ（contractStatus が空 or '稼働中' or 'active'）。
-    //   ダッシュボードの「稼働中のみ」フィルタと対称。運営が誤って解約店をアップデート対象に選ぶ事故を防ぐ。
-    // v0.13.2（2026-09-10 hotfix・金光の芯）：更新元候補は「SS と GAS データが揃ってない
-    //   失敗ゴミ PWA 以外」＝ contractStatus が failed / purged / terminated のみ除外し、
-    //   active / deprecated / test / suspended（legacy）/ '' / '稼働中' は全て候補として表示。
-    //   アプデ元は SS データ抽出元＝ deprecated（アプデ元保管中）も再度アプデ元として選択可能・
-    //   test（自社試験）も検証用途で選択可能。3 成果物揃い（sheetId 存在）＋ GAS URL 有効の
-    //   詳細検証は選択時に validateReuseSource が担う（3 層 preflight）。
-    const isReuseCandidate = (c) => {
-      const s = String((c && c.contractStatus) || '').trim().toLowerCase();
-      return s !== 'failed' && s !== 'purged' && s !== 'terminated';
-    };
-    const rows = clients.filter(c => c && c.sheetId && c.clientId && c.clientId !== 'target' && isReuseCandidate(c));
+    // v0.13.3（2026-09-10 hotfix・金光の芯）：候補絞り込みは validateReuseSource に任せる。
+    //   populateReuseSelect は管理行（clientId='target' の運営自身の行）のみ除外し、他は全て
+    //   候補として表示する。失敗ゴミ PWA を選んだ場合は選択時に validateReuseSource が
+    //   SS + GAS の 2 層検証で弾く＝ 症状が構造で起きない実装（§◎ R2 準拠）。事前絞り込み
+    //   （contractStatus フィルタ・sheetId フィルタ）は症状対処の継ぎはぎ実装＝ 排除する
+    //   （§◎ R7・「〜の事前絞り込み／継ぎはぎ実装」抑制）。アプデ元判定は SS + GAS の
+    //   2 成果物のみ＝ 納品カード -card は発行時の付随成果物で判定に無関係。
+    //   位置ずれ経緯：v0.13.2 で active のみ→ failed/purged/terminated のみ除外に変更したが、
+    //   それも継ぎはぎ（6 度目の位置ずれ）＝ 金光激怒「目先だけ余計物まで拾い継ぎはぎを
+    //   繰り返す実装はいい加減止めろ」で本 v0.13.3 で完全に最小化に是正。
+    const rows = clients.filter(c => c && c.clientId && c.clientId !== 'target');
     if (rows.length === 0) {
-      select.innerHTML = '<option value="">— 稼働中の既存店がありません（新規発行モードをご利用ください）—</option>';
+      select.innerHTML = '<option value="">— 既存店がありません（新規発行モードをご利用ください）—</option>';
       return;
     }
     // 登録が新しい順（createdAt 降順）で並べる
