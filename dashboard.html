@@ -281,19 +281,7 @@
     .btn-status--delete { border-color: #c0392b; color: #a02820; }
     .btn-status--delete:hover { background: #fbe6e3; }
 
-    /* v0.13.1（2026-09-09 D）: 4 状態 enum の視覚区別（→ 04 §2-2-3） */
-    /* deprecated=淡黄（アプデ元保管中・維持の意義あり・→ 00 §4-6-2 ③）*/
-    .tr-client--deprecated { background: #fdf9ef; }
-    .tr-client--deprecated td { opacity: 0.85; }
-    /* test=淡青（自社試験）*/
-    .tr-client--test { background: #eef4fa; }
-    .tr-client--test td { opacity: 0.85; }
-    /* failed=淡赤（発行失敗ゴミ）*/
-    .tr-client--failed { background: #fbeae6; }
-    .tr-client--failed td { opacity: 0.85; }
-    /* deprecated 経過日数表示（目安 30 日程度・運営判断の目安値）*/
-    .td-status-age { font-size: 11px; color: #8a6d00; }
-    /* legacy 3 値（現行運用未使用・互換維持） */
+    /* 停止中・解約済の行を視覚的に区別（legacy 3 値・現行運用未使用・互換維持） */
     .tr-client--suspended { background: #fdf9ef; }
     .tr-client--suspended td { opacity: 0.78; }
     .tr-client--terminated { background: #f4f4f4; }
