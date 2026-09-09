@@ -917,11 +917,17 @@
     // sheetId が空の行は除外（稼働中で必ずSSがある想定・target_admin 行やゴミ行を排除）。
     // 2026-08-29：削除済・解約済を dropdown から除外＝稼働中のみ（contractStatus が空 or '稼働中' or 'active'）。
     //   ダッシュボードの「稼働中のみ」フィルタと対称。運営が誤って解約店をアップデート対象に選ぶ事故を防ぐ。
-    const isActive = (c) => {
+    // v0.13.2（2026-09-10 hotfix・金光の芯）：更新元候補は「SS と GAS データが揃ってない
+    //   失敗ゴミ PWA 以外」＝ contractStatus が failed / purged / terminated のみ除外し、
+    //   active / deprecated / test / suspended（legacy）/ '' / '稼働中' は全て候補として表示。
+    //   アプデ元は SS データ抽出元＝ deprecated（アプデ元保管中）も再度アプデ元として選択可能・
+    //   test（自社試験）も検証用途で選択可能。3 成果物揃い（sheetId 存在）＋ GAS URL 有効の
+    //   詳細検証は選択時に validateReuseSource が担う（3 層 preflight）。
+    const isReuseCandidate = (c) => {
       const s = String((c && c.contractStatus) || '').trim().toLowerCase();
-      return s === '' || s === '稼働中' || s === 'active';
+      return s !== 'failed' && s !== 'purged' && s !== 'terminated';
     };
-    const rows = clients.filter(c => c && c.sheetId && c.clientId && c.clientId !== 'target' && isActive(c));
+    const rows = clients.filter(c => c && c.sheetId && c.clientId && c.clientId !== 'target' && isReuseCandidate(c));
     if (rows.length === 0) {
       select.innerHTML = '<option value="">— 稼働中の既存店がありません（新規発行モードをご利用ください）—</option>';
       return;
