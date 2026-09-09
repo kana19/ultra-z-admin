@@ -202,10 +202,31 @@
 
   function statusLabel(status) {
     switch (status) {
-      case 'active':     return '稼働中';
+      // v0.13.1（2026-09-09 D）: 4 状態 enum（→ 04 §2-2-3・00 §4-6-2 ①）
+      case 'active':     return '運用中';
+      case 'deprecated': return 'アプデ元保管中';
+      case 'test':       return '自社試験';
+      case 'failed':     return '発行失敗';
+      case 'purged':     return '削除済';  // 4 状態 enum の外・trash 完了記録・常時非表示
+      // legacy 3 値（廃止予定・現行運用未使用・互換維持のみ）
       case 'suspended':  return '停止中';
       case 'terminated': return '解約済';
       default:           return status || '-';
+    }
+  }
+
+  // v0.13.1（2026-09-09 D）: deprecated 行の経過日数表示（→ 04 §2-2-3・00 §4-6-2 ③）
+  //   目安 30 日程度＝ 運営判断の目安値・ハードコード禁止（表示強調のみ）
+  function formatDeprecatedAge(deprecatedAt) {
+    if (!deprecatedAt) return '';
+    try {
+      var t = new Date(deprecatedAt).getTime();
+      if (!t || isNaN(t)) return '';
+      var days = Math.floor((Date.now() - t) / (1000 * 60 * 60 * 24));
+      if (days < 0) return '';
+      return '<br><span class="td-status-age">（' + days + ' 日経過）</span>';
+    } catch (e) {
+      return '';
     }
   }
 
@@ -325,8 +346,12 @@
         + (c.qrProofEnabled ? '📍' : '—') + '</td>';
       var shiftCell = '<td class="td-feat' + (c.shiftScheduleEnabled ? '' : ' td-feat--off') + '">'
         + (c.shiftScheduleEnabled ? '🗓' : '—') + '</td>';
-      var trClass = status === 'suspended' ? ' class="tr-client--suspended"'
-                  : (status === 'terminated' ? ' class="tr-client--terminated"' : '');
+      // v0.13.1（2026-09-09 D）: 4 状態 enum の視覚区別＋ legacy 3 値互換
+      var trClass = status === 'deprecated' ? ' class="tr-client--deprecated"'
+                  : (status === 'test' ? ' class="tr-client--test"'
+                  : (status === 'failed' ? ' class="tr-client--failed"'
+                  : (status === 'suspended' ? ' class="tr-client--suspended"'
+                  : (status === 'terminated' ? ' class="tr-client--terminated"' : ''))));
       var clientRow = [
         '<tr' + trClass + '>',
           '<td class="td-clientId">' + safeId + '</td>',
@@ -335,7 +360,7 @@
           '<td class="td-num">' + (c.timecardCount != null && c.timecardCount !== '' ? escapeHTML(c.timecardCount) : '-') + '</td>',
           qrCell,
           shiftCell,
-          '<td class="td-status td-status--' + escapeHTML(status) + '">' + escapeHTML(statusLabel(status)) + '</td>',
+          '<td class="td-status td-status--' + escapeHTML(status) + '">' + escapeHTML(statusLabel(status)) + (status === 'deprecated' ? formatDeprecatedAge(c.deprecatedAt) : '') + '</td>',
           '<td class="td-fee">' + escapeHTML(formatFee(c.monthlyFee)) + '</td>',
           '<td>' + escapeHTML(c.contractStart) + '</td>',
           createdCell,
@@ -519,13 +544,20 @@
     var v = getViewState();
     var list = allClients.slice();
 
-    // フィルタ（契約状態）。'all' は terminated を除く active+suspended、'terminated' のみ解約済
+    // v0.13.1（2026-09-09 D）: 4 状態 enum filter + purged 常時除外（→ 04 §2-2-3・00 §4-6-2 ①）
+    //   active=運用中（既定）／deprecated=アプデ元保管中／test=自社試験／failed=発行失敗
+    //   all=purged/terminated を除く全て（4 状態 enum + legacy suspended）
+    //   purged は 4 状態 enum の外・trash 完了記録として常時非表示（→ 04 §3-B-3）
     list = list.filter(function (c) {
       var st = c.contractStatus || 'active';
-      if (v.filter === 'active') return st === 'active';
-      if (v.filter === 'suspended') return st === 'suspended';
-      if (v.filter === 'terminated') return st === 'terminated';
-      if (v.filter === 'all') return st !== 'terminated';
+      if (st === 'purged') return false;  // trash 完了記録は常時非表示
+      if (v.filter === 'active')     return st === 'active';
+      if (v.filter === 'deprecated') return st === 'deprecated';
+      if (v.filter === 'test')       return st === 'test';
+      if (v.filter === 'failed')     return st === 'failed';
+      if (v.filter === 'suspended')  return st === 'suspended';   // legacy
+      if (v.filter === 'terminated') return st === 'terminated';  // legacy
+      if (v.filter === 'all')        return st !== 'terminated';  // purged は上で除外済
       return true;
     });
 
