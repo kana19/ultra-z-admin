@@ -425,21 +425,19 @@
     //   settings key/value が新 SS へ照合転記され店名は旧のまま持ち込まれる（変更は ③発行後 updateClient）。
     if (s.issueMode === 'update') {
       s.updateStoreName = '';  // v0.13.0：撤廃・後方互換のため空セット
-      // v0.13.0：顧客要望メモ読取＋ required 検証（→ 00_原則.md §4-6-2 ②・アプデ発行の発火根拠）
+      // v0.13.1（2026-09-09）：顧客要望メモは任意化・空でも通す（記入時は change_log 記録）
       const reqEl = $('f1-requested-by');
       s.requestedBy = reqEl ? String(reqEl.value || '').trim() : '';
-      if (!s.requestedBy) {
-        clientCodeErrors.push('顧客要望メモ（アプデ発行の発火根拠・日付＋顧客名＋要望内容）');
-      }
-      if (clientCodeErrors.length) {
-        showStepError('step1-error', '入力エラー：' + clientCodeErrors.join(' / '));
-        return false;
-      }
+      // v0.13.1：update mode では clientCode を Step 2 の reuseClientId から base 自動継承
+      //   （Step 7 の generateClientId 呼出時に抽出・`uz-osafune-a3f7` → base=`osafune`）＝
+      //   Step 1 での clientCode 入力は不要＝ clientCodeErrors（未入力エラー）を無視。
+      s.clientCode = '';  // update mode では空（Step 7 で自動継承）
       hideStepError('step1-error');
       return true;
     }
     // 発行モード＝新規：requestedBy は空でよい（改修対象＝ 実顧客資産のみ・→ 00 §4-6-2 ①）
     s.requestedBy = '';
+    // 新規発行では clientCode は必須（下流 L464 の [].concat(clientCodeErrors) で errors 集約 check）
 
     // 発行モード＝新規：従来通り全項目入力＋検証
     s.updateStoreName = '';
@@ -792,9 +790,12 @@
     if (requestedByRow) requestedByRow.hidden = (mode !== 'update');
     // 店舗コード欄は新規/アプデ共通で表示＋必須（v0.13.0 体制構築 4 層）
     //   新規発行/アプデ発行 両モードで master GAS が 'uz-<code>-<4桁ランダム>' を確定する。
+    // v0.13.1（2026-09-09）：update mode では clientCode を Step 2 の reuseClientId から
+    //   base 自動継承（Step 7 の generateClientId で抽出）＝ Step 1 の clientCode 入力欄は隠す。
+    //   新規発行時のみ clientCode 手入力（意味のある可読名）を要求する。
     const clientCodeRow = $('f1-client-code-row');
     const clientCodeAutoPreview = $('f1-client-code-auto-preview');
-    if (clientCodeRow) clientCodeRow.hidden = false;
+    if (clientCodeRow) clientCodeRow.hidden = (mode === 'update');
     if (clientCodeAutoPreview) clientCodeAutoPreview.hidden = true;
     // アプデから新規へ戻したら readiness を初期化
     if (mode !== 'update') {
@@ -1773,9 +1774,7 @@
         if (!oldSpreadsheetIdForUpdate) {
           throw new Error('update mode で reuseSpreadsheetId が空です（Step 2 で更新元 SS を確定してください）');
         }
-        if (!String(s1.requestedBy || '').trim()) {
-          throw new Error('update mode で顧客要望メモが空です（Step 1 で「顧客要望メモ」欄に日付＋顧客名＋要望内容を入力してください・→ 00 §4-6-2 ②）');
-        }
+        // v0.13.1（2026-09-09）：顧客要望メモは任意化・空でも実行可（記入時のみ change_log 記録）
       } else {
         // 新規発行では update 専用ステージを「対象外」で done 表示
         step7SetStatus('migrateData', 'done', '新規発行では対象外');
@@ -1783,8 +1782,17 @@
       }
 
       // ---- 1. generateClientId ----
+      // v0.13.1（2026-09-09）：update mode では Step 2 の reuseClientId から base 部分を
+      //   抽出して新 clientCode として渡す（`uz-osafune-a3f7` → base=`osafune` → 新 `uz-osafune-XXXX`）。
+      //   Step 1 での clientCode 手入力を求めない＝ 運用者の手数を減らす（金光判断・field test 後）。
       step7SetStatus('clientId', 'running', '採番中...');
-      const r1 = await callGasAction('generateClientId', { code: RegisterState.data.step1.clientCode || '' });
+      let codeForGen = String(RegisterState.data.step1.clientCode || '').trim();
+      if (isUpdateMode) {
+        const oldId = String(RegisterState.data.step2.reuseClientId || '');
+        const m = oldId.match(/^uz-(.+)-[a-z0-9]{4}$/);
+        codeForGen = m ? m[1] : oldId.replace(/^uz-/, '');
+      }
+      const r1 = await callGasAction('generateClientId', { code: codeForGen });
       Step7Progress.clientId = String(r1.clientId || '');
       if (!Step7Progress.clientId) {
         throw new Error('generateClientId 応答に clientId が含まれていません');

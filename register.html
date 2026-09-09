@@ -89,9 +89,9 @@
            「誰の依頼で発行したか」が監査可能。register.js の Step 8 で markClientAsDeprecated
            の requestedBy パラメータに引き渡される（→ master.gs v0.13.0）。 -->
       <div class="form-row" id="f1-requested-by-row" hidden style="padding:14px 16px;border:2px solid #4caf50;border-radius:8px;background:#f0f8f2;">
-        <label>顧客要望メモ <span class="required">*</span>（アプデ発行の発火根拠・change_log に永続記録）</label>
+        <label>顧客要望メモ（任意・記入があれば change_log に永続記録）</label>
         <textarea id="f1-requested-by" rows="3" maxlength="500" placeholder="例：2026-09-08 あい養蜂園・スマホ画面の勤怠打刻ボタンを大きくしたい・オーナー電話依頼" style="width:100%;resize:vertical;box-sizing:border-box;"></textarea>
-        <p class="form-note">アプデ発行は<strong>顧客要望起点</strong>（→ 00_原則.md §4-6-2 ②）。運営単独判断で顧客 PWA を触る動線は違反。<strong>誰の依頼で発行したか</strong>を change_log に永続記録＝ 監査可能。日付＋顧客名＋要望内容の形式を推奨。</p>
+        <p class="form-note">アプデ発行は<strong>顧客要望起点</strong>（→ 00_原則.md §4-6-2 ②）。空でも発行可・記入があれば change_log に「誰の依頼で発行したか」を永続記録＝ 後日の監査に使える。日付＋顧客名＋要望内容の形式を推奨（v0.13.1 で必須→任意へ変更）。</p>
       </div>
 
       <!-- 基本情報ブロック（新規発行時のみ入力・アップデート時は非表示） -->
