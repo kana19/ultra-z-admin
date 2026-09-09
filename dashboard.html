@@ -547,11 +547,10 @@
         <div class="toolbar-field">
           <label for="clients-filter">表示</label>
           <select id="clients-filter">
-            <!-- v0.13.1（2026-09-09 D）: 4 状態 enum filter + 全て（purged 常時除外・→ 04 §2-2-3） -->
-            <option value="active">運用中のみ</option>
-            <option value="deprecated">アプデ元保管中</option>
-            <option value="test">自社試験</option>
-            <option value="failed">発行失敗</option>
+            <!-- v0.13.1（2026-09-09 D 是正）: 既存 3 値 filter 維持＝ 運営の慣れた UI 干渉ゼロ・「全て」で deprecated/test/failed も分類名ラベルで表示（芽 1 解決）・purged は常時非表示 -->
+            <option value="active">稼働中のみ</option>
+            <option value="suspended">停止中</option>
+            <option value="terminated">解約済</option>
             <option value="all">全て</option>
           </select>
         </div>

@@ -525,20 +525,18 @@
     var v = getViewState();
     var list = allClients.slice();
 
-    // v0.13.1（2026-09-09 D）: 4 状態 enum filter + purged 常時除外（→ 04 §2-2-3・00 §4-6-2 ①）
-    //   active=運用中（既定）／deprecated=アプデ元保管中／test=自社試験／failed=発行失敗
-    //   all=purged/terminated を除く全て（4 状態 enum + legacy suspended）
+    // v0.13.1（2026-09-09 D 是正）: 既存 3 値 filter 維持＝ 運営ワークフロー干渉ゼロ
+    //   'active'=稼働中のみ（実顧客）／'suspended'=停止中／'terminated'=解約済
+    //   'all'=terminated と purged を除く全て（active + suspended + deprecated + test + failed）
+    //   deprecated/test/failed は「全て」で分類名ラベル（statusLabel）表示＝ 芽 1 解決
     //   purged は 4 状態 enum の外・trash 完了記録として常時非表示（→ 04 §3-B-3）
     list = list.filter(function (c) {
       var st = c.contractStatus || 'active';
       if (st === 'purged') return false;  // trash 完了記録は常時非表示
-      if (v.filter === 'active')     return st === 'active';
-      if (v.filter === 'deprecated') return st === 'deprecated';
-      if (v.filter === 'test')       return st === 'test';
-      if (v.filter === 'failed')     return st === 'failed';
-      if (v.filter === 'suspended')  return st === 'suspended';   // legacy
-      if (v.filter === 'terminated') return st === 'terminated';  // legacy
-      if (v.filter === 'all')        return st !== 'terminated';  // purged は上で除外済
+      if (v.filter === 'active') return st === 'active';
+      if (v.filter === 'suspended') return st === 'suspended';
+      if (v.filter === 'terminated') return st === 'terminated';
+      if (v.filter === 'all') return st !== 'terminated';  // purged は上で除外済
       return true;
     });
 
