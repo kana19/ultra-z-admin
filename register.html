@@ -50,7 +50,7 @@
           </label>
           <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;padding:8px 12px;border:1px solid #d9dee8;border-radius:6px;background:#fff;flex:1;min-width:280px;">
             <input type="radio" name="f1-issue-mode" value="update" style="margin-top:3px;">
-            <span style="font-size:13px;line-height:1.5;"><strong>アップデート発行</strong>（鉄則案A系＝ 新 clientId 発行＋SS 全シート複製＋新テンプレ注入＋旧 deprecated 化）<br><span style="color:#667;">新 clientId を発行し、旧 SS の全シート（settings＋売上＋コスト＋attendance＋マスタ群）を新 SS に丸ごと複製＝ ③ で ① の続きから運用可能（β 引継）。UI 改修は新テンプレとして注入。旧 clientId は deprecated 化して併存管理（検証後 ① 削除）。<strong>基本情報・マスタ設定は Step 2 で選ぶ更新元から自動引継ぎ</strong>＝ 新 clientCode（店舗コード）のみ入力。</span></span>
+            <span style="font-size:13px;line-height:1.5;"><strong>アップデート発行</strong>（顧客要望起点・新 clientId 発行＋列マップ転記＋新テンプレ注入＋旧 deprecated 化）<br><span style="color:#667;">顧客が「新機能・新 UI が欲しい」と要望した時のみ実行する。新 clientId を発行し、旧 SS の運用データを新 SS へ<strong>列マップ転記</strong>（対応列のみ・新のみ列は空欄・旧のみ列は破棄・settings は key/value 照合）＝ 新テンプレの列拡張を保持しつつ運用データ承継。旧 clientId は <code>deprecated</code> 化して併存管理（アプデ元/アプデ版）＝ 目安 30 日程度で運営判断により <code>purgeClient</code> で trash（自動 purge なし）。<strong>基本情報・マスタ設定は Step 2 で選ぶ更新元から自動引継ぎ</strong>＝ 新 clientCode と<strong>顧客要望メモ</strong>のみ入力。</span></span>
           </label>
         </div>
       </div>
@@ -77,11 +77,21 @@
         <p class="form-note">アプデ発行時は新clientId を手入力しません。<strong>Step 2 で選ぶ更新元 clientId から <code>-N</code> 形式で自動採番</strong>（世界標準のファイル複製＝<code>filename→filename (N)</code> と同挙動・命名規則07 準拠）。<code>-N</code> は既存の同系譜（<code>base</code>・<code>base-2</code>・<code>base-3</code>…）の最大 N +1。</p>
       </div>
 
-      <!-- アップデート発行時のみ表示：変更後の店名（任意・入力すると settings.storeName と 名簿 storeName の両方を上書き） -->
+      <!-- アップデート発行時のみ表示：変更後の店名（v0.13.0 で撤廃・常時 hidden・列マップ転記で settings 承継） -->
       <div class="form-row" id="f1-update-storename-row" hidden style="padding:12px 16px;border:1px dashed #b8860b;border-radius:8px;background:#fff8ec;">
         <label>変更後の店名（変更する場合のみ入力）</label>
         <input type="text" id="f1-update-storename" maxlength="50" placeholder="空欄なら更新元の店名をそのまま引き継ぎ">
-        <p class="form-note">入力すると、この店名がユーザーSS の settings.storeName とマスタ名簿の storeName の両方に上書きされます。空欄なら更新元の店名をそのまま使います。</p>
+        <p class="form-note">v0.13.0 で撤廃済（列マップ転記で settings key/value 承継＝ 店名は旧のまま持ち込まれる・変更は ③発行後 updateClient で対応）。</p>
+      </div>
+
+      <!-- 顧客要望メモ（アプデ発行時のみ表示・required・v0.13.0 体制構築 4 層＋技術動作 5 段）
+           アプデ発行の発火根拠＝ 顧客要望起点（→ 00_原則.md §4-6-2 ②）。change_log に永続記録＝
+           「誰の依頼で発行したか」が監査可能。register.js の Step 8 で markClientAsDeprecated
+           の requestedBy パラメータに引き渡される（→ master.gs v0.13.0）。 -->
+      <div class="form-row" id="f1-requested-by-row" hidden style="padding:14px 16px;border:2px solid #4caf50;border-radius:8px;background:#f0f8f2;">
+        <label>顧客要望メモ <span class="required">*</span>（アプデ発行の発火根拠・change_log に永続記録）</label>
+        <textarea id="f1-requested-by" rows="3" maxlength="500" placeholder="例：2026-09-08 あい養蜂園・スマホ画面の勤怠打刻ボタンを大きくしたい・オーナー電話依頼" style="width:100%;resize:vertical;box-sizing:border-box;"></textarea>
+        <p class="form-note">アプデ発行は<strong>顧客要望起点</strong>（→ 00_原則.md §4-6-2 ②）。運営単独判断で顧客 PWA を触る動線は違反。<strong>誰の依頼で発行したか</strong>を change_log に永続記録＝ 監査可能。日付＋顧客名＋要望内容の形式を推奨。</p>
       </div>
 
       <!-- 基本情報ブロック（新規発行時のみ入力・アップデート時は非表示） -->
