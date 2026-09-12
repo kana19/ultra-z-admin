@@ -84,10 +84,11 @@
         <p class="form-note">v0.13.0 で撤廃済（列マップ転記で settings key/value 承継＝ 店名は旧のまま持ち込まれる・変更は ③発行後 updateClient で対応）。</p>
       </div>
 
-      <!-- 顧客要望メモ（アプデ発行時のみ表示・required・v0.13.0 体制構築 4 層＋技術動作 5 段）
+      <!-- 顧客要望メモ（アプデ発行時のみ表示・任意・v0.14.0 §4-6-4 明示違反是正）
            アプデ発行の発火根拠＝ 顧客要望起点（→ 00_原則.md §4-6-2 ②）。change_log に永続記録＝
-           「誰の依頼で発行したか」が監査可能。register.js の Step 8 で markClientAsDeprecated
-           の requestedBy パラメータに引き渡される（→ master.gs v0.13.0）。 -->
+           「誰の依頼で発行したか」が監査可能。register.js の Step 8 で recordSuccession
+           の requestedBy パラメータに引き渡される（→ master.gs v0.14.0・更新元 clients 行に
+           書込なし・§4-6-1 ①③）。 -->
       <div class="form-row" id="f1-requested-by-row" hidden style="padding:14px 16px;border:2px solid #4caf50;border-radius:8px;background:#f0f8f2;">
         <label>顧客要望メモ（任意・記入があれば change_log に永続記録）</label>
         <textarea id="f1-requested-by" rows="3" maxlength="500" placeholder="例：2026-09-08 あい養蜂園・スマホ画面の勤怠打刻ボタンを大きくしたい・オーナー電話依頼" style="width:100%;resize:vertical;box-sizing:border-box;"></textarea>

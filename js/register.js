@@ -1262,10 +1262,12 @@
     { id: 'migrateData',  label: '5.5 旧 SS データ列マップ転記（アプデ発行のみ・対応列のみ）' },
     { id: 'gas',          label: '6. ユーザーGAS ルーティング設定（v0.10.0 一元化・手作業なし）' },
     { id: 'client',       label: '7. clients/auth/change_log 投入' },
-    // v0.13.0：アプデ発行時のみ実行。旧 clientId を deprecated 化＋ deprecatedAt+requestedBy＋
-    //   successorClientId を change_log に永続記録。旧 PWA は稼働継続（併存管理→ 目安 30 日程度・
-    //   運営判断で trash・自動 purge なし・→ 00 §4-6-2 ③④）。
-    { id: 'deprecate',    label: '8. 旧 clientId deprecated 化（アプデ発行のみ・顧客要望メモ記録）' }
+    // v0.14.0（§4-6-4 明示違反是正）：アプデ発行時のみ実行。承継関係（predecessorClientId →
+    //   successorClientId + requestedBy）を change_log に独立記録する（recordSuccession action）。
+    //   更新元 clients 行の contractStatus・deprecatedAt には一切書込しない（§4-6-1 ①③・
+    //   更新元は読取専用として維持）。旧 PWA は稼働継続。旧 clientId の状態変更や運用停止判断は
+    //   金光の独立した管理操作領域（§4-6-1 ④・05 §5-5）。
+    { id: 'succession',   label: '8. 承継関係を change_log に記録（アプデ発行のみ・顧客要望メモ記録）' }
   ];
   // 注：納品カードPDF は登録処理（Step7）から分離した（04_運営ポータル.md §9）。
   //   「登録」と「納品物生成」は別概念であり、納品カード生成の失敗で登録全体を
@@ -1644,17 +1646,19 @@
       : '#';
     const pdfFilename = Step7Progress.clientId + '-card.pdf';
 
-    // v0.12.0（2026-09-07・鉄則実装）：アプデ発行時は「旧 clientId → 新 clientId ／ deprecated 化済」を
-    //   完了画面冒頭で明示。運営が旧 URL の扱い（顧客への新 URL 案内・検証期間・① 削除）を把握できる。
+    // v0.14.0（2026-09-11・§4-6-4 明示違反是正）：アプデ発行完了時に「新 clientId 発行済・
+    //   承継関係を change_log に記録済・旧 clientId は稼働継続・状態変更なし」を明示する。
+    //   運営は新 URL 案内・併存確認までを担い、旧 clientId の運用停止判断・削除は
+    //   金光の独立した管理操作領域（§4-6-1 ④）として本フローから切り離す。
     const updateBanner = isUpd
       ? ('<div style="margin:0 0 16px;padding:14px 16px;background:#eaf6ec;border:2px solid #4caf50;border-radius:8px;">' +
-           '<div style="font-weight:700;color:#2e7d32;margin-bottom:6px;">③発行完了（体制構築 4 層＋技術動作 5 段）</div>' +
+           '<div style="font-weight:700;color:#2e7d32;margin-bottom:6px;">アップデート版発行完了（§4-6-3 技術動作 5 段）</div>' +
            '<div style="font-size:13px;line-height:1.6;color:#334;">' +
              '旧 clientId: <code>' + escapeHtml(String(s2.reuseClientId || '')) + '</code>' +
              (s2.reuseStoreName ? '（' + escapeHtml(String(s2.reuseStoreName)) + '）' : '') +
              ' → 新 clientId: <code>' + escapeHtml(Step7Progress.clientId) + '</code><br>' +
              '旧 SS の運用データを列マップ転記で新 SS に承継済（対応列のみ・新テンプレの列拡張を保持）。<br>' +
-             '旧 clientId は <strong>deprecated</strong> に変更済＝ アプデ元/アプデ版 併存管理中・目安 30 日程度で運営判断による <code>purgeClient</code> trash（自動 purge なし）。' +
+             '承継関係を change_log に記録済（<code>issueNewVersion</code>）＝ 旧 clientId は稼働継続・contractStatus 等の状態変更なし（§4-6-1 ①③ 更新元は読取のみ）。旧 clientId の運用停止判断・削除は金光の独立した管理操作領域（§4-6-1 ④）。' +
            '</div>' +
          '</div>')
       : '';
@@ -1760,12 +1764,17 @@
     // 各ステップを順次実行（ok:false で throw して catch で停止）
     try {
 
-      // ---- v0.13.0（2026-09-08・体制構築 4 層＋技術動作 5 段）----
-      //   update mode は「新 clientId 発行＋列マップ転記＋新テンプレ注入＋旧 deprecated 化＋顧客要望
-      //   メモ記録」で完結する（→ 00_原則.md §4-6 リリース鉄則）。新規と同じ 7 段プロセス＋
+      // ---- v0.14.0（2026-09-11・§4-6-4 明示違反是正）----
+      //   update mode は「新 clientId 発行＋列マップ転記＋新テンプレ注入＋承継関係の独立記録＋
+      //   顧客要望メモ記録」で完結する（→ 00_原則.md §4-6 リリース原則）。更新元 clients 行の
+      //   contractStatus・deprecatedAt には一切書込しない（§4-6-1 ①③）。新規と同じ 7 段プロセス＋
       //   Step 4.5 (writeGasUrlShortcutForClient・新規/update 共通) を走らせ、update mode の時のみ
-      //   Step 5.5 (migrateSsDataByColumnMap) と Step 8 (markClientAsDeprecated) を挟む。
-      //   copySsAllSheets（v0.12.0 違反 A）は v0.13.0 で撤回削除。
+      //   Step 5.5 (migrateSsDataByColumnMap) と Step 8 (recordSuccession) を挟む。
+      //   v0.13.0 で Step 8 が markClientAsDeprecated を呼び更新元 clients 行を書換していた
+      //   （§4-6-4 明示違反）動線は v0.14.0 で撤去し、承継関係は recordSuccession action で
+      //   change_log に独立記録する形へ振替。markClientAsDeprecated 関数は撤去せず維持（§4-6-1 ④・
+      //   金光の独立管理操作＝ Apps Script Editor 直接実行等で引き続き利用可能）。
+      //   copySsAllSheets（v0.12.0 違反 A）は v0.13.0 で撤回削除・以降維持。
       const isUpdateMode = (s1.issueMode === 'update');
       const oldClientIdForUpdate = isUpdateMode ? String(s2.reuseClientId || '').trim() : '';
       const oldSpreadsheetIdForUpdate = isUpdateMode ? String(s2.reuseSpreadsheetId || '').trim() : '';
@@ -1780,7 +1789,7 @@
       } else {
         // 新規発行では update 専用ステージを「対象外」で done 表示
         step7SetStatus('migrateData', 'done', '新規発行では対象外');
-        step7SetStatus('deprecate', 'done', '新規発行では対象外');
+        step7SetStatus('succession', 'done', '新規発行では対象外');
       }
 
       // ---- 1. generateClientId ----
@@ -1980,26 +1989,28 @@
       step7SetStatus('gasShortcut', 'done',
         (rShortcut && rShortcut.replaced ? '更新済（' : '生成済（') + (rShortcut && rShortcut.fileName || (Step7Progress.clientId + '-gas.url')) + '）');
 
-      // ---- 8. markClientAsDeprecated（update mode のみ・v0.13.0 技術動作 5 段 Step 5）----
-      //   旧 clientId を deprecated 化＋ deprecatedAt timestamp＋ requestedBy（顧客要望メモ）＋
-      //   successorClientId を change_log に永続記録。旧 PWA は稼働継続（apiToken 生きたまま）。
-      //   purge 判断は運営が別 action（purgeClient）で発火・自動 purge なし・目安 30 日程度は運営判断。
-      //   → 00_原則.md §4-6-3 Step 5 / §4-6-2 ③④・04_運営ポータル.md §3-B。
-      //   idempotent＝ 既に deprecated なら changed:false・deprecatedAt は初回のまま保持。
+      // ---- 8. recordSuccession（update mode のみ・v0.14.0 §4-6-4 明示違反是正）----
+      //   承継関係（predecessorClientId → successorClientId + requestedBy）を change_log に
+      //   独立記録する。更新元 clients 行の contractStatus・deprecatedAt には一切書込しない
+      //   （§4-6-1 ①③・更新元は読取専用として維持）。旧 PWA は稼働継続（apiToken 生きたまま）。
+      //   旧 clientId の状態変更や運用停止判断は金光の独立した管理操作領域（§4-6-1 ④・
+      //   05 §5-5・Apps Script Editor 直接実行の markClientAsDeprecated / admin UI 手動発火）。
+      //   → 00_原則.md §4-6-3 Step 5 / §4-6-1 ①③④。
+      //   idempotent＝ 同一 predecessor+successor の記録が既にあれば changed:false で no-op。
       //   新規発行時は「新規発行では対象外」で skip（STEP7_STAGES 明示）。
       if (isUpdateMode) {
-        step7SetStatus('deprecate', 'running',
-          '旧 clientId を deprecated 化中（' + oldClientIdForUpdate + '・顧客要望メモ記録）...');
-        const rDep = await callGasAction('markClientAsDeprecated', {
-          clientId:           oldClientIdForUpdate,
-          successorClientId:  Step7Progress.clientId,
-          requestedBy:        String(s1.requestedBy || '').trim()
+        step7SetStatus('succession', 'running',
+          '承継関係を change_log に記録中（' + oldClientIdForUpdate + ' → ' + Step7Progress.clientId + '・顧客要望メモ記録）...');
+        const rSucc = await callGasAction('recordSuccession', {
+          predecessorClientId: oldClientIdForUpdate,
+          successorClientId:   Step7Progress.clientId,
+          requestedBy:         String(s1.requestedBy || '').trim()
         });
-        Step7Progress.deprecateResult = rDep;
-        const depNote = (rDep && rDep.changed === false)
-          ? '既に deprecated（idempotent no-op）'
-          : ('deprecated 化完了（旧: ' + oldClientIdForUpdate + ' → 承継: ' + Step7Progress.clientId + '・顧客要望メモ記録済）');
-        step7SetStatus('deprecate', 'done', depNote);
+        Step7Progress.successionResult = rSucc;
+        const succNote = (rSucc && rSucc.changed === false)
+          ? '既に change_log に承継関係記録あり（idempotent no-op）'
+          : ('承継関係を change_log に記録済（旧: ' + oldClientIdForUpdate + ' → 新: ' + Step7Progress.clientId + '・旧 clientId は稼働継続・状態変更なし）');
+        step7SetStatus('succession', 'done', succNote);
       }
 
       // ---- 登録はここで成功確定（納品カードは登録工程に含めない）----
