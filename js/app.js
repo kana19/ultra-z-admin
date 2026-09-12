@@ -81,14 +81,39 @@
       sessionDefaults,
       extra
     );
-    var res = await fetch(MASTER_GAS_URL, {
-      method: 'POST',
-      body: JSON.stringify(body)
-    });
-    if (!res.ok) {
-      throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+
+    // v0.14.1（Google Apps Script Web App 応答経路 hiccup に対する transport resilience）
+    // 404/502/503/504 で最大 3 試行・3s/6s exponential backoff。
+    // master GAS 全 action は §4-6-3 で idempotent 設計ゆえ retry しても副作用なし。
+    // エラーメッセージに (attempts=N) を含めて field test 効果測定を可能にする。
+    var maxAttempts = 3;
+    var retryableStatuses = [404, 502, 503, 504];
+    var lastError = null;
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        var res = await fetch(MASTER_GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify(body)
+        });
+        if (res.ok) {
+          return await res.json();
+        }
+        if (retryableStatuses.indexOf(res.status) >= 0 && attempt < maxAttempts) {
+          await new Promise(function (r) { setTimeout(r, 3000 * attempt); });
+          continue;
+        }
+        throw new Error('HTTP ' + res.status + ' ' + res.statusText + ' (attempts=' + attempt + ')');
+      } catch (err) {
+        lastError = err;
+        if (attempt < maxAttempts && /HTTP (404|502|503|504)|NetworkError|Failed to fetch/.test(String(err.message))) {
+          await new Promise(function (r) { setTimeout(r, 3000 * attempt); });
+          continue;
+        }
+        throw err;
+      }
     }
-    return await res.json();
+    throw lastError;
   }
 
   // ---- 認証エラー共通ハンドラ（第6段階） ---------------------
